@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title></title>
+</head>
+<body>
+	<script src="/lib/require.js"></script>
+	<script src="/lib/modernizr.js"></script>
+	<script src="/lib/underscore.js"></script>
+	<script>
+		require(["/src/minionProvider.js"], function(minionProvider){
+			window.minionProvider = minionProvider.create("//" + window.location.host);
+		});
+	</script>
+</body>
+</html>
