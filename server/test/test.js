@@ -1,13 +1,24 @@
-var createMinionMaster = require('../src/minionMaster.js').create;
-var socketio = require("socket.io");
-var webServer = require("../src/webServer.js");
-var logger = require("../src/logger.js");
+var createWorkerHub = require('../src/workerHub.js').create;
+var createBrowserHub = require("../src/browserHub.js").create;
 
-var server = webServer.create("80", "../../client");
+var workerHub = createWorkerHub();
+var browserHub = createBrowserHub();
 
-logger.defaults.threshold =  4
-var socketioServer = socketio.listen(server, {
-	logger: logger.create({prefix:'socket.io', threshold:0})
+browserHub.on("connected", function(browser){
+	workerHub.connectWorkerProvider(browser);
 });
 
-var mm = createMinionMaster(socketioServer);
+browserHub.on("disconnected", function(browser){
+	workerHub.disconnectWorkerProvider(browser);
+});
+
+
+workerHub.on("providersAvailable", function(){
+	var workers = workerHub.spawnWorkers();
+	workers.forEach(function(worker){
+		worker.on("ping", function(){
+			console.log("pong");
+			worker.emit("pong", "pong");	
+		});
+	});
+});

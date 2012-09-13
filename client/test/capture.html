@@ -9,8 +9,8 @@
 	<script src="/lib/modernizr.js"></script>
 	<script src="/lib/underscore.js"></script>
 	<script>
-		require(["/src/minionProvider.js"], function(minionProvider){
-			window.minionProvider = minionProvider.create("//" + window.location.host);
+		require(["/src/browser.js"], function(browser){
+			window.browser = browser.create("//" + window.location.host);
 		});
 	</script>
 </body>
