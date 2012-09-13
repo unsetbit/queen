@@ -17,10 +17,9 @@ exports.WorkerHub = WorkerHub = function(emitter){
 		throw "WorkerHub must be started with an emitter";
 	}
 
-	this._workerProviders = {};	
 	this._id = uuid.v4();
+	this._workerProviders = {};	
 	this._emitter = emitter;
-	this._availableProviders = 0;
 
 	this._logger = createLogger({prefix: "WorkerHub-" + this._id.substr(0,4) });
 	this._logger.trace("Created");
@@ -55,10 +54,6 @@ WorkerHub.prototype.spawnWorkers = function(workerFilters, data){
 	return workers;
 };
 
-WorkerHub.prototype.hasWorkerProvider = function(provider){
-	return this._workerProviders[provider.getId()] !== void 0;
-};
-
 WorkerHub.prototype.connectWorkerProvider = function(provider){
 	var self = this,
 		providerId = provider.getId();
@@ -68,27 +63,6 @@ WorkerHub.prototype.connectWorkerProvider = function(provider){
 		
 		this._logger.debug("Connected worker provider: " + providerId);
 		this._emitter.emit("connectedWorkerProvider", provider);
-		if(provider.isAvailable()){
-			if(this._availableProviders === 0){
-				self._emitter.emit("providersAvailable");
-			}
-
-			this._availableProviders += 1;
-		}
-
-		provider.on("available", function(){
-			if(this._availableProviders === 0){
-				self._emitter.emit("providersAvailable");
-			}
-			this._availableProviders += 1;
-		});
-
-		provider.on("unavailable", function(){
-			this._availableProviders -= 1;
-			if(this._availableProviders === 0){
-				self._emitter.emit("providersUnavailable");
-			}
-		});
 	}
 };
 

@@ -84,6 +84,7 @@ BrowserHub.prototype._connectionHandler = function(socket){
 		}
 
 		socket.on("disconnect", function(){
+			console.log("disconnect? " + (browser.getSocket() === socket));
 			if(browser.getSocket() === socket){
 				self._disconnectHandler(browser);	
 			}
@@ -116,9 +117,8 @@ BrowserHub.prototype._connectionHandler = function(socket){
 BrowserHub.prototype._disconnectHandler = function(browser){
 	var self = this,
 		browserId = browser.getId();
-	browser.isAvailable()
-	var isBrowserAvailable = browser.isAvailable();
-
+	
+	var isBrowserAvailable = false;
 	browser.once("available", function(){
 		isBrowserAvailable = true;
 	});

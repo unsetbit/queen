@@ -87,6 +87,11 @@ Browser.prototype.setSocket = function(socket){
 		socket.on("setAttributes", this.setAttributes);
 		socket.on("kill", this.kill);
 		socket.on("workerEvent", this._workerEventHandler);	
+		socket.on("pong", function(){
+			console.log("pong");
+			socket.emit("ping");
+		});
+		socket.emit("ping");
 		this._logger.debug("Connected to socket");
 	}
 };

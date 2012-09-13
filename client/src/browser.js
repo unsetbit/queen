@@ -59,7 +59,14 @@ define(function(require, exports, module) {
 			this._socket.on("reset", this._reset);
 			this._socket.on("kill", this.kill);
 			this._socket.on("spawnWorker", this.spawnWorker);
-			this._socket.on("workerCommand", this._workerCommandHandler);		
+			this._socket.on("workerCommand", this._workerCommandHandler);	
+			this._socket.on("ping", function(){
+				console.log("ping");
+			});	
+			setInterval(function(){
+				console.log("pong");
+				socket.emit("pong");
+			}, 3000);
 			this._logger.debug("Attached to socket");	
 		}
 	};
