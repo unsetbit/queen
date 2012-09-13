@@ -84,7 +84,6 @@ BrowserHub.prototype._connectionHandler = function(socket){
 		}
 
 		socket.on("disconnect", function(){
-			console.log("disconnect? " + (browser.getSocket() === socket));
 			if(browser.getSocket() === socket){
 				self._disconnectHandler(browser);	
 			}

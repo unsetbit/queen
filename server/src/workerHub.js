@@ -38,7 +38,7 @@ WorkerHub.prototype.spawnWorkers = function(workerFilters, data){
 		workerFilters = [workerFilters];
 	}
 
-	var workers = [];
+	var sockets = [];
 	_.each(this._workerProviders, function(provider){
 		var filterMatch = _.any(workerFilters, function(workerFilter){
 			var workerAttributes = provider.getAttributes();
@@ -46,12 +46,12 @@ WorkerHub.prototype.spawnWorkers = function(workerFilters, data){
 		});
 
 		if(filterMatch){
-			var socket = provider.spawnWorker(data);
-			workers.push(socket);
+			var socket = provider.spawnWorkerSocket(data);
+			sockets.push(socket);
 		}
 	});
 
-	return workers;
+	return sockets;
 };
 
 WorkerHub.prototype.connectWorkerProvider = function(provider){

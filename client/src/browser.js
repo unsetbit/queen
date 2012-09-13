@@ -1,6 +1,6 @@
 define(function(require, exports, module) {
     require('/socket.io/socket.io.js');
-	var createWorker = require('/src/worker.js').create;
+	var createWorkerSocket = require('/src/workerSocket.js').create;
 	var extend = require('/lib/utils.js').extend;
 	var createLogger = require('/src/logger.js').create;
 	
@@ -16,7 +16,7 @@ define(function(require, exports, module) {
 		var self = this;
 
 		this._id = void 0;
-		this._workers = [];
+		this._workerSockets = {};
 		this._logger = createLogger({prefix: "Browser"});
 		this._available = true;
 		
@@ -25,7 +25,7 @@ define(function(require, exports, module) {
 		this._disconnectHandler = _.bind(this._disconnectHandler, this);
 		this._reconnectHandler = _.bind(this._reconnectHandler, this);
 		this._reconnectFailHandler = _.bind(this._reconnectFailHandler, this);
-		this._workerCommandHandler = _.bind(this._workerCommandHandler, this);
+		this._workerEventHandler = _.bind(this._workerEventHandler, this);
 		this._reset = _.bind(this._reset, this);
 		this.kill = _.bind(this.kill, this);
 		this.spawnWorker = _.bind(this.spawnWorker, this);
@@ -44,7 +44,7 @@ define(function(require, exports, module) {
 			this._socket.removeListener("reset", this._reset);
 			this._socket.removeListener("kill", this.kill);
 			this._socket.removeListener("spawnWorker", this.spawnWorker);
-			this._socket.removeListener("workerCommand", this._workerCommandHandler);		
+			this._socket.removeListener("toWorker", this._workerEventHandler);		
 			this._logger.debug("Detached socket");
 		}
 
@@ -59,14 +59,7 @@ define(function(require, exports, module) {
 			this._socket.on("reset", this._reset);
 			this._socket.on("kill", this.kill);
 			this._socket.on("spawnWorker", this.spawnWorker);
-			this._socket.on("workerCommand", this._workerCommandHandler);	
-			this._socket.on("ping", function(){
-				console.log("ping");
-			});	
-			setInterval(function(){
-				console.log("pong");
-				socket.emit("pong");
-			}, 3000);
+			this._socket.on("toWorker", this._workerEventHandler);	
 			this._logger.debug("Attached to socket");	
 		}
 	};
@@ -104,11 +97,11 @@ define(function(require, exports, module) {
 	};
 
 	Browser.prototype._destroyWorkers = function(){
-		_.each(this._workers, function(worker){
-			worker.destroy();
+		_.each(this.workerSockets, function(socket){
+			socket.destroy();
 		});
 
-		this._workers = {};
+		this._workerSockets = {};
 	};
 
 	Browser.prototype.defaultAttributes = {
@@ -130,66 +123,63 @@ define(function(require, exports, module) {
 
 	Browser.prototype.spawnWorker = function(data){
 		var self = this,
-			workerId = data.id,
+			socketId = data.id,
 			workerData = data.data,
 			worker;
 
-		worker = createWorker(workerId, data);
-		this._connectWorker(workerId, worker);
+		workerSocket = createWorkerSocket(socketId, data);
+		this._logger.debug("Spawned worker socket");
 
-		this._logger.debug("Created worker");
-		return worker;
+		this._connectWorkerSocket(workerSocket);
+
+		return workerSocket;
 	};
 
 	// Iframes call this to get their work emission object
-	Browser.prototype.getWorkerSocket = function(workerId){
-		var worker = this._workers[workerId];
-		return worker.getSocket();
+	Browser.prototype.getWorkerSocket = function(socketId){
+		var workerSocket = this._workerSockets[socketId];
+		return workerSocket;
 	};
 
 	Browser.prototype._errorHandler = function(data){
 		this._logger.error(data);
 	};
 
-	Browser.prototype._workerEventHandler = function(workerId, event, data){
-		var data = {
-			id: workerId,
-			event: event,
-			data: data
-		}
-		console.log("WORKER EVENT");
-		console.log(data);
-		this._socket.emit("workerEvent", data);
-	};
+	Browser.prototype._connectWorkerSocket = function(workerSocket){
+		var self = this,
+			socketId = workerSocket.getId();
 
-	Browser.prototype._connectWorker = function(workerId, worker){
-		var self = this;
-
-		this._workers[workerId] = worker;
+		this._workerSockets[socketId] = workerSocket;
 		
-		worker.on("workerEvent", function(event, data){
-			self._workerEventHandler(workerId, event, data);
+		workerSocket.setEmitHandler(function(event, data){
+			var data = {
+				id: socketId,
+				event: event,
+				data: data
+			}
+
+			self._socket.emit("fromWorker", data);
 		});
 
-		worker.on("dead", function(){
-			self._disconnectWorker(workerId);
+		workerSocket.on("done", function(){
+			self._disconnectWorker(socketId);
 		});
-		this._logger.debug("Connected worker");
+		this._logger.debug("Connected worker socket");
 	};
 
-	Browser.prototype._disconnectWorker = function(workerId){
-		delete this._workers[workerId];
-		this._logger.debug("Disconnected worker");
+	Browser.prototype._disconnectWorker = function(socketId){
+		delete this._workerSockets[socketId];
+		this._logger.debug("Disconnected worker socket");
 	};
 
 	// Routes commands to workers
-	Browser.prototype._workerCommandHandler = function(data){
-		var workerId = data.workerId,
-			command = data.command,
+	Browser.prototype._workerEventHandler = function(data){
+		var socketId = data.id,
+			event = data.event,
 			data = data.data;
-			
-		var worker = this._worker[workerId];
-		worker.command(command, data);
+		
+		var workerSocket = this._workerSockets[socketId];
+		workerSocket.echo(event, data);
 	};
 
 	return exports;

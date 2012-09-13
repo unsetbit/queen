@@ -12,13 +12,10 @@ browserHub.on("disconnected", function(browser){
 	workerHub.disconnectWorkerProvider(browser);
 });
 
-
-workerHub.on("providersAvailable", function(){
+var pongCount = 0
+workerHub.on("connectedWorkerProvider", function(){
 	var workers = workerHub.spawnWorkers();
 	workers.forEach(function(worker){
-		worker.on("ping", function(){
-			console.log("pong");
-			worker.emit("pong", "pong");	
-		});
+		// Do work
 	});
 });

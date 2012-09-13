@@ -2,7 +2,7 @@ var _ = require("underscore");
 var createLogger = require("./logger.js").create;
 var EventEmitter = require("events").EventEmitter;
 var useragent = require("useragent");
-var createWorker = require("./worker.js").create;
+var createWorkerSocket = require("./workerSocket.js").create;
 var uuid = require('node-uuid');
 
 exports.create = create = function(attributes, socket){
@@ -23,7 +23,7 @@ exports.Browser = Browser = function(attributes, socket, emitter){
 	}
 	
 	this._id = uuid.v4();
-	this._workers = {};
+	this._workerSockets = {};
 	this._available = false;
 	this._emitter = emitter;
 	this._logger = createLogger({prefix: "Browser-" + this._id.substr(0,4) });
@@ -68,6 +68,7 @@ Browser.prototype.setAvailability = function(availability){
 };
 
 Browser.prototype.setSocket = function(socket){
+	var self = this;
 	if(this._socket === socket){
 		return; // same socket as existing one
 	}
@@ -78,7 +79,7 @@ Browser.prototype.setSocket = function(socket){
 		socket.removeListener("setAvailability", this.setAvailability);
 		socket.removeListener("setAttributes", this.setAttributes);
 		socket.removeListener("kill", this.kill);
-		socket.removeListener("workerEvent", this._workerEventHandler);
+		socket.removeListener("fromWorker", this._workerEventHandler);
 	}
 
 	this._socket = socket;
@@ -86,12 +87,7 @@ Browser.prototype.setSocket = function(socket){
 		socket.on("setAvailability", this.setAvailability);
 		socket.on("setAttributes", this.setAttributes);
 		socket.on("kill", this.kill);
-		socket.on("workerEvent", this._workerEventHandler);	
-		socket.on("pong", function(){
-			console.log("pong");
-			socket.emit("ping");
-		});
-		socket.emit("ping");
+		socket.on("fromWorker", this._workerEventHandler);	
 		this._logger.debug("Connected to socket");
 	}
 };
@@ -136,63 +132,56 @@ Browser.prototype.setAttributes = function(attributes){
 	}
 };
 
-Browser.prototype.spawnWorker = function(initializationData){
-	var worker = createWorker(),
+Browser.prototype.spawnWorkerSocket = function(initializationData){
+	var workerSocket = createWorkerSocket(),
 		data = {
-			id: worker.getId(),
+			id: workerSocket.getId(),
 			initializationData: initializationData
-		},
-		worker;
+		};
 
-	this._logger.debug("Spawned worker " + data.id);
+	this._logger.debug("Spawned worker socket " + data.id);
 
-	this._connectWorker(worker);
+	this._connectWorkerSocket(workerSocket);
 
 	this._socket.emit("spawnWorker", data);
 
-	return worker.getSocket();
+	return workerSocket;
 };
 
-Browser.prototype._connectWorker = function(worker){
+Browser.prototype._connectWorkerSocket = function(workerSocket){
 	var self = this,
-		workerId = worker.getId();
+		socketId = workerSocket.getId();
 
-	this._workers[workerId] = worker;
+	this._workerSockets[socketId] = workerSocket;
 
-	worker.on("commandEvent", function(command, data){
-		self._socket.emit("workerCommand", {
-			id: workerId,
-			command: command,
+	workerSocket.setEmitHandler(function (event, data){
+		self._socket.emit("toWorker", {
+			id: socketId,
+			event: event,
 			data: data
 		});
 	});
 
-	worker.on("dead", function(){
-		self._disconnectWorker(worker);
+	workerSocket.on("done", function(){
+		self._disconnectWorkerSocket(workerSocket);
 	});
 
-	this._logger.debug("Connected worker " + workerId);
+	this._logger.debug("Connected worker socket " + socketId);
 };
 
-Browser.prototype._disconnectWorker = function(worker){
-	var workerId = worker.getId();
+Browser.prototype._disconnectWorkerSocket = function(workerSocket){
+	var socketId = workerSocket.getId();
 	
-	this._logger.debug("Disconnected worker " + workerId);
+	this._logger.debug("Disconnected worker socket " + socketId);
 
-	delete this._workers[workerId];
+	delete this._workerSockets[socketId];
 };
 
 Browser.prototype._workerEventHandler = function(data){
-	var workerId = data.workerId,
+	var socketId = data.id,
 		event = data.event,
 		data = data.data,
-		worker = this._workers[workerId];
+		workerSocket = this._workerSockets[socketId];
 
-	if(worker === void 0){
-		console.log("missing worker");
-		return;
-	}
-	console.log("worker found");
-		
-	worker.emit(event, data);
+	workerSocket.echo(event, data);
 };
