@@ -9,8 +9,8 @@
 	<script src="/lib/modernizr.js"></script>
 	<script src="/lib/underscore.js"></script>
 	<script>
-		require(["/src/browser.js"], function(browser){
-			window.browser = browser.create("//" + window.location.host + "/capture");
+		require(["/src/monitor.js"], function(monitor){
+			window.monitor = monitor.create("//" + window.location.host + "/monitor");
 		});
 	</script>
 </body>

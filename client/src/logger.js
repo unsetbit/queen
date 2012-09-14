@@ -10,7 +10,7 @@ define(function(require, exports, module) {
 		this._threshold = options.threshold || 4;
 	};
 
-	Logger.prototype.levels = ['error', ' warn', ' info', 'debug', 'trace'];
+	Logger.prototype.levels = ['error', 'warn', 'info', 'debug', 'trace'];
 
 	Logger.prototype.log = function(message, level){
 		if(!(console && console.log)){

@@ -17,6 +17,7 @@ define(function(require, exports, module) {
 		var self = this;
 
 		this._id = id;
+		this._isDone = false;
 		this._emitter = emitter;
 		this._logger = createLogger({prefix: "WorkerSocket-" + this._id});
 
@@ -26,6 +27,16 @@ define(function(require, exports, module) {
 		this.on("kill", function(){
 			self.kill();
 		});
+
+		this.on("pong", function(data){
+			console.log("server " + data);
+		});
+
+		this._int = setInterval(function(){
+			var now = new Date().getTime();
+			console.log("client " + now);
+			self.emit("ping", now);
+		}, 3000);
 
 		this._logger.trace("Created");
 	};
@@ -60,12 +71,24 @@ define(function(require, exports, module) {
 		this._emitHandler(event, data)
 	};
 	
+	WorkerSocket.prototype.isDone = function(){
+		return this._isDone;
+	};
+
 	// Destroys worker socket
 	WorkerSocket.prototype.kill = function(){
+		if(this._isDone){
+			return;
+		}
+
+		this._isDone = true;
 		document.body.removeChild(this._iframe);
 		this.emit('done');
 		this.echo('done');
 		this._logger.debug("Done");
+		this.setEmitHandler(WorkerSocket.prototype._emitHandler);
+		this_emitter = void 0;
+		clearInterval(this._int);
 	};
 
 

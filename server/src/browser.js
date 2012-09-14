@@ -1,6 +1,7 @@
 var _ = require("underscore");
 var createLogger = require("./logger.js").create;
 var EventEmitter = require("events").EventEmitter;
+var isSimilar = require("./utils.js").isSimilar;
 var useragent = require("useragent");
 var createWorkerSocket = require("./workerSocket.js").create;
 var uuid = require('node-uuid');
@@ -24,17 +25,20 @@ exports.Browser = Browser = function(attributes, socket, emitter){
 	
 	this._id = uuid.v4();
 	this._workerSockets = {};
-	this._available = false;
+	this._isConnected = true;
+	this._workerSocketCount = 0;
 	this._emitter = emitter;
 	this._logger = createLogger({prefix: "Browser-" + this._id.substr(0,4) });
 
-	this.setAvailability = _.bind(this.setAvailability, this);
-	this.setAttributes = _.bind(this.setAttributes, this);
+	// Bind functions
 	this.kill = _.bind(this.kill, this);
 	this._workerEventHandler = _.bind(this._workerEventHandler, this);
-	
+	this._updateHandler = _.bind(this._updateHandler, this);
+
+	this._setAttributes(attributes);
 	this.setSocket(socket);
-	this.setAttributes(attributes);
+
+	this._emit("setId", this._id);
 	this._logger.trace("Created");
 };
 
@@ -42,52 +46,47 @@ Browser.prototype.getId = function(){
 	return this._id;
 };
 
-Browser.prototype._setAttributesHandler = function(data){
-	this.setAttributes(attributes);
-	if(attributes.availableOnRegister){
-		this._markAsAvailable();
-	}
-};
-
 Browser.prototype.isAvailable = function(){
 	return this._isAvailable;
 };
 
-Browser.prototype.setAvailability = function(availability){
-	if(availability === void 0 || availability === this._isAvailable){
-		return this._isAvailable;
+Browser.prototype.isConnected = function(){
+	return this._isConnected;
+};
+
+Browser.prototype.setConnected = function(connected){
+	if(connected === void 0 || connected === this._isConnected){
+		return this._isConnected;
 	}
 
-	if(availability === true){
-		this._isAvailable = true;
-		this._emitter.emit("available");
+	if(connected === true){
+		this._isConnected = true;
+		this._emitter.emit("connected");
+		this._logger.debug("Connected");
 	} else {
-		this._isAvailable = false;
-		this._emitter.emit("unavailable");
+		this._isConnected = false;
+		this._emitter.emit("disconnected");
+		this._logger.debug("Disconnected");
 	}
 };
 
 Browser.prototype.setSocket = function(socket){
-	var self = this;
 	if(this._socket === socket){
 		return; // same socket as existing one
 	}
 
 	if(this._socket !== void 0){
-		// Disconnect from existing socket
+		this._socket.removeListener("fromWorker", this._workerEventHandler);			
+		this._socket.removeListener("kill", this.kill);
+		this._socket.removeListener("update", this._updateHandler);
 		this._logger.debug("Disconnected from socket");
-		socket.removeListener("setAvailability", this.setAvailability);
-		socket.removeListener("setAttributes", this.setAttributes);
-		socket.removeListener("kill", this.kill);
-		socket.removeListener("fromWorker", this._workerEventHandler);
 	}
 
 	this._socket = socket;
-	if(socket !== void 0){
-		socket.on("setAvailability", this.setAvailability);
-		socket.on("setAttributes", this.setAttributes);
-		socket.on("kill", this.kill);
-		socket.on("fromWorker", this._workerEventHandler);	
+	if(this._socket !== void 0){
+		this._socket.on("fromWorker", this._workerEventHandler);			
+		this._socket.on("kill", this.kill);
+		this._socket.on("update", this._updateHandler);
 		this._logger.debug("Connected to socket");
 	}
 };
@@ -108,80 +107,138 @@ Browser.prototype.once = function(event, callback){
 	this._emitter.once(event, callback);
 };
 
+Browser.prototype.removeListener = function(event, callback){
+	this._emitter.removeListener(event, callback);
+};
+
+Browser.prototype.getAttribute = function(key){
+	return this._attributes[key];
+};
+
+Browser.prototype.hasAttributes = function(attritbuteMap){
+	return  isSimilar(attritbuteMap, this._attributes);
+};
+
 Browser.prototype.getAttributes = function(){
 	return this._attributes;
 };
 
-Browser.prototype.setAttributes = function(attributes){
-	attributes = attributes || {};
-	this._attributes = attributes;
-	if(attributes.availableOnRegister){
-		this.setAvailability(true);
-	};
+Browser.prototype.maxWorkerSocketCount = 100;
+Browser.prototype._setAttributes = function(attributes){
+	var ua;
+	this._attributes = attributes || {};
+	attributes.id = this._id;
 
-	if(attributes.userAgent){
-		var ua = useragent.parse(attributes.userAgent);
-		attributes.name = ua.toAgent();
-		attributes.family = ua.family;
-		attributes.os = ua.os;
-		attributes.version = {
+	if(this._attributes.userAgent){
+		ua = useragent.parse(attributes.userAgent);
+		this._attributes.name = ua.toAgent();
+		this._attributes.family = ua.family;
+		this._attributes.os = ua.os;
+		this._attributes.version = {
 			major: ua.major,
 			minor: ua.minor,
 			path: ua.patch
 		};
 	}
+
+	if(this._attributes.maxWorkerSocketCount){
+		this.maxWorkerSocketCount = this._attributes.maxWorkerSocketCount;
+	}
 };
 
 Browser.prototype.spawnWorkerSocket = function(initializationData){
-	var workerSocket = createWorkerSocket(),
-		data = {
-			id: workerSocket.getId(),
-			initializationData: initializationData
-		};
-
-	this._logger.debug("Spawned worker socket " + data.id);
-
-	this._connectWorkerSocket(workerSocket);
-
-	this._socket.emit("spawnWorker", data);
-
-	return workerSocket;
-};
-
-Browser.prototype._connectWorkerSocket = function(workerSocket){
 	var self = this,
-		socketId = workerSocket.getId();
+		workerSocket, 
+		socketId,
+		data;
 
-	this._workerSockets[socketId] = workerSocket;
+	if(this._workerSocketCount >= this.maxWorkerSocketCount){
+		this._logger.warn("Unable to spawn worker socket because of reached limit (" + this.maxWorkerSocketCount + ")");
+		return;
+	}
+
+	this._workerSocketCount += 1;
+	
+	workerSocket = createWorkerSocket();
+	socketId = workerSocket.getId();
+	data = {
+		id: socketId,
+		initializationData: initializationData
+	};
 
 	workerSocket.setEmitHandler(function (event, data){
-		self._socket.emit("toWorker", {
-			id: socketId,
-			event: event,
-			data: data
-		});
+		self._emitToWorker(socketId, event, data);
 	});
 
 	workerSocket.on("done", function(){
 		self._disconnectWorkerSocket(workerSocket);
 	});
 
-	this._logger.debug("Connected worker socket " + socketId);
+	this._workerSockets[socketId] = workerSocket;
+	this._logger.debug("Spawned worker socket " + socketId);
+
+	this._emit("spawnWorker", data);
+	this._emitter.emit("spawnedWorker", workerSocket);
+	return workerSocket;
 };
 
 Browser.prototype._disconnectWorkerSocket = function(workerSocket){
 	var socketId = workerSocket.getId();
 	
-	this._logger.debug("Disconnected worker socket " + socketId);
+	this._workerSocketCount -= 1;
 
 	delete this._workerSockets[socketId];
+	this._logger.debug("Disconnected worker socket " + socketId);
+	this._emitter.emit("releasedWorker", workerSocket);
 };
 
-Browser.prototype._workerEventHandler = function(data){
-	var socketId = data.id,
-		event = data.event,
-		data = data.data,
-		workerSocket = this._workerSockets[socketId];
+Browser.prototype._emit = function(event, data){
+	this._socket.emit(event, data);
+};
 
+Browser.prototype._emitToWorker = function(socketId, event, data){
+	var message = {
+		id: socketId,
+		event: event,
+		data: data
+	};
+	this._emit("toWorker", message);
+	this._emitter.emit("messageToWorker", message);
+};
+
+Browser.prototype._updateHandler = function(update){
+	this._emitter.emit("update", update);
+};
+
+Browser.prototype._workerEventHandler = function(message){
+	var socketId = message.id,
+		event = message.event,
+		data = message.data,
+		workerSocket = this._workerSockets[socketId];
+	
+	if(workerSocket === void 0){ // No longer listening to this worker
+		if(event !== "done"){
+			this._logger.warn("Worker socket no longer exists, sending kill command to worker. Socket id " + socketId);
+			this._emitToWorker(socketId, "kill");	
+		}
+		return;
+	};
+
+	this._emitter.emit("messageFromWorker", message);
 	workerSocket.echo(event, data);
+};
+
+Browser.prototype.kill = function(){
+	this._destroyWorkers();
+};
+
+Browser.prototype._destroyWorkers = function(){
+	_.each(this._workerSockets, function(workerSocket){
+		if(!workerSocket.isDone()){
+			workerSocket.emit('kill');
+			workerSocket.echo('done');	
+		}
+	});
+
+	this._workerSockets = {};
 };

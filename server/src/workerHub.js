@@ -41,13 +41,14 @@ WorkerHub.prototype.spawnWorkers = function(workerFilters, data){
 	var sockets = [];
 	_.each(this._workerProviders, function(provider){
 		var filterMatch = _.any(workerFilters, function(workerFilter){
-			var workerAttributes = provider.getAttributes();
-			return isSimilar(workerFilter, workerAttributes);
+			return provider.hasAttributes(workerFilter);
 		});
 
 		if(filterMatch){
 			var socket = provider.spawnWorkerSocket(data);
-			sockets.push(socket);
+			if(socket !== void 0){
+				sockets.push(socket);	
+			}
 		}
 	});
 

@@ -18,8 +18,13 @@ exports.WorkerSocket = WorkerSocket = function(internalEmitter){
 	}
 
 	this._internalEmitter = internalEmitter;
+	this._isDone = false;
 	this._id = uuid.v4();
 	this._logger = createLogger({prefix: "WorkerSocket-" + this._id.substr(0,4) });
+
+	this.on("done", function(){
+		this._isDone = true;
+	});
 };
 
 WorkerSocket.prototype.getId = function(){
@@ -50,4 +55,8 @@ WorkerSocket.prototype._emitHandler = function(){};
 
 WorkerSocket.prototype.emit = function(event, data){
 	this._emitHandler(event, data);
+};
+
+WorkerSocket.prototype.isDone = function(){
+	return this._isDone;
 };
