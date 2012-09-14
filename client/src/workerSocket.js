@@ -2,14 +2,9 @@ define(function(require, exports, module) {
 	var createLogger = require('/src/logger.js').create;
 	var EventEmitter = require('/lib/nodeEvents.js').EventEmitter;
 
-	exports.create = function(id, url){
+	exports.create = function(id, data){
 		var emitter = new EventEmitter();
 		var workerSocket = new WorkerSocket(id, emitter);
-
-		if(url !== void 0){
-			workerSocket.navigateTo(url);
-		}
-
 		return workerSocket;
 	};
 
@@ -21,24 +16,40 @@ define(function(require, exports, module) {
 		this._emitter = emitter;
 		this._logger = createLogger({prefix: "WorkerSocket-" + this._id});
 
-		this._iframe = iframe = document.createElement("IFRAME"); 
-		document.body.appendChild(iframe); 
-
 		this.on("kill", function(){
 			self.kill();
 		});
 
-		this.on("pong", function(data){
-			console.log("server " + data);
-		});
-
-		this._int = setInterval(function(){
-			var now = new Date().getTime();
-			console.log("client " + now);
-			self.emit("ping", now);
-		}, 3000);
-
 		this._logger.trace("Created");
+	};
+
+	WorkerSocket.prototype.run = function(runData){
+		this._iframe = iframe = document.createElement("IFRAME"); 
+		document.body.appendChild(iframe);
+		var iframeDoc = (iframe.contentDocument) ? iframe.contentDocument : iframe.contentWindow.document;
+
+		var iframeData = {
+			scripts: runData.scripts
+		};
+
+		var iframeTemplate = "";
+		iframeTemplate += "<html>";
+		iframeTemplate += "<head>";
+		iframeTemplate += "<script>window.thrillSocket = window.parent.thrillProvider.getWorkerSocket('" + this._id + "')</script>";
+		iframeTemplate += "{{#scripts}}";
+		iframeTemplate += '<script src="{{{.}}}"><\/script>';
+		iframeTemplate += "{{/scripts}}";
+		iframeTemplate += "</head>";
+		iframeTemplate += "<body>";
+		iframeTemplate += "</body>";
+		iframeTemplate += "</html>";
+
+		var iframeContent = Mustache.render(iframeTemplate, iframeData);
+		console.log(iframeContent);
+
+		iframeDoc.open();
+		iframeDoc.write(iframeContent);
+		iframeDoc.close();
 	};
 
 	WorkerSocket.prototype.getId = function(){

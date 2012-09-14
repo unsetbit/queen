@@ -74,7 +74,7 @@ BrowserHub.prototype._browserReconnectHandler = function(browser, socket){
 	browser.setSocket(socket);
 	browser.setConnected(true);
 	socket.emit("reconnected");
-	self._logger.debug("Browser reconnected " + browser.getId());
+	this._logger.debug("Browser reconnected " + browser.getId());
 };
 
 BrowserHub.prototype._browserDisconnectHandler = function(browser, reason){
@@ -103,7 +103,7 @@ BrowserHub.prototype._connectionHandler = function(socket){
 		registered = true;
 		if(registerationData && registerationData.id && self._browsers[registerationData.id] !== void 0){
 			browser = self._browsers[registerationData.id];
-			self._browserReconnectionHandler(browser, socket);
+			self._browserReconnectHandler(browser, socket);
 		} else {
 			browser = createBrowser(registerationData, socket);
 			self._browserConnectHandler(browser);

@@ -132,7 +132,7 @@ define(function(require, exports, module) {
 	Browser.prototype.spawnWorker = function(data){
 		var self = this,
 			socketId = data.id,
-			workerData = data.data,
+			runData = data.initializationData,
 			worker;
 
 		if(this._workerCount >= this.maxWorkerSocketCount){
@@ -142,10 +142,8 @@ define(function(require, exports, module) {
 
 		this._workerCount += 1;
 
-		workerSocket = createWorkerSocket(socketId, data);
-
+		workerSocket = createWorkerSocket(socketId);
 		this._workerSockets[socketId] = workerSocket;
-		
 		workerSocket.setEmitHandler(function(event, data){
 			self._emitFromWorker(socketId, event, data);	
 		});
@@ -154,6 +152,9 @@ define(function(require, exports, module) {
 			self._workerDoneHandler(socketId);
 		});
 		this._logger.debug("Spawned worker socket");
+
+		workerSocket.run(runData);
+
 		return workerSocket;
 	};
 

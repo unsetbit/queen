@@ -146,7 +146,7 @@ Browser.prototype._setAttributes = function(attributes){
 	}
 };
 
-Browser.prototype.spawnWorkerSocket = function(initializationData){
+Browser.prototype.spawnWorker = function(initializationData){
 	var self = this,
 		workerSocket, 
 		socketId,

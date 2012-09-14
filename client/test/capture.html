@@ -9,8 +9,9 @@
 	<script src="/lib/modernizr.js"></script>
 	<script src="/lib/underscore.js"></script>
 	<script>
-		require(["/src/browser.js"], function(browser){
-			window.browser = browser.create("//" + window.location.host + "/capture");
+		require(["/lib/mustache.js", "/src/browser.js"], function(mustache, browser){
+			window.Mustache = mustache;
+			window.thrillProvider = browser.create("//" + window.location.host + "/capture");
 		});
 	</script>
 </body>

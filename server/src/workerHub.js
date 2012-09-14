@@ -45,7 +45,7 @@ WorkerHub.prototype.spawnWorkers = function(workerFilters, data){
 		});
 
 		if(filterMatch){
-			var socket = provider.spawnWorkerSocket(data);
+			var socket = provider.spawnWorker(data);
 			if(socket !== void 0){
 				sockets.push(socket);	
 			}
