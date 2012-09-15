@@ -8,10 +8,15 @@
 	<script src="/lib/require.js"></script>
 	<script src="/lib/modernizr.js"></script>
 	<script src="/lib/underscore.js"></script>
+	<script src="/socket.io/socket.io.js"></script>
 	<script>
 		require(["/lib/mustache.js", "/src/browser.js"], function(mustache, browser){
 			window.Mustache = mustache;
-			window.thrillProvider = browser.create("//" + window.location.host + "/capture");
+			var socket = io.connect("//" + window.location.host + "/capture", {
+				'max reconnection attempts': 10
+			});
+
+			window.thrillProvider = browser.create(socket);
 		});
 	</script>
 </body>

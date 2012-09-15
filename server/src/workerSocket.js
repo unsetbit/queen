@@ -3,28 +3,36 @@ var EventEmitter = require("events").EventEmitter;
 var _ = require("underscore");
 var uuid = require('node-uuid');
 
-exports.create = create = function(){
-	var emitter = new EventEmitter();
-	var workerSocket = new WorkerSocket(emitter);
+exports.create = create = function(options){
+	var options = options || {},
+		emitter = options.emitter || new EventEmitter(),
+		logger = options.logger || createLogger({prefix: "WorkerSocket"}),
+		workerSocket = new WorkerSocket(emitter, logger);
 
 	return workerSocket;
 };
 
-exports.WorkerSocket = WorkerSocket = function(internalEmitter){
+exports.WorkerSocket = WorkerSocket = function(emitter, logger){
 	var self = this;
 
-	if(internalEmitter === void 0){
-		throw "WorkerSocket must be started with an eventEmitter";
+	if(emitter === void 0){
+		throw "WorkerSocket requires an emitter";
 	}
 
-	this._internalEmitter = internalEmitter;
+	if(logger === void 0){
+		throw "WorkerSocket requires a logger";
+	}
+
+	this._emitter = emitter;
 	this._isDone = false;
 	this._id = uuid.v4();
-	this._logger = createLogger({prefix: "WorkerSocket-" + this._id.substr(0,4) });
+	this._logger = logger;
 
 	this.on("done", function(){
 		this._isDone = true;
 	});
+
+	this._logger.trace("Created");
 };
 
 WorkerSocket.prototype.getId = function(){
@@ -32,29 +40,23 @@ WorkerSocket.prototype.getId = function(){
 };
 
 WorkerSocket.prototype.on = function(event, callback){
-	return this._internalEmitter.on(event, callback);
+	return this._emitter.on(event, callback);
+};
+
+WorkerSocket.prototype.once = function(event, callback){
+	return this._emitter.once(event, callback);
 };
 
 WorkerSocket.prototype.removeListener = function(event, callback){
-	return this._internalEmitter.removeListener(event, callback);
+	return this._emitter.removeListener(event, callback);
 };
 
 WorkerSocket.prototype.echo = function(event, data){
-	this._internalEmitter.emit(event, data);
+	return this._emitter.emit(event, data);
 };
 
-WorkerSocket.prototype.setEmitHandler = function(func){
-	if(!_.isFunction(func)){
-		throw "Emitter must be a function";
-	}
-
-	this._emitHandler = func;
-}
-
-WorkerSocket.prototype._emitHandler = function(){};
-
 WorkerSocket.prototype.emit = function(event, data){
-	this._emitHandler(event, data);
+	return this._emitter.emit("emit", event, data);
 };
 
 WorkerSocket.prototype.isDone = function(){

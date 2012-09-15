@@ -10,6 +10,14 @@ define(function(require, exports, module) {
 		this._threshold = options.threshold || 4;
 	};
 
+	Logger.prototype.setPrefix = function(prefix){
+		this._prefix = prefix;
+	};
+
+	Logger.prototype.setThreshold = function(threshold){
+		this._threshold = threshold;
+	};
+
 	Logger.prototype.levels = ['error', 'warn', 'info', 'debug', 'trace'];
 
 	Logger.prototype.log = function(message, level){

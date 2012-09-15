@@ -2,40 +2,99 @@ define(function(require, exports, module) {
 	var createLogger = require('/src/logger.js').create;
 	var EventEmitter = require('/lib/nodeEvents.js').EventEmitter;
 
-	exports.create = function(id, data){
-		var emitter = new EventEmitter();
-		var workerSocket = new WorkerSocket(id, emitter);
+	exports.create = function(id, options){
+		var options = options || {},
+			emitter = options.emitter || new EventEmitter(),
+			logger = options.logger || createLogger({prefix: "WorkerSocket"}),
+			workerSocket = new WorkerSocket(id, emitter, logger);
+
+		workerSocket.setEmitter(emitter);
+
 		return workerSocket;
 	};
 
-	exports.WorkerSocket = WorkerSocket = function(id, emitter){
+	exports.WorkerSocket = WorkerSocket = function(id, emitter, logger){
 		var self = this;
 
+		if(id === void 0){
+			throw "WorkerSocket requires a socket id";
+		}
+
+		if(emitter === void 0){
+			throw "WorkerSocket requires an emitter";
+		}
+
+		if(logger === void 0){
+			throw "WorkerSocket requires a logger";
+		}
+
 		this._id = id;
-		this._isDone = false;
-		this._emitter = emitter;
-		this._logger = createLogger({prefix: "WorkerSocket-" + this._id});
+		this._logger = logger;
 
-		this.on("kill", function(){
-			self.kill();
-		});
-
+		_.bindAll(this, "_killCommandHandler");
+		
+		this.setEmitter(emitter);
+		
 		this._logger.trace("Created");
 	};
 
-	WorkerSocket.prototype.run = function(runData){
+	WorkerSocket.prototype.setEmitter = function(emitter){
+		if(this._emitter !== void 0){
+			// Detach from old emitter
+			this._emitter.removeListener("kill", this._killCommandHandler);
+		}
+
+		this._emitter = emitter;
+
+		if(this._emitter !== void 0){
+			// Attach to new emitter
+			this._emitter.on("kill", this._killCommandHandler);
+		}
+	};
+
+	WorkerSocket.prototype._killCommandHandler = function(){
+		this._unload();
+		this.emit('done');
+		this._logger.debug("Done");
+		this.setEmitter(void 0);
+	};
+
+	WorkerSocket.prototype._unload = function(){
+		if(this._iframe !== void 0){
+			document.body.removeChild(this._iframe);	
+			this._iframe = void 0;
+		}
+	};
+
+	WorkerSocket.prototype.setContext = function(context){
+		this._unload();
+		
 		this._iframe = iframe = document.createElement("IFRAME"); 
 		document.body.appendChild(iframe);
-		var iframeDoc = (iframe.contentDocument) ? iframe.contentDocument : iframe.contentWindow.document;
+		
+		// If a context url is provided, navigate to it
+		if(context.url !== void 0){
+			iframe.setAttribute("src", context.url + "?thrillSocketId=" + this._id); 
+		} else { // Otherwise build an empty context
+			this._constructEmptyContext(context);
+		}
+	};
 
-		var iframeData = {
-			scripts: runData.scripts
-		};
+	WorkerSocket.prototype._constructEmptyContext = function(context){
+		var iframe,
+			iframeDoc,
+			iframeData,
+			iframeTemplate,
+			iframeContent;
 
-		var iframeTemplate = "";
+		iframe = this._iframe;
+		iframeDoc = (iframe.contentDocument) ? iframe.contentDocument : iframe.contentWindow.document;
+		iframeData = {scripts: context.scripts};
+		iframeTemplate = "";
+		
 		iframeTemplate += "<html>";
 		iframeTemplate += "<head>";
-		iframeTemplate += "<script>window.thrillSocket = window.parent.thrillProvider.getWorkerSocket('" + this._id + "')</script>";
+		iframeTemplate += "<script>window.thrillSocket = window.parent.thrillProvider.getSocket('" + this._id + "')</script>";
 		iframeTemplate += "{{#scripts}}";
 		iframeTemplate += '<script src="{{{.}}}"><\/script>';
 		iframeTemplate += "{{/scripts}}";
@@ -44,9 +103,8 @@ define(function(require, exports, module) {
 		iframeTemplate += "</body>";
 		iframeTemplate += "</html>";
 
-		var iframeContent = Mustache.render(iframeTemplate, iframeData);
-		console.log(iframeContent);
-
+		iframeContent = Mustache.render(iframeTemplate, iframeData);
+		
 		iframeDoc.open();
 		iframeDoc.write(iframeContent);
 		iframeDoc.close();
@@ -56,72 +114,26 @@ define(function(require, exports, module) {
 		return this._id;
 	};
 
+	// EVENT METHODS
 	WorkerSocket.prototype.on = function(event, callback){
-		this._emitter.on(event, callback);
+		return this._emitter.on(event, callback);
+	};
+
+	WorkerSocket.prototype.once = function(event, callback){
+		return this._emitter.once(event, callback);
 	};
 	
 	WorkerSocket.prototype.removeListener = function(event, callback){
-		this._emitter.removeListener(event, callback);
+		return this._emitter.removeListener(event, callback);
 	};
 
 	WorkerSocket.prototype.echo = function(event, data){
-		this._emitter.emit(event, data);
+		return this._emitter.emit(event, data);
 	};
-
-	WorkerSocket.prototype.setEmitHandler = function(func){
-		if(!_.isFunction(func)){
-			throw "Response handler must be a function";
-		}
-
-		this._emitHandler = func;
-	}
-
-	WorkerSocket.prototype._emitHandler = function(){};
 
 	WorkerSocket.prototype.emit = function(event, data){
-		this._emitHandler(event, data)
+		return this._emitter.emit("emit", event, data);
 	};
 	
-	WorkerSocket.prototype.isDone = function(){
-		return this._isDone;
-	};
-
-	// Destroys worker socket
-	WorkerSocket.prototype.kill = function(){
-		if(this._isDone){
-			return;
-		}
-
-		this._isDone = true;
-		document.body.removeChild(this._iframe);
-		this.emit('done');
-		this.echo('done');
-		this._logger.debug("Done");
-		this.setEmitHandler(WorkerSocket.prototype._emitHandler);
-		this_emitter = void 0;
-		clearInterval(this._int);
-	};
-
-
-	// Navigates the iframe somewhere else
-	WorkerSocket.prototype.navigateTo = function(url){
-		var self = this,
-			iframe = this._iframe;
-
-		iframe.setAttribute("src", url + "?workerId=" + this._id); 
-
-		var callback = function(){
-			self.emit('loaded');
-		};
-
-		if (iframe.addEventListener) {
-			iframe.addEventListener('load', callback);
-		} else if (iframe.attachEvent) { // MICROOOSOOOOOFFTTT!!!
-			iframe.attachEvent('onload', callback);
-		} else {
-			throw "Can't attach the onload event to the iframe.";
-		}
-	};
-
 	return exports;
 });

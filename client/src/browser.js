@@ -1,42 +1,42 @@
 define(function(require, exports, module) {
-    require('/socket.io/socket.io.js');
-	var createWorkerSocket = require('/src/workerSocket.js').create;
-	var extend = require('/lib/utils.js').extend;
+    var createWorkerSocket = require('/src/workerSocket.js').create;
 	var createLogger = require('/src/logger.js').create;
 	
-	exports.create = function(path){
-		var socket = io.connect(path, {
-			'max reconnection attempts': 10
-		});
-		var browser = new Browser(socket);
+	exports.create = function(socket, options){
+		var options = options || {},
+			logger = options.logger || createLogger({prefix: "Browser"}),
+			browser = new Browser(socket, logger);
+		
 		return browser;
 	};
 
-	exports.Browser = Browser = function(socket){
+	exports.Browser = Browser = function(socket, logger){
 		var self = this;
 
+		if(socket === void 0){
+			throw "Browser requires a socket";
+		}
+
+		if(logger === void 0){
+			throw "Browser requires a logger";
+		}
+
 		this._id = void 0;
-		
 		this._pendingEmissions = [];
 		this._workerCount = 0;
-
 		this._workerSockets = {};
-		this._logger = createLogger({prefix: "Browser"});
+		this._logger = logger;
 		
-		this._available = true;
-		
-		this._setIdHandler = _.bind(this._setIdHandler, this);
-		this._errorHandler = _.bind(this._errorHandler, this);
-		this._spawnWorker = _.bind(this.spawnWorker, this);
-		this._workerEventHandler = _.bind(this._workerEventHandler, this);
-		this.spawnWorker = _.bind(this.spawnWorker, this);
-		this._kill = _.bind(this._kill, this);
-
-		this._connectHandler = _.bind(this._connectHandler, this);
-		this._disconnectHandler = _.bind(this._disconnectHandler, this);
-		this._reconnectHandler = _.bind(this._reconnectHandler, this);
-		this._reconnectedHandler = _.bind(this._reconnectedHandler, this);
-		this._reconnectFailHandler = _.bind(this._reconnectFailHandler, this);
+		_.bindAll(this,	"_connectHandler",
+						"_disconnectHandler",
+						"_reconnectHandler",
+						"_reconnectedHandler",
+						"_reconnectFailHandler", 
+						"_setIdHandler", 
+						"_errorHandler", 
+						"_spawnWorker", 
+						"_workerEventHandler", 
+						"_killHandler");
 
 		this.setSocket(socket);
 		this._logger.trace("Created");
@@ -68,7 +68,7 @@ define(function(require, exports, module) {
 			this._socket.on("reconnect_failed", this._reconnectFailHandler);
 
 			this._socket.on("error", this._errorHandler);
-			this._socket.on("kill", this._kill);
+			this._socket.on("kill", this._killHandler);
 			this._socket.on("setId", this._setIdHandler);
 			this._socket.on("spawnWorker", this._spawnWorker);
 			this._socket.on("toWorker", this._workerEventHandler);	
@@ -84,32 +84,25 @@ define(function(require, exports, module) {
 		}
 	};
 
-	Browser.prototype._kill = function(){
-		this._reset();
+	Browser.prototype._killHandler = function(){
+		this._destroyWorkers();
 		this.setSocket(void 0);
 		this._logger.debug("Dead");
 	};
 
 	Browser.prototype._setIdHandler = function(id){
 		this._id = id;
-		this.reset();
-	};
-
-	Browser.prototype.reset = function(){
 		this._destroyWorkers();
-		this.__pendingFromWorkers = [];
-		this._logger.debug("Reset");
 	};
 
 	Browser.prototype._destroyWorkers = function(){
 		_.each(this._workerSockets, function(socket){
-			socket.kill();
+			socket.echo("kill");
 		});
 
 		this._workerSockets = {};
+		this._pendingFromWorkers = [];
 	};
-
-	Browser.prototype.maxWorkerSocketCount = 10;
 
 	Browser.prototype.getAttributes = function(){
 		var attributes = {},
@@ -129,10 +122,12 @@ define(function(require, exports, module) {
 		return attributes;
 	};
 
-	Browser.prototype.spawnWorker = function(data){
+	Browser.prototype.maxWorkerSocketCount = 10;
+
+	Browser.prototype._spawnWorker = function(data){
 		var self = this,
 			socketId = data.id,
-			runData = data.initializationData,
+			workerContext = data.context,
 			worker;
 
 		if(this._workerCount >= this.maxWorkerSocketCount){
@@ -143,23 +138,24 @@ define(function(require, exports, module) {
 		this._workerCount += 1;
 
 		workerSocket = createWorkerSocket(socketId);
-		this._workerSockets[socketId] = workerSocket;
-		workerSocket.setEmitHandler(function(event, data){
+		workerSocket.on("emit", function(event, data){
 			self._emitFromWorker(socketId, event, data);	
 		});
-
 		workerSocket.on("done", function(){
 			self._workerDoneHandler(socketId);
 		});
+
+		this._workerSockets[socketId] = workerSocket;
+
 		this._logger.debug("Spawned worker socket");
 
-		workerSocket.run(runData);
+		workerSocket.setContext(workerContext);
 
 		return workerSocket;
 	};
 
 	// Iframes call this to get their work emission object
-	Browser.prototype.getWorkerSocket = function(socketId){
+	Browser.prototype.getSocket = function(socketId){
 		var workerSocket = this._workerSockets[socketId];
 		return workerSocket;
 	};
@@ -219,7 +215,6 @@ define(function(require, exports, module) {
 		this._logger.debug("Disconnected");
 	};
 
-	// Able to connect back to existing session
 	Browser.prototype._reconnectedHandler = function(){
 		var pendingEmissions = this._pendingEmissions.slice(0),
 			pendingEmission = pendingEmissions.splice(0, 2);
@@ -235,8 +230,8 @@ define(function(require, exports, module) {
 	};
 
 	Browser.prototype._reconnectFailHandler = function(){
-		this._logger.debug("Reconnect failed, killing self");
-		this.kill();
+		this._logger.debug("Reconnect failed, committing suicide");
+		this._kill();
 	};
 
 	return exports;

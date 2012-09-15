@@ -13,43 +13,31 @@ var socketServer = socketio.listen(server, {
 });
 
 //var workerHub = createWorkerHub();
-var browserHub = createBrowserHub(socketServer.of("/capture"));
-var browserMonitorHub = createBrowserMonitorHub(socketServer.of("/monitor"));
+var browserHub = createBrowserHub({server: socketServer.of("/capture")});
+//var browserMonitorHub = createBrowserMonitorHub(socketServer.of("/monitor"));
 
 browserHub.on("connected", function(browser){
-	browserMonitorHub.connectBrowser(browser);
+	//browserMonitorHub.connectBrowser(browser);
 	
-	_.each([0], function(){
-		var worker = browser.spawnWorker({
-			scripts: [
-				'http://172.16.100.169/test/test1.js',
-				'http://172.16.100.169/test/test2.js',
-				'http://172.16.100.169/test/test3.js'
-			]
-		});
-
-		worker.on("ready", function(){
-			console.log("worker ready");
-		});
-
-		worker.on("complete", function(data){
-			console.log("Worker Complete");
-			console.log(data);
-			worker.emit("kill");
-		});
-
-		worker.on("loaded", function(text){
-			console.log("Worker loaded: "+ text);
-		});
-
-		worker.on("update", function(text){
-			console.log("Worker update: "+ text);
-		});
+	var workerSocket = browser.spawnWorker({
+		scripts: [
+			'http://172.16.100.169/test/test1.js'
+		]
 	});
+
+	workerSocket.on("ready", function(){
+		workerSocket.emit("eval", "createAlert();");
+	});
+
+	workerSocket.on("complete", function(data){
+		console.log("Worker Complete");
+		workerSocket.emit("kill");
+	});
+
 //	workerHub.connectWorkerProvider(browser);
 });
 
 browserHub.on("disconnected", function(browser){
-	browserMonitorHub.disconnectBrowser(browser);
+	//browserMonitorHub.disconnectBrowser(browser);
 //	workerHub.disconnectWorkerProvider(browser);
 });

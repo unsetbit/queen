@@ -84,6 +84,10 @@ var Logger = function (opts) {
   this.prefix = opts.prefix;
 };
 
+Logger.prototype.setPrefix = function(prefix){
+  this.prefix = prefix;
+};
+
 exports.create = function(opts){
   return new Logger(opts);
 };

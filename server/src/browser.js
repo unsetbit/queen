@@ -6,13 +6,20 @@ var useragent = require("useragent");
 var createWorkerSocket = require("./workerSocket.js").create;
 var uuid = require('node-uuid');
 
-exports.create = create = function(attributes, socket){
-	var emitter = new EventEmitter();
-	var browser = new Browser(attributes, socket, emitter);
+exports.create = create = function(socket, options){
+	var options = options || {},
+		emitter = options.emitter || new EventEmitter(),
+		logger = options.logger || createLogger({prefix: "Browser"}),
+		browser = new Browser(socket, emitter, logger);
+	
+	if(options.attributes){
+		browser.setAttributes(options.attributes);	
+	}
+	
 	return browser;
 };
 
-exports.Browser = Browser = function(attributes, socket, emitter){
+exports.Browser = Browser = function(socket, emitter, logger){
 	var self = this;
 
 	if(socket === void 0){
@@ -25,17 +32,14 @@ exports.Browser = Browser = function(attributes, socket, emitter){
 	
 	this._id = uuid.v4();
 	this._workerSockets = {};
+	this._attributes = {};
 	this._isConnected = true;
 	this._workerSocketCount = 0;
 	this._emitter = emitter;
-	this._logger = createLogger({prefix: "Browser-" + this._id.substr(0,4) });
+	this._logger = logger;
 
-	// Bind functions
-	this.kill = _.bind(this.kill, this);
-	this._workerEventHandler = _.bind(this._workerEventHandler, this);
-	this._updateHandler = _.bind(this._updateHandler, this);
+	_.bindAll(this, "kill", "_workerEventHandler");
 
-	this._setAttributes(attributes);
 	this.setSocket(socket);
 
 	this._emit("setId", this._id);
@@ -78,7 +82,6 @@ Browser.prototype.setSocket = function(socket){
 	if(this._socket !== void 0){
 		this._socket.removeListener("fromWorker", this._workerEventHandler);			
 		this._socket.removeListener("kill", this.kill);
-		this._socket.removeListener("update", this._updateHandler);
 		this._logger.debug("Disconnected from socket");
 	}
 
@@ -86,7 +89,6 @@ Browser.prototype.setSocket = function(socket){
 	if(this._socket !== void 0){
 		this._socket.on("fromWorker", this._workerEventHandler);			
 		this._socket.on("kill", this.kill);
-		this._socket.on("update", this._updateHandler);
 		this._logger.debug("Connected to socket");
 	}
 };
@@ -119,12 +121,8 @@ Browser.prototype.hasAttributes = function(attritbuteMap){
 	return  isSimilar(attritbuteMap, this._attributes);
 };
 
-Browser.prototype.getAttributes = function(){
-	return this._attributes;
-};
-
 Browser.prototype.maxWorkerSocketCount = 100;
-Browser.prototype._setAttributes = function(attributes){
+Browser.prototype.setAttributes = function(attributes){
 	var ua;
 	this._attributes = attributes || {};
 	attributes.id = this._id;
@@ -146,14 +144,22 @@ Browser.prototype._setAttributes = function(attributes){
 	}
 };
 
-Browser.prototype.spawnWorker = function(initializationData){
+Browser.prototype.getAttributes = function(){
+	return _.extend({}, this._attributes);
+};
+
+Browser.prototype.isAvailable = function(){
+	return this._workerSocketCount < this.maxWorkerSocketCount;
+};
+
+Browser.prototype.spawnWorker = function(context){
 	var self = this,
 		workerSocket, 
 		socketId,
 		data;
 
-	if(this._workerSocketCount >= this.maxWorkerSocketCount){
-		this._logger.warn("Unable to spawn worker socket because of reached limit (" + this.maxWorkerSocketCount + ")");
+	if(!this.isAvailable()){
+		this._logger.warn("Unable to spawn worker socket because of reached limit");
 		return;
 	}
 
@@ -163,10 +169,10 @@ Browser.prototype.spawnWorker = function(initializationData){
 	socketId = workerSocket.getId();
 	data = {
 		id: socketId,
-		initializationData: initializationData
+		context: context
 	};
 
-	workerSocket.setEmitHandler(function (event, data){
+	workerSocket.on("emit", function(event, data){
 		self._emitToWorker(socketId, event, data);
 	});
 
@@ -204,10 +210,6 @@ Browser.prototype._emitToWorker = function(socketId, event, data){
 	};
 	this._emit("toWorker", message);
 	this._emitter.emit("messageToWorker", message);
-};
-
-Browser.prototype._updateHandler = function(update){
-	this._emitter.emit("update", update);
 };
 
 Browser.prototype._workerEventHandler = function(message){

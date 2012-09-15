@@ -4,21 +4,36 @@ var _ = require("underscore");
 var EventEmitter = require("events").EventEmitter;
 var uuid = require('node-uuid');
 
-exports.create = function(socketServer){
-	var emitter = new EventEmitter();
-	var browserHub = new BrowserHub(emitter);
-	browserHub.attachToServer(socketServer);
+exports.create = function(options){
+	var options = options || {},
+		emitter = options.emitter || new EventEmitter(),
+		logger = options.logger || createLogger({prefix: "BrowserHub"}),
+		browserHub = new BrowserHub(emitter, logger);
+
+	if(options.server){
+		browserHub.attachToServer(options.server);	
+	}
+
 	return browserHub;
 };
 
-exports.BrowserHub = BrowserHub = function(emitter){
+exports.BrowserHub = BrowserHub = function(emitter, logger){
+	if(emitter === void 0){
+		throw "BrowserHub requires an emitter";
+	}
+
+	if(logger === void 0){
+		throw "BrowserHub requires a logger";
+	}
+
 	this._emitter = emitter;
+	this._logger = logger;
+	
 	this._browsers = {};
 	this._id = uuid.v4();
 	this._connectionHandler = _.bind(this._connectionHandler, this);
 
-	this._logger = createLogger({prefix: "BrowserHub-" + this._id.substr(0,4) });
-	this._logger.trace("Created");
+	logger.trace("Created");
 };
 
 // DEFAULT ATTRIBUTES
@@ -26,13 +41,13 @@ BrowserHub.prototype.registerationTimeout = 2000;
 BrowserHub.prototype.reconnectionTimeout = 1000;
 
 BrowserHub.prototype.attachToServer = function(server){
-	var self = this;
-		
-	server.on("connection", self._connectionHandler);
+	server.on("connection", this._connectionHandler);
+	this._logger.debug("Attached to server");
 };
 
 BrowserHub.prototype.detachFromServer = function(server){
 	server.removeListener("connection", this._connectionHandler);
+	this._logger.debug("Detached from server");
 };
 
 BrowserHub.prototype.getBrowsers = function(filters){
@@ -105,7 +120,7 @@ BrowserHub.prototype._connectionHandler = function(socket){
 			browser = self._browsers[registerationData.id];
 			self._browserReconnectHandler(browser, socket);
 		} else {
-			browser = createBrowser(registerationData, socket);
+			browser = createBrowser(socket, {attributes: registerationData});
 			self._browserConnectHandler(browser);
 		}
 
