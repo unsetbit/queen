@@ -5,8 +5,10 @@ var socketio = require("socket.io");
 var webServer = require("../src/webServer.js");
 var logger = require("../src/logger.js");
 var _ = require("underscore");
+
 var server = webServer.create("80", "../../client");
 
+server.serveDir("../../client");
 logger.defaults.threshold =  4
 var socketServer = socketio.listen(server, {
 	logger: logger.create({prefix:'socket.io', threshold:2})

@@ -1,8 +1,7 @@
 define(function(require, exports, module) {
-    require('/socket.io/socket.io.js');
-	var createWorkerSocket = require('/src/workerSocket.js').create;
-	var extend = require('/lib/utils.js').extend;
-	var createLogger = require('/src/logger.js').create;
+    var createWorkerSocket = require('/minion-master/src/workerSocket.js').create;
+	var extend = require('/minion-master/lib/utils.js').extend;
+	var createLogger = require('/minion-master/src/logger.js').create;
 	
 	exports.create = function(path){
 		var socket = io.connect(path);

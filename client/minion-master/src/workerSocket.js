@@ -1,6 +1,6 @@
 define(function(require, exports, module) {
-	var createLogger = require('/src/logger.js').create;
-	var EventEmitter = require('/lib/nodeEvents.js').EventEmitter;
+	var createLogger = require('/minion-master/src/logger.js').create;
+	var EventEmitter = require('/minion-master/lib/nodeEvents.js').EventEmitter;
 
 	exports.create = function(id, options){
 		var options = options || {},
@@ -94,7 +94,7 @@ define(function(require, exports, module) {
 		
 		iframeTemplate += "<html>";
 		iframeTemplate += "<head>";
-		iframeTemplate += "<script>window.thrillSocket = window.parent.thrillProvider.getSocket('" + this._id + "')</script>";
+		iframeTemplate += "<script>window.thrillSocket = window.parent.GetThrillSocket('" + this._id + "')</script>";
 		iframeTemplate += "{{#scripts}}";
 		iframeTemplate += '<script src="{{{.}}}"><\/script>';
 		iframeTemplate += "{{/scripts}}";

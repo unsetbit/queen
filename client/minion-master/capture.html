@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title></title>
+</head>
+<body>
+	<script src="/minion-master/lib/require.js"></script>
+	<script src="/minion-master/lib/modernizr.js"></script>
+	<script src="/minion-master/lib/underscore.js"></script>
+	<script src="/socket.io/socket.io.js"></script>
+	<script>
+		require(["/minion-master/lib/mustache.js", "/minion-master/src/browser.js", "/minion-master/src/thrill.js"], function(mustache, browser, thrill){
+			window.Mustache = mustache;
+			var socket = io.connect("//" + window.location.host + "/capture", {
+				'max reconnection attempts': 10
+			});
+
+			var browser = browser.create(socket);
+			var thrill = thrill.create(browser);
+		});
+	</script>
+</body>
+</html>

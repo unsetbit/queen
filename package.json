@@ -1,5 +1,5 @@
 {
-  "name": "MinionMaster",
+  "name": "minion-master",
   "version": "0.0.1",
   "description": "Rule browsers remotely",
   "main": "index.js",

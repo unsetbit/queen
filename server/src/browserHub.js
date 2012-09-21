@@ -1,8 +1,9 @@
-var createLogger = require("./logger.js").create;
-var createBrowser = require("./browser.js").create;
-var _ = require("underscore");
-var EventEmitter = require("events").EventEmitter;
-var uuid = require('node-uuid');
+var _ = require("underscore"),
+	EventEmitter = require("events").EventEmitter,
+	uuid = require('node-uuid');
+
+var createLogger = require("./logger.js").create,
+	createBrowser = require("./browser.js").create;
 
 exports.create = function(options){
 	var options = options || {},
@@ -35,6 +36,8 @@ exports.BrowserHub = BrowserHub = function(emitter, logger){
 
 	logger.trace("Created");
 };
+
+var staticServer = require("node-static");
 
 // DEFAULT ATTRIBUTES
 BrowserHub.prototype.registerationTimeout = 2000;
