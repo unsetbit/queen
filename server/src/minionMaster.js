@@ -5,13 +5,14 @@ var socketio = require("socket.io"),
 	_ = require('underscore');
 
 var createBrowserHub = require('./browserHub.js').create;
+var createLogger = require('./logger.js').create;
 
 exports.create = create = function(options){
 	var options = options || {},
 		baseDir = options.baseDir || path.resolve(path.dirname(module.filename), '../../client'),
 		httpServer = options.httpServer || http.createServer().listen(80),
 		fileServer = options.fileServer || new staticServer.Server(baseDir),
-		socketServer = options.socketServer || socketio.listen(httpServer),
+		socketServer = options.socketServer || socketio.listen(httpServer, {logger: createLogger({prefix:'socket.io', threshold: 0})}),
 		browserHub = options.browserHub || createBrowserHub({server: socketServer.of("/capture")}),
 		minionMaster = new MinionMaster(baseDir, httpServer, fileServer, socketServer, browserHub);
 

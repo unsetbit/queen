@@ -106,7 +106,7 @@ BrowserHub.prototype._browserDisconnectHandler = function(browser, reason){
 		reason = "";
 	}
 
-	this._logger.info("Browser disconnected : " + browserId + reason);
+	this._logger.debug("Browser disconnected : " + browserId + reason);
 	this._emitter.emit("disconnected", browser);
 };
 
@@ -153,7 +153,7 @@ BrowserHub.prototype._connectionHandler = function(socket){
 				message: 'Client failed to register within ' + self.registerationTimeout + 'ms'
 			});
 			socket.disconnect();
-			self._logger.info("Socket disconnected due to registeration timeout");
+			self._logger.debug("Socket disconnected due to registeration timeout");
 		}
 	}());
 };

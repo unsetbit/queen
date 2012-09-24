@@ -7,9 +7,10 @@ define(function(require, exports, module) {
 	exports.Logger = Logger = function(options){
 		options = options || {};
 		this._prefix = options.prefix;
-		this._threshold = options.threshold || 4;
+		this._threshold = options.threshold || this.threshold;
 	};
-
+	
+	Logger.prototype.threshold = 4;
 	Logger.prototype.setPrefix = function(prefix){
 		this._prefix = prefix;
 	};

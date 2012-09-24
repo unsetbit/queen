@@ -55,6 +55,7 @@ define(function(require, exports, module) {
 	WorkerSocket.prototype._killCommandHandler = function(){
 		this._unload();
 		this.emit('done');
+		this.echo('done');
 		this._logger.debug("Done");
 		this.setEmitter(void 0);
 	};
@@ -94,12 +95,12 @@ define(function(require, exports, module) {
 		
 		iframeTemplate += "<html>";
 		iframeTemplate += "<head>";
+		iframeTemplate += "</head>";
+		iframeTemplate += "<body>";
 		iframeTemplate += "<script>window.thrillSocket = window.parent.GetThrillSocket('" + this._id + "')</script>";
 		iframeTemplate += "{{#scripts}}";
 		iframeTemplate += '<script src="{{{.}}}"><\/script>';
 		iframeTemplate += "{{/scripts}}";
-		iframeTemplate += "</head>";
-		iframeTemplate += "<body>";
 		iframeTemplate += "</body>";
 		iframeTemplate += "</html>";
 

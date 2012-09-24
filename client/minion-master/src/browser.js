@@ -27,6 +27,7 @@ define(function(require, exports, module) {
 		this._pendingEmissions = [];
 		this._logger = logger;
 		this._emitter = emitter;
+		this._userAgent = navigator.userAgent;
 
 		_.bindAll(this,	"_connectHandler",
 						"_disconnectHandler",
