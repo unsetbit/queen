@@ -6,14 +6,10 @@ define(function(require, exports, module) {
 
 	exports.Logger = Logger = function(options){
 		options = options || {};
-		this._prefix = options.prefix;
 		this._threshold = options.threshold || this.threshold;
 	};
 	
 	Logger.prototype.threshold = 4;
-	Logger.prototype.setPrefix = function(prefix){
-		this._prefix = prefix;
-	};
 
 	Logger.prototype.setThreshold = function(threshold){
 		this._threshold = threshold;
@@ -29,18 +25,9 @@ define(function(require, exports, module) {
 		level = level || 'info';
 		var typeOfMessage = typeof message;
 		if(typeOfMessage === "string" || typeOfMessage === "number" || typeOfMessage === "boolean"){
-			if(this._prefix !== void 0){
-				message = "[" + this._prefix + "] " + message;
-			}
-
 			console.log(level + ': ' + message);
 		} else {
-			if(this._prefix !== void 0){
-				console.log(level + ': ' + "[" + this._prefix + "]");
-			} else {
-				console.log(level + ': ');
-			}
-
+			console.log(level + ': ');
 			console.log(message);
 		}
 	};

@@ -1,22 +1,30 @@
 define(function(require, exports, module) {
     var createWorkerSocket = require('./workerSocket.js').create;
-	var createLogger = require('./logger.js').create;
-	var EventEmitter = require('../lib/nodeEvents.js').EventEmitter;
+	var EventEmitter = require('../lib/nodeEvents.js').EventEmitter,
+	   	logEvents = require("./utils.js").logEvents,
+		stopLoggingEvents = require("./utils.js").stopLoggingEvents;
 	
 	exports.create = function(browser, options){
 		var options = options || {},
 			env = options.env || window,
-			logger = options.logger || createLogger({prefix: "ThrillClient"}),
-			browser = new ThrillClient(env, browser, logger);
+			emitter = options.emitter || new EventEmitter(),
+			thrillClient = new ThrillClient(env, browser, emitter);
 		
-		return browser;
+		if(options.logger !== void 0){
+			thrillClient.setLogger(options.logger);
+		}
+
+		return thrillClient;
 	};
 
-	exports.ThrillClient = ThrillClient = function(env, browser, logger){
+	exports.ThrillClient = ThrillClient = function(env, browser, emitter){
 		this._browser = void 0;
 		this._workerCount = 0;
 		this._workerSockets = {};
-		this._logger = logger;
+		this._emitter = emitter;
+
+		this._logger = void 0;
+		this._loggingFunctions = void 0;
 		
 		_.bindAll(this, "getSocket", "_spawnWorker", "_workerEventHandler", "_destroyWorkers");
 		
@@ -25,12 +33,41 @@ define(function(require, exports, module) {
 		this.setBrowser(browser);
 	};
 
+	ThrillClient.prototype.eventsToLog = [
+		["info", "browserConnected", "Browser connected"],
+		["info", "browserDisconnected", "Browser disconnected"],
+		["info", "workerSpawned", "Worker spawned"],
+		["info", "workerDone", "Worker done, disconnected worker socket"],
+		["warn", "killingStaleSocket", "Worker socket no longer exists, sending kill command to worker"],
+		["warn", "unavailable", "Worker socket limit reached"],
+		["info", "available", "Available to spawn workers"]
+	];
+
+	ThrillClient.prototype.setLogger = function(logger){
+		if(this._logger === logger){
+			return; // same as existing one
+		}
+		
+		var prefix = "[ThrillClient] ";
+		
+		if(this._logger !== void 0){
+			stopLoggingEvents(this, this._loggingFunctions);
+		};
+
+		this._logger = logger;
+
+		if(this._logger !== void 0){
+			this._loggingFunctions = logEvents(logger, this, prefix, this.eventsToLog);
+		};
+	};
+
 	ThrillClient.prototype.setBrowser = function(browser){
 		if(this._browser !== void 0){
 			this._browser.removeListener("thrill:spawnWorker", this._spawnWorker);
 			this._browser.removeListener("thrill:toWorker", this._workerEventHandler);	
 			this._browser.removeListener("dead", this._destroyWorkers);
-			this._browser.removeListener("reset", this._destroyWorkers);	
+			this._browser.removeListener("reset", this._destroyWorkers);
+			this._echo("browserDisconnected");	
 		}
 
 		this._browser = browser;
@@ -40,6 +77,7 @@ define(function(require, exports, module) {
 			this._browser.on("thrill:toWorker", this._workerEventHandler);	
 			this._browser.on("dead", this._destroyWorkers);
 			this._browser.on("reset", this._destroyWorkers);	
+			this._echo("browserConnected");
 		}
 	};
 
@@ -49,14 +87,16 @@ define(function(require, exports, module) {
 			workerContext = data.context,
 			worker;
 
-		if(this._workerCount >= this.maxWorkerSocketCount){
-			this._logger.warn("Unable to spawn worker socket because of reached limit (" + this.maxWorkerSocketCount + ")");
+		if(this._workerCount > this.maxWorkerSocketCount){
 			return;
 		}
 
 		this._workerCount += 1;
+		if(this._workerCount === this.maxWorkerSocketCount){
+			this._echo("unavailable");
+		}
 
-		workerSocket = createWorkerSocket(socketId);
+		workerSocket = createWorkerSocket(socketId, {logger: this._logger});
 		workerSocket.on("emit", function(event, data){
 			self._emitFromWorker(socketId, event, data);	
 		});
@@ -66,8 +106,8 @@ define(function(require, exports, module) {
 
 		this._workerSockets[socketId] = workerSocket;
 
-		this._logger.debug("Spawned worker socket");
-
+		this._echo("workerSpawned");
+		
 		workerSocket.setContext(workerContext);
 
 		return workerSocket;
@@ -102,7 +142,10 @@ define(function(require, exports, module) {
 		if(worker !== void 0){
 			delete this._workerSockets[socketId];
 			this._workerCount -= 1;
-			this._logger.debug("Worker done, disconnected worker socket");
+			this._echo("workerDone");
+			if(this._workerCount === (this.maxWorkerSocketCount - 1)){
+				this._echo("available");
+			}
 		}
 	};
 
@@ -122,11 +165,29 @@ define(function(require, exports, module) {
 
 		var workerSocket = this._workerSockets[socketId];
 		if(workerSocket === void 0){ // No longer listening to this worker
-			this._logger.warn("Worker socket no longer exists, sending kill command to worker. Socket id " + socketId);
+			this._echo("killingStaleSocket");
 			this._emitFromWorker(socketId, "done");
 			return;
 		};
 
 		workerSocket.echo(event, eventData);
 	};
+
+	ThrillClient.prototype._echo = function(event, data){
+		this._emitter.emit(event, data);
+	};
+
+	ThrillClient.prototype.on = function(event, callback){
+		this._emitter.on(event, callback);
+	};
+
+	ThrillClient.prototype.once = function(event, callback){
+		this._emitter.once(event, callback);
+	};
+
+	ThrillClient.prototype.removeListener = function(event, callback){
+		this._emitter.removeListener(event, callback);
+	};
+
+	return exports;
 });

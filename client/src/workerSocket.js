@@ -1,19 +1,25 @@
 define(function(require, exports, module) {
 	var createLogger = require('./logger.js').create;
-	var EventEmitter = require('../lib/nodeEvents.js').EventEmitter;
+	var EventEmitter = require('../lib/nodeEvents.js').EventEmitter,
+	   	logEvents = require("./utils.js").logEvents,
+		stopLoggingEvents = require("./utils.js").stopLoggingEvents;
+	
 
 	exports.create = function(id, options){
 		var options = options || {},
 			emitter = options.emitter || new EventEmitter(),
-			logger = options.logger || createLogger({prefix: "WorkerSocket"}),
-			workerSocket = new WorkerSocket(id, emitter, logger);
+			workerSocket = new WorkerSocket(id, emitter);
+
+		if(options.logger){
+			workerSocket.setLogger(options.logger);
+		}
 
 		workerSocket.setEmitter(emitter);
 
 		return workerSocket;
 	};
 
-	exports.WorkerSocket = WorkerSocket = function(id, emitter, logger){
+	exports.WorkerSocket = WorkerSocket = function(id, emitter){
 		var self = this;
 
 		if(id === void 0){
@@ -24,18 +30,36 @@ define(function(require, exports, module) {
 			throw "WorkerSocket requires an emitter";
 		}
 
-		if(logger === void 0){
-			throw "WorkerSocket requires a logger";
-		}
-
 		this._id = id;
-		this._logger = logger;
+		this._logger = void 0;
+		this._loggingFunctions = void 0;
 
 		_.bindAll(this, "_killCommandHandler");
 		
 		this.setEmitter(emitter);
+	};
+
+	WorkerSocket.prototype.eventsToLog = [
+		["info", "done", "Done"],
+		["info", "contextSet", "Context set"]
+	];
+
+	WorkerSocket.prototype.setLogger = function(logger){
+		if(this._logger === logger){
+			return; // same as existing one
+		}
 		
-		this._logger.trace("Created");
+		var prefix = "[WorkerSocket-" + this.getId().substr(0,4) + "] ";
+		
+		if(this._logger !== void 0){
+			stopLoggingEvents(this, this._loggingFunctions);
+		};
+
+		this._logger = logger;
+
+		if(this._logger !== void 0){
+			this._loggingFunctions = logEvents(logger, this, prefix, this.eventsToLog);
+		};
 	};
 
 	WorkerSocket.prototype.setEmitter = function(emitter){
@@ -56,7 +80,6 @@ define(function(require, exports, module) {
 		this._unload();
 		this.emit('done');
 		this.echo('done');
-		this._logger.debug("Done");
 		this.setEmitter(void 0);
 	};
 
@@ -79,6 +102,7 @@ define(function(require, exports, module) {
 		} else { // Otherwise build an empty context
 			this._constructEmptyContext(context);
 		}
+		this.echo("contextSet");
 	};
 
 	WorkerSocket.prototype._constructEmptyContext = function(context){

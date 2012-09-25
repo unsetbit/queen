@@ -1,13 +1,17 @@
 define(function(require, exports, module) {
-    var createLogger = require('./logger.js').create;
-	var EventEmitter = require('../lib/nodeEvents.js').EventEmitter;
-	
+    var EventEmitter = require('../lib/nodeEvents.js').EventEmitter,
+    	logEvents = require("./utils.js").logEvents,
+		stopLoggingEvents = require("./utils.js").stopLoggingEvents;
+
 	exports.create = function(socket, options){
 		var options = options || {},
-			logger = options.logger || createLogger({prefix: "Browser"}),
 			emitter = options.emitter || new EventEmitter(),
-			browser = new Browser(socket, emitter, logger);
+			browser = new Browser(socket, emitter);
 		
+		if(options.logger){
+			browser.setLogger(options.logger);
+		}
+
 		return browser;
 	};
 
@@ -18,14 +22,13 @@ define(function(require, exports, module) {
 			throw "Browser requires a socket";
 		}
 
-		if(logger === void 0){
-			throw "Browser requires a logger";
-		}
-
 		this._id = void 0;
 
 		this._pendingEmissions = [];
-		this._logger = logger;
+		
+		this._logger = void 0;
+		this._loggingFunctions = void 0;
+
 		this._emitter = emitter;
 		this._userAgent = navigator.userAgent;
 
@@ -39,8 +42,34 @@ define(function(require, exports, module) {
 						"_killHandler");
 
 		this.setSocket(socket);
+	};
+
+	Browser.prototype.eventsToLog = [
+		["info", "connected", "Connected"],
+		["info", "disconnected", "Disconnected"],
+		["info", "reconnected", "Reconnected"],
+		["info", "reconnectFailed", "Reconnection failed"],
+		["debug", "socketConnected", "Socket connected"],
+		["debug", "socketDisconnected", "Socket disconnected"],
+		["debug", "dead", "Dead"]
+	];
+
+	Browser.prototype.setLogger = function(logger){
+		if(this._logger === logger){
+			return; // same as existing one
+		}
 		
-		this._logger.trace("Created");
+		var prefix = "[Browser] ";
+		
+		if(this._logger !== void 0){
+			stopLoggingEvents(this, this._loggingFunctions);
+		};
+
+		this._logger = logger;
+
+		if(this._logger !== void 0){
+			this._loggingFunctions = logEvents(logger, this, prefix, this.eventsToLog);
+		};
 	};
 
 	Browser.prototype.setSocket = function(socket){
@@ -54,7 +83,7 @@ define(function(require, exports, module) {
 			this._socket.removeListener("echo", this._echoHandler);
 			this._socket.removeListener("kill", this._killHandler);
 			this._socket.removeListener("setId", this._setIdHandler);	
-			this._logger.debug("Detached socket");
+			this._echo("socketDisconnected");
 		}
 
 		this._socket = socket;
@@ -69,7 +98,7 @@ define(function(require, exports, module) {
 			this._socket.on("echo", this._echoHandler);
 			this._socket.on("kill", this._killHandler);
 			this._socket.on("setId", this._setIdHandler);
-			this._logger.debug("Attached to socket");	
+			this._echo("socketConnected");
 		}
 	};
 
@@ -121,7 +150,6 @@ define(function(require, exports, module) {
 	Browser.prototype._killHandler = function(){
 		this.setSocket(void 0);
 		this._echo('dead');
-		this._logger.debug("Dead");
 	};
 
 	Browser.prototype._setIdHandler = function(id){
@@ -159,7 +187,7 @@ define(function(require, exports, module) {
 	Browser.prototype._connectHandler = function(){
 		this._connected = true;
 		this._register();
-		this._logger.debug("Connected");
+		this._echo("connected");
 	};
 
 	Browser.prototype._reconnectHandler = function(){
@@ -168,7 +196,7 @@ define(function(require, exports, module) {
 
 	Browser.prototype._disconnectHandler = function(){
 		this._connected = false;
-		this._logger.debug("Disconnected");
+		this._echo("disconnected");
 	};
 
 	Browser.prototype._reconnectedHandler = function(){
@@ -181,12 +209,12 @@ define(function(require, exports, module) {
 			this._emit(pendingEmission[0], pendingEmission[1]);
 			pendingEmission = pendingEmissions.splice(0, 2)
 		}
-
-		this._logger.debug("Reconnected"); 
+		
+		this._echo("reconnected");
 	};
 
 	Browser.prototype._reconnectFailHandler = function(){
-		this._logger.debug("Reconnect failed, committing suicide");
+		this._echo("reconnectFailed");
 		this._kill();
 	};
 

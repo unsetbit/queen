@@ -10,14 +10,15 @@
 	<script src="lib/underscore.js"></script>
 	<script src="/socket.io/socket.io.js"></script>
 	<script>
-		require(["lib/mustache.js", "src/browser.js", "src/thrill.js"], function(mustache, browser, thrill){
+		require(["lib/mustache.js", "src/browser.js", "src/thrill.js", "src/logger.js"], function(mustache, browser, thrill, logger){
 			window.Mustache = mustache;
+			var logger = logger.create();
 			var socket = io.connect("//" + window.location.host + "/capture", {
 				'max reconnection attempts': 10
 			});
 
-			var browser = browser.create(socket);
-			var thrill = thrill.create(browser);
+			var browser = browser.create(socket, {logger: logger});
+			var thrill = thrill.create(browser, {logger: logger});
 		});
 	</script>
 </body>
