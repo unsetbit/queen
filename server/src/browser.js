@@ -3,15 +3,20 @@ var _ = require("underscore"),
 	useragent = require("useragent"),
 	uuid = require('node-uuid');
 
-var createLogger = require("./logger.js").create,
-	isSimilar = require("./utils.js").isSimilar;
+var isSimilar = require("./utils.js").isSimilar,
+	logEvents = require("./utils.js").logEvents,
+	stopLoggingEvents = require("./utils.js").stopLoggingEvents;
 
 exports.create = create = function(socket, options){
 	var options = options || {},
 		emitter = options.emitter || new EventEmitter(),
-		logger = options.logger || createLogger({prefix: "Browser"}),
-		browser = new Browser(socket, emitter, logger);
+		browser = new Browser(socket, emitter);
 	
+	// If logger exists, attach to it
+	if(options.logger){
+		browser.setLogger(options.logger);
+	}
+
 	if(options.attributes){
 		browser.setAttributes(options.attributes);	
 	}
@@ -19,7 +24,7 @@ exports.create = create = function(socket, options){
 	return browser;
 };
 
-exports.Browser = Browser = function(socket, emitter, logger){
+exports.Browser = Browser = function(socket, emitter){
 	var self = this;
 
 	if(socket === void 0){
@@ -31,17 +36,46 @@ exports.Browser = Browser = function(socket, emitter, logger){
 	}
 	
 	this._id = uuid.v4();
+
+	this._logger = void 0;
+	this._loggingFunctions = void 0;
+	
 	this._attributes = {};
 	this._isConnected = true;
 	this._emitter = emitter;
-	this._logger = logger;
 
 	_.bindAll(this, "kill", "_echoHandler");
 
 	this.setSocket(socket);
 
 	this._emit("setId", this._id);
-	this._logger.trace("Created");
+};
+
+Browser.prototype.eventsToLog = [
+	["info", "connected", "Connected"],
+	["info", "disconnected", "Disconnected"],
+	["debug", "socketConnected", "Socket connected"],
+	["debug", "socketDisconnected", "Socket disconnected"],
+	["debug", "attributesSet", "Attributes set"],
+	["debug", "dead", "Dead"]
+];
+
+Browser.prototype.setLogger = function(logger){
+	if(this._logger === logger){
+		return; // same as existing one
+	}
+	
+	var prefix = "[Browser-" + this.getId().substr(0,4) + "] ";
+	
+	if(this._logger !== void 0){
+		stopLoggingEvents(this, this._loggingFunctions);
+	};
+
+	this._logger = logger;
+
+	if(this._logger !== void 0){
+		this._loggingFunctions = logEvents(logger, this, prefix, this.eventsToLog);
+	};
 };
 
 Browser.prototype.getId = function(){
@@ -60,11 +94,9 @@ Browser.prototype.setConnected = function(connected){
 	if(connected === true){
 		this._isConnected = true;
 		this._echo("connected");
-		this._logger.debug("Connected");
 	} else {
 		this._isConnected = false;
 		this._echo("disconnected");
-		this._logger.debug("Disconnected");
 	}
 };
 
@@ -76,14 +108,14 @@ Browser.prototype.setSocket = function(socket){
 	if(this._socket !== void 0){
 		this._socket.removeListener("echo", this._echoHandler);
 		this._socket.removeListener("kill", this.kill);
-		this._logger.debug("Disconnected from socket");
+		this._echo("socketDisconnected", this._socket);
 	}
 
 	this._socket = socket;
 	if(this._socket !== void 0){
 		this._socket.on("echo", this._echoHandler);
 		this._socket.on("kill", this.kill);
-		this._logger.debug("Connected to socket");
+		this._echo("socketConnected", this._socket);
 	}
 };
 
@@ -144,6 +176,8 @@ Browser.prototype.setAttributes = function(attributes){
 			path: ua.patch
 		};
 	}
+
+	this._echo("attributesSet", this._attributes);
 };
 
 Browser.prototype.getAttributes = function(){

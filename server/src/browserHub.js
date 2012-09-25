@@ -2,55 +2,78 @@ var _ = require("underscore"),
 	EventEmitter = require("events").EventEmitter,
 	uuid = require('node-uuid');
 
-var createLogger = require("./logger.js").create,
-	createBrowser = require("./browser.js").create;
+var createBrowser = require("./browser.js").create,
+	logEvents = require("./utils.js").logEvents,
+	stopLoggingEvents = require("./utils.js").stopLoggingEvents;
 
 exports.create = function(options){
 	var options = options || {},
 		emitter = options.emitter || new EventEmitter(),
-		logger = options.logger || createLogger({prefix: "BrowserHub"}),
-		browserHub = new BrowserHub(emitter, logger);
+		browserHub = new BrowserHub(emitter, options.logger);
 
+	// If logger exists, attach to it
+	if(options.logger){
+		browserHub.setLogger(options.logger);
+	}
+	
 	if(options.server){
 		browserHub.attachToServer(options.server);	
 	}
 
+
 	return browserHub;
 };
 
-exports.BrowserHub = BrowserHub = function(emitter, logger){
+exports.BrowserHub = BrowserHub = function(emitter){
 	if(emitter === void 0){
 		throw "BrowserHub requires an emitter";
 	}
 
-	if(logger === void 0){
-		throw "BrowserHub requires a logger";
-	}
-
 	this._emitter = emitter;
-	this._logger = logger;
-	
 	this._browsers = {};
 	this._id = uuid.v4();
-	this._connectionHandler = _.bind(this._connectionHandler, this);
+	
+	this._logger = void 0;
+	this._loggingFunctions = void 0; // Keeps track of bound logging functions
 
-	logger.trace("Created");
+	_.bindAll(this, "_connectionHandler");
 };
-
-var staticServer = require("node-static");
 
 // DEFAULT ATTRIBUTES
 BrowserHub.prototype.registerationTimeout = 2000;
 BrowserHub.prototype.reconnectionTimeout = 1000;
+BrowserHub.prototype.eventsToLog = [
+	["info", "attachedToServer", "Attached to server"],
+	["info", "detachedFromServer", "Detached from server"],
+	["debug", "socketConnected", "Socket connected"],
+	["debug", "socketDisconnected", "Socket disconnected"],
+	["info", "clientConnected", "Browser connected"],
+	["debug", "browserReconnected", "Browser reconnected"],
+	["info", "clientDisconnected", "Browser disconnected"]
+];
+
+BrowserHub.prototype.setLogger = function(logger){
+	var prefix = "[BrowserHub-" + this.getId().substr(0,4) + "] ";
+	
+	if(this._logger !== void 0){
+		stopLoggingEvents(this, this._loggingFunctions);
+	};
+
+	this._logger = logger;
+
+	if(this._logger !== void 0){
+		this._loggingFunctions = logEvents(logger, this, prefix, this.eventsToLog);
+	};
+};
 
 BrowserHub.prototype.attachToServer = function(server){
 	server.on("connection", this._connectionHandler);
-	this._logger.debug("Attached to server");
+	this._emit("attachedToServer", server);
 };
 
 BrowserHub.prototype.detachFromServer = function(server){
 	server.removeListener("connection", this._connectionHandler);
-	this._logger.debug("Detached from server");
+	this._emit("detachedFromServer", server);
 };
 
 BrowserHub.prototype.getBrowsers = function(filters){
@@ -80,34 +103,30 @@ BrowserHub.prototype.removeListener = function(event, callback){
 	this._emitter.removeListener(event, callback);
 };
 
+BrowserHub.prototype._emit = function(event, data){
+	this._emitter.emit(event, data);
+};
+
 // BROWSER CONNECTION HANDLERS
 BrowserHub.prototype._browserConnectHandler = function(browser){
 	browserId = browser.getId();
 	this._browsers[browserId] = browser;
-	this._logger.debug("New browser connected " + browserId);
-	this._emitter.emit("connected", browser);
+	this._emit("clientConnected", browser);
 };
 
 BrowserHub.prototype._browserReconnectHandler = function(browser, socket){
 	browser.setSocket(socket);
 	browser.setConnected(true);
 	socket.emit("reconnected");
-	this._logger.debug("Browser reconnected " + browser.getId());
+	this._emit("browserReconnected", browser);
 };
 
-BrowserHub.prototype._browserDisconnectHandler = function(browser, reason){
+BrowserHub.prototype._browserDisconnectHandler = function(browser){
 	var browserId = browser.getId();
 	browser.kill();
 	delete this._browsers[browserId];
 
-	if(reason){
-		reason = ". Reason: " + reason;
-	} else {
-		reason = "";
-	}
-
-	this._logger.debug("Browser disconnected : " + browserId + reason);
-	this._emitter.emit("disconnected", browser);
+	this._emit("clientDisconnected", browser);
 };
 
 // SOCKET CONNECTION HANDLERS
@@ -116,14 +135,16 @@ BrowserHub.prototype._connectionHandler = function(socket){
 		browser,
 		browserId,
 		registered = false;
-
+	
+	self._emit("socketConnected", socket);
+	
 	socket.on("register", function(registerationData){
 		registered = true;
 		if(registerationData && registerationData.id && self._browsers[registerationData.id] !== void 0){
 			browser = self._browsers[registerationData.id];
 			self._browserReconnectHandler(browser, socket);
 		} else {
-			browser = createBrowser(socket, {attributes: registerationData});
+			browser = createBrowser(socket, {attributes: registerationData, logger: self._logger});
 			self._browserConnectHandler(browser);
 		}
 
@@ -153,7 +174,7 @@ BrowserHub.prototype._connectionHandler = function(socket){
 				message: 'Client failed to register within ' + self.registerationTimeout + 'ms'
 			});
 			socket.disconnect();
-			self._logger.debug("Socket disconnected due to registeration timeout");
+			self._emit("socketDisconnected");
 		}
 	}());
 };
@@ -183,7 +204,7 @@ BrowserHub.prototype._disconnectHandler = function(browser){
 		if(now < killTime){
 			process.nextTick(killIfNoReconnect)
 		} else {
-			self._browserDisconnectHandler(browser, "Reconnection timeout");
+			self._browserDisconnectHandler(browser);
 		}
 	}());
 };

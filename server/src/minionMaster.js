@@ -2,25 +2,32 @@ var socketio = require("socket.io"),
 	http = require('http'),
 	staticServer = require("node-static"),
 	path = require('path'),
+	winston = require('winston'),
+	fs = require('fs'),
+	EventEmitter = require('events').EventEmitter,
 	_ = require('underscore');
 
 var createBrowserHub = require('./browserHub.js').create;
-var createLogger = require('./logger.js').create;
 
 exports.create = create = function(options){
 	var options = options || {},
+		logger = options.logger || new (winston.Logger)({transports: [new (winston.transports.Console)() ]}),
 		baseDir = options.baseDir || path.resolve(path.dirname(module.filename), '../../client'),
+		baseWebPath = options.baseWebPath || "/minion-master";
+		browserCapturePath = options.browserCapturePath || "/capture";
 		httpServer = options.httpServer || http.createServer().listen(80),
 		fileServer = options.fileServer || new staticServer.Server(baseDir),
-		socketServer = options.socketServer || socketio.listen(httpServer, {logger: createLogger({prefix:'socket.io', threshold: 0})}),
-		browserHub = options.browserHub || createBrowserHub({server: socketServer.of("/capture")}),
-		minionMaster = new MinionMaster(baseDir, httpServer, fileServer, socketServer, browserHub);
+		socketServer = options.socketServer || socketio.listen(httpServer, {logger: logger}),
+		browserHub = options.browserHub || createBrowserHub({server: socketServer.of(browserCapturePath), logger:logger}),
+		minionMaster = new MinionMaster(baseDir, baseWebPath, httpServer, fileServer, socketServer, browserHub);
 
 	return minionMaster;
 };
 
-exports.MinionMaster = MinionMaster = function(baseDir, httpServer, fileServer, socketServer, browserHub){
+exports.MinionMaster = MinionMaster = function(baseDir, baseWebPath, httpServer, fileServer, socketServer, browserHub){
 	this._baseDir = baseDir;
+	this._baseWebPath = baseWebPath;
+	this._urlPattern = new RegExp("(" + this._baseWebPath + ")/(.+)", "i");
 	this._fileServer = fileServer;
 	this._socketServer = socketServer;
 	this._browserHub = browserHub;
@@ -53,18 +60,25 @@ MinionMaster.prototype.getHttpServer = function(){
 
 MinionMaster.prototype._httpRequestHandler = function(request, response){
 	var self = this;
-
-	if(request.url.indexOf('/minion-master/') !== 0){
+	if(request.url.indexOf(this._baseWebPath) !== 0){
 		return; // Only handle the minion master namespace
 	}
 
+	var regexValues = request.url.match(this._urlPattern);
+	var filePath = this._baseDir + "/" + regexValues[2]; // file
+
 	request.addListener('end', function () {
-		self._fileServer.serve(request, response, function (e, res) {
-            if (e && (e.status === 404)) { // If the file wasn't found
-                self._fileServer.serveFile('/minion-master/404.html', 404, {}, request, response);
-            }
-    	});	
-		
+		var promise = new EventEmitter;
+		fs.stat(filePath, function (e, stat) {
+	        if (e) {
+                self._fileServer.serveFile('/404.html', 404, {}, request, response);
+	        	return;
+	        }
+
+	        self._fileServer.respond(null, 200, {}, [filePath], stat, request, response, function (status, headers) {
+	            self._fileServer.finish(status, headers, request, response, promise);
+	        });
+	    });     
 	});
 };
 

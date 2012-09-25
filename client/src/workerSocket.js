@@ -1,6 +1,6 @@
 define(function(require, exports, module) {
-	var createLogger = require('/minion-master/src/logger.js').create;
-	var EventEmitter = require('/minion-master/lib/nodeEvents.js').EventEmitter;
+	var createLogger = require('./logger.js').create;
+	var EventEmitter = require('../lib/nodeEvents.js').EventEmitter;
 
 	exports.create = function(id, options){
 		var options = options || {},
