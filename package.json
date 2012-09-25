@@ -32,6 +32,9 @@
     "test-runner",
     "test"
   ],
-  "author": "Ozan Turgut <ozanturgut@gmail.com>",
+  "author": {
+    "name": "Ozan Turgut",
+    "email": "ozanturgut@gmail.com"
+  },
   "license": "BSD"
 }

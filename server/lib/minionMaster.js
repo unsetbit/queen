@@ -12,7 +12,7 @@ var createBrowserHub = require('./browserHub.js').create;
 exports.create = create = function(options){
 	var options = options || {},
 		logger = options.logger || new (winston.Logger)({transports: [new (winston.transports.Console)() ]}),
-		baseDir = options.baseDir || path.resolve(path.dirname(module.filename), '../../client'),
+		baseDir = options.baseDir || path.resolve(path.dirname(module.filename), '../../client/static'),
 		baseWebPath = options.baseWebPath || "/minion-master";
 		browserCapturePath = options.browserCapturePath || "/capture";
 		httpServer = options.httpServer || http.createServer().listen(80),

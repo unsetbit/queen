@@ -184,6 +184,10 @@ Browser.prototype.getAttributes = function(){
 	return _.extend({}, this._attributes);
 };
 
+Browser.prototype.load = function(files){
+	this._emit('load', files);
+};
+
 Browser.prototype.emit = function(event, data){
 	this._emit('echo', {
 		event: event,
