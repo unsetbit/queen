@@ -150,8 +150,8 @@ Browser.prototype.getAttribute = function(key){
 	return this._attributes[key];
 };
 
-Browser.prototype.hasAttributes = function(attritbuteMap){
-	return  isSimilar(attritbuteMap, this._attributes);
+Browser.prototype.hasAttributes = function(attributeMap){
+	return isSimilar(attributeMap, this._attributes);
 };
 
 Browser.prototype.getSocket = function(){

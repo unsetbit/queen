@@ -1,4 +1,4 @@
-/*! minion-master - v0.0.2 - 2012-09-25
+/*! minion-master - v0.0.2 - 2012-09-26
 * Copyright (c) 2012 Ozan Turgut; Licensed  */
 
 // Underscore.js 1.3.3
@@ -4185,7 +4185,8 @@ var Minion = function(socket, emitter){
 
 Minion.create = function(options){
 	var options = options || {},
-		socket = options.socket || io.connect("//" + window.location.host + "/capture"),
+		socketPath = options.socketPath || "//" + window.location.host + "/capture",
+		socket = options.socket || io.connect(socketPath),
 		emitter = options.emitter || new EventEmitter(),
 		minion = new Minion(socket, emitter);
 	
