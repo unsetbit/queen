@@ -10,7 +10,8 @@ var isSimilar = require("./utils.js").isSimilar,
 exports.create = create = function(socket, options){
 	var options = options || {},
 		emitter = options.emitter || new EventEmitter(),
-		browser = new Browser(socket, emitter);
+		attributes = options.attributes,
+		browser = new Browser(socket, emitter, attributes);
 	
 	// If logger exists, attach to it
 	if(options.logger){
@@ -24,7 +25,7 @@ exports.create = create = function(socket, options){
 	return browser;
 };
 
-exports.Browser = Browser = function(socket, emitter){
+exports.Browser = Browser = function(socket, emitter, attributes){
 	var self = this;
 
 	if(socket === void 0){
@@ -35,20 +36,23 @@ exports.Browser = Browser = function(socket, emitter){
 		throw "A Browser requires an emitter";
 	}
 	
-	this._id = uuid.v4();
+	this._emitter = emitter;
 
 	this._logger = void 0;
 	this._loggingFunctions = void 0;
 	
 	this._attributes = {};
 	this._isConnected = true;
-	this._emitter = emitter;
 
 	_.bindAll(this, "kill", "_echoHandler");
-
 	this.setSocket(socket);
 
-	this._emit("setId", this._id);
+	this.setAttributes(attributes);
+
+	if(this._id === void 0){
+		this._id = uuid.v4();
+		this._emit("setId", this._id);
+	}
 };
 
 Browser.prototype.eventsToLog = [

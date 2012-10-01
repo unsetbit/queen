@@ -1,11 +1,15 @@
-var Minion = function(socket, emitter){
+var Minion = function(socket, emitter, id){
 	var self = this;
 
 	if(socket === void 0){
 		throw "Minion requires a socket";
 	}
 
-	this._id = void 0;
+	if(emitter === void 0){
+		throw "Minion requires an emitter";
+	}
+
+	this._id = id;
 
 	this._pendingEmissions = [];
 	
@@ -33,7 +37,8 @@ Minion.create = function(options){
 		socketPath = options.socketPath || "//" + window.location.host + "/capture",
 		socket = options.socket || io.connect(socketPath),
 		emitter = options.emitter || new EventEmitter(),
-		minion = new Minion(socket, emitter);
+		id = options.id || Minion.getQueryParam("minionId"),
+		minion = new Minion(socket, emitter, id);
 	
 	if(options.logger){
 		minion.setLogger(options.logger);
@@ -41,6 +46,19 @@ Minion.create = function(options){
 
 	return minion;
 };
+
+// By Artem Barger from http://stackoverflow.com/a/901144
+Minion.getQueryParam = function(name)
+{
+  name = name.replace(/[\[]/, "\\\[").replace(/[\]]/, "\\\]");
+  var regexS = "[\\?&]" + name + "=([^&#]*)";
+  var regex = new RegExp(regexS);
+  var results = regex.exec(window.location.search);
+  if(results == null)
+    return void 0;
+  else
+    return decodeURIComponent(results[1].replace(/\+/g, " "));
+}
 
 Minion.prototype.eventsToLog = [
 	["info", "connected", "Connected"],

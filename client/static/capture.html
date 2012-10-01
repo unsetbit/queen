@@ -6,6 +6,11 @@
 </head>
 <body>
 	<script src="./minion-master.js"></script>
-	<script>var minion = MinionMaster.Minion.create({logger: console});</script>
+	<script>
+		var minion = MinionMaster.Minion.create({
+			socketPath: "//" + window.location.host + "/capture", 
+			logger: console
+		});
+	</script>
 </body>
 </html>

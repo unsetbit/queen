@@ -20,7 +20,6 @@ exports.create = function(options){
 		browserHub.attachToServer(options.server);	
 	}
 
-
 	return browserHub;
 };
 
@@ -37,6 +36,14 @@ exports.BrowserHub = BrowserHub = function(emitter){
 	this._loggingFunctions = void 0; // Keeps track of bound logging functions
 
 	_.bindAll(this, "_connectionHandler");
+};
+
+BrowserHub.prototype.kill = function(){
+	_.each(this._browsers, function(browser){
+		browser.kill();
+	});
+	this._browsers = {};
+	this._emit("dead");
 };
 
 // DEFAULT ATTRIBUTES
@@ -97,6 +104,10 @@ BrowserHub.prototype.getId = function(){
 // EVENT HANDLERS
 BrowserHub.prototype.on = function(event, callback){
 	this._emitter.on(event, callback);
+};
+
+BrowserHub.prototype.once = function(event, callback){
+	this._emitter.once(event, callback);
 };
 
 BrowserHub.prototype.removeListener = function(event, callback){
