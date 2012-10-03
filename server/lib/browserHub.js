@@ -116,15 +116,6 @@ BrowserHub.prototype._emit = function(event, data){
 	this._emitter.emit(event, data);
 };
 
-// BROWSER CONNECTION HANDLERS
-BrowserHub.prototype._browserReconnectHandler = function(browser, socket){
-	browser.setSocket(socket);
-	browser.setConnected(true);
-	socket.emit("reconnected");
-
-	this._emit("browserReconnected", browser);
-};
-
 BrowserHub.prototype.attachBrowser = function(browser){
 	browserId = browser.getId();
 	this._browsers[browserId] = browser;
@@ -166,7 +157,7 @@ BrowserHub.prototype._connectionHandler = function(socket){
 
 		socket.on("disconnect", function(){
 			if(browser.getSocket() === socket){
-				self._disconnectHandler(browser);	
+				self.detachBrowser(browser);
 			}
 		});
 	});
@@ -191,35 +182,6 @@ BrowserHub.prototype._connectionHandler = function(socket){
 			});
 			socket.disconnect();
 			self._emit("socketDisconnected");
-		}
-	}());
-};
-
-
-BrowserHub.prototype._disconnectHandler = function(browser){
-	var self = this,
-		isBrowserConnected = false;
-	
-	browser.setConnected(false);
-	browser.once("connected", function(){
-		isBrowserConnected = true;
-	});
-
-	// Kill browsers that don't reconnect
-	var killTime = new Date().getTime() + this.reconnectionTimeout;
-	(function killIfNoReconnect(){
-		var now;
-
-		if(isBrowserConnected){ // Has browser reconnected?
-			return;
-		}
-
-		now = new Date().getTime();
-
-		if(now < killTime){
-			process.nextTick(killIfNoReconnect)
-		} else {
-			self.detachBrowser(browser);
 		}
 	}());
 };
