@@ -37,7 +37,6 @@ exports.BrowserHub = BrowserHub = function(emitter){
 
 // DEFAULT ATTRIBUTES
 BrowserHub.prototype.registerationTimeout = 2000;
-BrowserHub.prototype.reconnectionTimeout = 1000;
 
 BrowserHub.prototype.eventsToLog = [
 	["info", "attachedToServer", "Attached to server"],
@@ -137,23 +136,22 @@ BrowserHub.prototype.detachBrowser = function(browser){
 
 // SOCKET CONNECTION HANDLERS
 BrowserHub.prototype._connectionHandler = function(socket){
-	var self = this,
-		registered = false;
+	var self = this;
 	
 	self._emit("socketConnected", socket);
+
+	var registerationTimeout = setTimeout(function(){
+		socket.disconnect();
+		self._emit("socketDisconnected");
+	}, this.registerationTimeout);
 	
 	socket.on("register", function(registerationData){
 		var browser;
 
-		registered = true;
+		clearTimeout(registerationTimeout);
 		
-		if(registerationData && registerationData.id && self._browsers[registerationData.id] !== void 0){
-			browser = self._browsers[registerationData.id];
-			self._browserReconnectHandler(browser, socket);
-		} else {
-			browser = createBrowser(socket, {attributes: registerationData, logger: self._logger});
-			self.attachBrowser(browser);
-		}
+		browser = createBrowser(socket, {attributes: registerationData, logger: self._logger});
+		self.attachBrowser(browser);
 
 		socket.on("disconnect", function(){
 			if(browser.getSocket() === socket){
@@ -161,27 +159,4 @@ BrowserHub.prototype._connectionHandler = function(socket){
 			}
 		});
 	});
-
-	// Kill sockets that don't register fast enough
-	var killTime = new Date().getTime() + this.registerationTimeout;
-	(function disconnectNonregistrants(){
-		var now;
-
-		if(registered){
-			return;
-		}
-
-		now = new Date().getTime();
-
-		if(now < killTime){
-			process.nextTick(disconnectNonregistrants)
-		} else {
-			socket.emit("error", {
-				fault: 'client',
-				message: 'Client failed to register within ' + self.registerationTimeout + 'ms'
-			});
-			socket.disconnect();
-			self._emit("socketDisconnected");
-		}
-	}());
 };
