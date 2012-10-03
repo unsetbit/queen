@@ -6,24 +6,24 @@ var createBrowser = require("./browser.js").create,
 	logEvents = require("./utils.js").logEvents,
 	stopLoggingEvents = require("./utils.js").stopLoggingEvents;
 
-exports.create = function(options){
+exports.create = function(server, options){
 	var options = options || {},
 		emitter = options.emitter || new EventEmitter(),
-		browserHub = new BrowserHub(emitter);
+		browserHub = new BrowserHub(server, emitter);
 
 	// If logger exists, attach to it
 	if(options.logger){
 		browserHub.setLogger(options.logger);
 	}
 	
-	if(options.server){
-		browserHub.attachToServer(options.server);	
-	}
-
 	return browserHub;
 };
 
-exports.BrowserHub = BrowserHub = function(emitter){
+exports.BrowserHub = BrowserHub = function(server, emitter){
+	if(server === void 0){
+		throw "BrowserHub requires a server";
+	}
+
 	if(emitter === void 0){
 		throw "BrowserHub requires an emitter";
 	}
@@ -31,20 +31,19 @@ exports.BrowserHub = BrowserHub = function(emitter){
 	this._emitter = emitter;
 	this._id = uuid.v4();
 	this._browsers = {};
-	
+	this._server = server;
+
 	_.bindAll(this, "_connectionHandler");
+	this._server.on("connection", this._connectionHandler);
 };
 
 // DEFAULT ATTRIBUTES
 BrowserHub.prototype.registerationTimeout = 2000;
 
 BrowserHub.prototype.eventsToLog = [
-	["info", "attachedToServer", "Attached to server"],
-	["info", "detachedFromServer", "Detached from server"],
-	["debug", "socketConnected", "Socket connected"],
+["debug", "socketConnected", "Socket connected"],
 	["debug", "socketDisconnected", "Socket disconnected"],
 	["info", "clientConnected", "Browser connected"],
-	["debug", "browserReconnected", "Browser reconnected"],
 	["info", "clientDisconnected", "Browser disconnected"]
 ];
 
@@ -60,16 +59,6 @@ BrowserHub.prototype.setLogger = function(logger){
 	if(this._logger !== void 0){
 		this._loggingFunctions = logEvents(logger, this, prefix, this.eventsToLog);
 	};
-};
-
-BrowserHub.prototype.attachToServer = function(server){
-	server.on("connection", this._connectionHandler);
-	this._emit("attachedToServer", server);
-};
-
-BrowserHub.prototype.detachFromServer = function(server){
-	server.removeListener("connection", this._connectionHandler);
-	this._emit("detachedFromServer", server);
 };
 
 BrowserHub.prototype.getBrowsers = function(filters){
@@ -91,6 +80,7 @@ BrowserHub.prototype.kill = function(){
 		browser.kill();
 	});
 	this._browsers = {};
+	this._server.removeListener("connection", this._connectionHandler);
 	this._emit("dead");
 };
 
