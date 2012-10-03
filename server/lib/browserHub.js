@@ -9,7 +9,7 @@ var createBrowser = require("./browser.js").create,
 exports.create = function(options){
 	var options = options || {},
 		emitter = options.emitter || new EventEmitter(),
-		browserHub = new BrowserHub(emitter, options.logger);
+		browserHub = new BrowserHub(emitter);
 
 	// If logger exists, attach to it
 	if(options.logger){
@@ -29,26 +29,16 @@ exports.BrowserHub = BrowserHub = function(emitter){
 	}
 
 	this._emitter = emitter;
-	this._browsers = {};
 	this._id = uuid.v4();
-	
-	this._logger = void 0;
-	this._loggingFunctions = void 0; // Keeps track of bound logging functions
-
-	_.bindAll(this, "_connectionHandler");
-};
-
-BrowserHub.prototype.kill = function(){
-	_.each(this._browsers, function(browser){
-		browser.kill();
-	});
 	this._browsers = {};
-	this._emit("dead");
+	
+	_.bindAll(this, "_connectionHandler");
 };
 
 // DEFAULT ATTRIBUTES
 BrowserHub.prototype.registerationTimeout = 2000;
 BrowserHub.prototype.reconnectionTimeout = 1000;
+
 BrowserHub.prototype.eventsToLog = [
 	["info", "attachedToServer", "Attached to server"],
 	["info", "detachedFromServer", "Detached from server"],
@@ -97,6 +87,14 @@ BrowserHub.prototype.getBrowsers = function(filters){
 	return browsers;
 };
 
+BrowserHub.prototype.kill = function(){
+	_.each(this._browsers, function(browser){
+		browser.kill();
+	});
+	this._browsers = {};
+	this._emit("dead");
+};
+
 BrowserHub.prototype.getId = function(){
 	return this._id;
 };
@@ -119,44 +117,51 @@ BrowserHub.prototype._emit = function(event, data){
 };
 
 // BROWSER CONNECTION HANDLERS
-BrowserHub.prototype._browserConnectHandler = function(browser){
-	browserId = browser.getId();
-	this._browsers[browserId] = browser;
-	this._emit("clientConnected", browser);
-};
-
 BrowserHub.prototype._browserReconnectHandler = function(browser, socket){
 	browser.setSocket(socket);
 	browser.setConnected(true);
 	socket.emit("reconnected");
+
 	this._emit("browserReconnected", browser);
 };
 
-BrowserHub.prototype._browserDisconnectHandler = function(browser){
-	var browserId = browser.getId();
-	browser.kill();
-	delete this._browsers[browserId];
+BrowserHub.prototype.attachBrowser = function(browser){
+	browserId = browser.getId();
+	this._browsers[browserId] = browser;
 
-	this._emit("clientDisconnected", browser);
+	this._emit("clientConnected", browser);
+};
+
+BrowserHub.prototype.detachBrowser = function(browser){
+	var browserId = browser.getId();
+
+	if(this._browsers[browserId] !== void 0){
+		browser.kill();
+
+		delete this._browsers[browserId];
+
+		this._emit("clientDisconnected", browser);
+	}
 };
 
 // SOCKET CONNECTION HANDLERS
 BrowserHub.prototype._connectionHandler = function(socket){
 	var self = this,
-		browser,
-		browserId,
 		registered = false;
 	
 	self._emit("socketConnected", socket);
 	
 	socket.on("register", function(registerationData){
+		var browser;
+
 		registered = true;
+		
 		if(registerationData && registerationData.id && self._browsers[registerationData.id] !== void 0){
 			browser = self._browsers[registerationData.id];
 			self._browserReconnectHandler(browser, socket);
 		} else {
 			browser = createBrowser(socket, {attributes: registerationData, logger: self._logger});
-			self._browserConnectHandler(browser);
+			self.attachBrowser(browser);
 		}
 
 		socket.on("disconnect", function(){
@@ -193,7 +198,6 @@ BrowserHub.prototype._connectionHandler = function(socket){
 
 BrowserHub.prototype._disconnectHandler = function(browser){
 	var self = this,
-		browserId = browser.getId(),
 		isBrowserConnected = false;
 	
 	browser.setConnected(false);
@@ -215,7 +219,7 @@ BrowserHub.prototype._disconnectHandler = function(browser){
 		if(now < killTime){
 			process.nextTick(killIfNoReconnect)
 		} else {
-			self._browserDisconnectHandler(browser);
+			self.detachBrowser(browser);
 		}
 	}());
 };
