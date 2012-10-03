@@ -5,7 +5,7 @@ var socketio = require("socket.io"),
 	uuid = require('node-uuid');
 
 var createBrowserHub = require('./browserHub.js').create,
-	createBrowserProvider = require('./seleniumBrowserProvider.js').create,
+	createBrowserProvider = require('./browser_providers/saucelabs.js').create,
 	createStaticServer = require('./staticServer.js').create;
 
 //
@@ -19,9 +19,9 @@ exports.create = create = function(options){
 		captureUrl = options.captureUrl || "http://" + hostName + ":" + port + browserCapturePath + ".html",
 		httpServer = options.httpServer || createStaticServer({port: port, captureUrl: captureUrl, gridHost: gridHost}),
 		gridHost = options.gridHost || "localhost",
-		socketServer = options.socketServer || socketio.listen(httpServer, ((logger !== void 0)? {logger:logger} : {})),
-		browserHub = options.browserHub || createBrowserHub({server: socketServer.of(browserCapturePath), logger: logger}),
-		browserProvider = options.browserProvider || createBrowserProvider({gridHost: gridHost,captureUrl: captureUrl}),
+		socketServer = options.socketServer || socketio.listen(httpServer, {log: false}),
+		browserHub = options.browserHub || createBrowserHub(socketServer.of(browserCapturePath), {logger: logger}),
+		browserProvider = options.browserProvider || createBrowserProvider({captureUrl: captureUrl}),
 		
 	minionMaster = new MinionMaster(emitter, browserHub, browserProvider);
 
@@ -41,11 +41,11 @@ exports.MinionMaster = MinionMaster = function(emitter, browserHub, browserProvi
 	this._browserProvider = browserProvider;
 	this._emitter = emitter;
 
-	this._browserHub.on("clientConnected", function(client){
+	this._browserHub.on("browserConnected", function(client){
 		self._emit("clientConnected", client);
 	});
 
-	this._browserHub.on("clientDisconnected", function(client){
+	this._browserHub.on("browserDisconnected", function(client){
 		self._emit("clientDisconnected", client);
 	});
 };
@@ -56,19 +56,21 @@ MinionMaster.prototype.spawnBrowser = function(browserCapabilities, callback){
 
 	function idMatcher(browser){
 		if(browser.getId() === minionId){
-			self._browserHub.removeListener("clientConnected", idMatcher);
+			self._browserHub.removeListener("browserConnected", idMatcher);
 			if(_.isFunction(callback)){
 				callback(browser);	
 			}
 		}
 	};
-	this._browserHub.on("clientConnected", idMatcher);
+	this._browserHub.on("browserConnected", idMatcher);
+	
+	this._browserProvider.createBrowser(minionId, browserCapabilities);
 
-	return this._browserProvider.createSession(browserCapabilities, minionId);
+	return minionId;
 };
 
 MinionMaster.prototype.killBrowser = function(driver, callback){
-	return this._browserProvider.killSession(driver, callback);
+	return this._browserProvider.killBrowser(driver, callback);
 };
 
 MinionMaster.prototype.kill = function(callback){

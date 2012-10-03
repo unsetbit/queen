@@ -40,27 +40,6 @@ exports.BrowserHub = BrowserHub = function(server, emitter){
 // DEFAULT ATTRIBUTES
 BrowserHub.prototype.registerationTimeout = 2000;
 
-BrowserHub.prototype.eventsToLog = [
-["debug", "socketConnected", "Socket connected"],
-	["debug", "socketDisconnected", "Socket disconnected"],
-	["info", "clientConnected", "Browser connected"],
-	["info", "clientDisconnected", "Browser disconnected"]
-];
-
-BrowserHub.prototype.setLogger = function(logger){
-	var prefix = "[BrowserHub-" + this.getId().substr(0,4) + "] ";
-	
-	if(this._logger !== void 0){
-		stopLoggingEvents(this, this._loggingFunctions);
-	};
-
-	this._logger = logger;
-
-	if(this._logger !== void 0){
-		this._loggingFunctions = logEvents(logger, this, prefix, this.eventsToLog);
-	};
-};
-
 BrowserHub.prototype.getBrowsers = function(filters){
 	if(!_.isArray(filters)){
 		filters = [filters];
@@ -105,14 +84,15 @@ BrowserHub.prototype._emit = function(event, data){
 	this._emitter.emit(event, data);
 };
 
-BrowserHub.prototype.attachBrowser = function(browser){
+// Privates
+BrowserHub.prototype._attachBrowser = function(browser){
 	browserId = browser.getId();
 	this._browsers[browserId] = browser;
 
-	this._emit("clientConnected", browser);
+	this._emit("browserConnected", browser);
 };
 
-BrowserHub.prototype.detachBrowser = function(browser){
+BrowserHub.prototype._detachBrowser = function(browser){
 	var browserId = browser.getId();
 
 	if(this._browsers[browserId] !== void 0){
@@ -120,7 +100,7 @@ BrowserHub.prototype.detachBrowser = function(browser){
 
 		delete this._browsers[browserId];
 
-		this._emit("clientDisconnected", browser);
+		this._emit("browserDisconnected", browser);
 	}
 };
 
@@ -141,12 +121,34 @@ BrowserHub.prototype._connectionHandler = function(socket){
 		clearTimeout(registerationTimeout);
 		
 		browser = createBrowser(socket, {attributes: registerationData, logger: self._logger});
-		self.attachBrowser(browser);
+		self._attachBrowser(browser);
 
 		socket.on("disconnect", function(){
 			if(browser.getSocket() === socket){
-				self.detachBrowser(browser);
+				self._detachBrowser(browser);
 			}
 		});
 	});
+};
+
+// Optional logging helpers
+BrowserHub.prototype.eventsToLog = [
+["debug", "socketConnected", "Socket connected"],
+	["debug", "socketDisconnected", "Socket disconnected"],
+	["info", "browserConnected", "Browser connected"],
+	["info", "browserDisconnected", "Browser disconnected"]
+];
+
+BrowserHub.prototype.setLogger = function(logger){
+	var prefix = "[BrowserHub-" + this.getId().substr(0,4) + "] ";
+	
+	if(this._logger !== void 0){
+		stopLoggingEvents(this, this._loggingFunctions);
+	};
+
+	this._logger = logger;
+
+	if(this._logger !== void 0){
+		this._loggingFunctions = logEvents(logger, this, prefix, this.eventsToLog);
+	};
 };

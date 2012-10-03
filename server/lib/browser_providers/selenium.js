@@ -7,12 +7,6 @@ exports.create = create = function(options){
 		captureUrl = options.captureUrl || "http://localhost/capture",
 		browserProvider = new SeleniumBrowserProvider(gridHost, captureUrl);
 
-	if(options.desiredCapabilities){
-		options.desiredCapabilities.forEach(function(desiredCapabilities){
-			browserProvider.createSession(desiredCapabilities);
-		});
-	};
-
 	return browserProvider;
 };
 
@@ -23,7 +17,7 @@ exports.SeleniumBrowserProvider = SeleniumBrowserProvider = function(gridHost, c
 	this._webdriverjs = webdriverjs;
 };
 
-SeleniumBrowserProvider.prototype.createSession = function(desiredCapabilities, id, callback){
+SeleniumBrowserProvider.prototype.createBrowser = function(id, desiredCapabilities){
 	var captureUrl = this._captureUrl,
 		driver = this._webdriverjs.remote({logLevel:"silent", host: this._gridHost ,desiredCapabilities: desiredCapabilities});
 	
@@ -34,16 +28,14 @@ SeleniumBrowserProvider.prototype.createSession = function(desiredCapabilities, 
 	}
 	
 	driver.url(captureUrl).getTitle(function(){
-		if(_.isFunction(callback)){
-			callback();
-		}
+		//
 	});
 
 	this._drivers.push(driver);
 	return driver;
 };
 
-SeleniumBrowserProvider.prototype.killSession = function(driver, callback){
+SeleniumBrowserProvider.prototype.killBrowser = function(driver, callback){
 	var index = _.indexOf(this._drivers, driver);
 
 	if(index > -1){
@@ -60,7 +52,7 @@ SeleniumBrowserProvider.prototype.killSession = function(driver, callback){
 	}
 };
 
-SeleniumBrowserProvider.prototype.killSessions = function(callback){
+SeleniumBrowserProvider.prototype._killBrowsers = function(callback){
 	callback = callback || function(){};
 	var self = this,
 		drivers = this._drivers;
@@ -84,5 +76,5 @@ SeleniumBrowserProvider.prototype.killSessions = function(callback){
 };
 
 SeleniumBrowserProvider.prototype.kill = function(callback){
-	this.killSessions(callback);
+	this._killBrowsers(callback);
 };
