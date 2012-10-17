@@ -5,7 +5,6 @@ var socketio = require("socket.io"),
 	uuid = require('node-uuid');
 
 var createBrowserHub = require('./browserHub.js').create,
-	createBrowserProvider = require('./browser_providers/selenium.js').create,
 	createStaticServer = require('./staticServer.js').create;
 
 exports.create = create = function(options){
@@ -18,9 +17,10 @@ exports.create = create = function(options){
 		captureUrl = options.captureUrl || "http://" + hostName + ":" + port + browserCapturePath + ".html",
 		httpServer = options.httpServer || createStaticServer({port: port, captureUrl: captureUrl, gridHost: gridHost}),
 		gridHost = options.gridHost || "localhost",
+		gridPort = options.gridPort || 4444,
 		socketServer = options.socketServer || socketio.listen(httpServer, {log: false}),
 		browserHub = options.browserHub || createBrowserHub(socketServer.of(browserCapturePath), {logger: logger}),
-		browserProvider = options.browserProvider || createBrowserProvider({captureUrl: captureUrl}),
+		browserProvider = options.browserProvider;
 		
 	minionMaster = new MinionMaster(emitter, browserHub, browserProvider);
 

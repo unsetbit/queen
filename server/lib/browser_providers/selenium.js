@@ -1,25 +1,27 @@
 var webdriverjs = require("webdriverjs"),
 	_ = require("underscore");
 
-exports.create = create = function(options){
+exports.create = create = function(host, captureUrl, options){
 	var options = options || {},
-		gridHost = options.gridHost || "localhost",
+		host = options.host || "localhost",
+		port = options.port || 4444,
 		captureUrl = options.captureUrl || "http://localhost/capture",
-		browserProvider = new SeleniumBrowserProvider(gridHost, captureUrl);
+		browserProvider = new SeleniumBrowserProvider(host, port, captureUrl);
 
 	return browserProvider;
 };
 
-exports.SeleniumBrowserProvider = SeleniumBrowserProvider = function(gridHost, captureUrl){
+exports.SeleniumBrowserProvider = SeleniumBrowserProvider = function(host, port, captureUrl){
 	this._drivers = [];
 	this._captureUrl = captureUrl;
-	this._gridHost = gridHost;
+	this._host = host;
+	this._port = port;
 	this._webdriverjs = webdriverjs;
 };
 
 SeleniumBrowserProvider.prototype.createBrowser = function(id, desiredCapabilities){
 	var captureUrl = this._captureUrl,
-		driver = this._webdriverjs.remote({logLevel:"silent", host: this._gridHost ,desiredCapabilities: desiredCapabilities});
+		driver = this._webdriverjs.remote({logLevel:"silent", host: this._host, port: this._port ,desiredCapabilities: desiredCapabilities});
 	
 	driver.init();
 
@@ -27,9 +29,7 @@ SeleniumBrowserProvider.prototype.createBrowser = function(id, desiredCapabiliti
 		captureUrl = captureUrl + "?minionId=" + id;
 	}
 	
-	driver.url(captureUrl).getTitle(function(){
-		//
-	});
+	driver.url(captureUrl).getTitle(function(){});
 
 	this._drivers.push(driver);
 	return driver;

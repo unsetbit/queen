@@ -1,22 +1,23 @@
 var webdriver = require('wd'),
 	_ = require("underscore");
 
-exports.create = create = function(options){
+exports.create = create = function(username, apiKey, captureUrl){
 	var options = options || {},
-		captureUrl = options.captureUrl || "http://localhost/capture",
-		browserProvider = new SauceLabsProvider(captureUrl);
+		browserProvider = new SauceLabsProvider(username, apiKey, captureUrl);
 
 	return browserProvider;
 };
 
-exports.SauceLabsProvider = SauceLabsProvider = function(captureUrl){
+exports.SauceLabsProvider = SauceLabsProvider = function(username, apiKey, captureUrl){
 	this._drivers = [];
+	this._username = username;
+	this._apiKey = apiKey;
 	this._captureUrl = captureUrl;
 };
 
 SauceLabsProvider.prototype.createBrowser = function(id, desiredCapabilities){
 	var captureUrl = this._captureUrl,
-		driver = webdriver.remote("ondemand.saucelabs.com", 80, "ozanturgut", "71dd81a2-1ff4-474a-be88-26fcb9be8bb3");
+		driver = webdriver.remote("ondemand.saucelabs.com", 80, username, apiKey);
 
 	if(id !== void 0){
 		captureUrl = captureUrl + "?minionId=" + id;
