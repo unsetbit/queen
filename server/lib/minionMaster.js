@@ -5,10 +5,9 @@ var socketio = require("socket.io"),
 	uuid = require('node-uuid');
 
 var createBrowserHub = require('./browserHub.js').create,
-	createBrowserProvider = require('./browser_providers/saucelabs.js').create,
+	createBrowserProvider = require('./browser_providers/selenium.js').create,
 	createStaticServer = require('./staticServer.js').create;
 
-//
 exports.create = create = function(options){
 	var options = options || {},
 		emitter = options.emitter || new EventEmitter(),
