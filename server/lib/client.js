@@ -86,10 +86,6 @@ Client.prototype.hasAttributes = function(attributeMap){
 	return isSimilar(attributeMap, this._attributes);
 };
 
-Client.prototype.load = function(files){
-	this._emit('load', files);
-};
-
 Client.prototype.emit = function(event, data){
 	this._emit('echo', {
 		event: event,

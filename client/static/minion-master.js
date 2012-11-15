@@ -4153,10 +4153,10 @@ this._chain)}});j(["concat","join","slice"],function(a){var b=k[a];m.prototype[a
     MinionMaster = exports; // <script>
   }
 }((function () {
-	var exports,
+	var exports = {},
 		WEB_SOCKET_SWF_LOCATION = "/minion-master/WebSocketMain.swf";
 
-var Client = function(socket){
+var Client = exports.Client = function(socket){
 	precondition.checkDefined(socket, "Client requires a socket");
 	
 	this._emitter = new EventEmitter();
@@ -4202,16 +4202,6 @@ Client.prototype.getAttributes = function(){
 	return _.extend({}, this._attributes);
 };
 
-Client.prototype._echoHandler = function(data){
-	var event = data.event,
-		eventData = data.data;
-	this._echo(event, eventData);
-};
-
-Client.prototype._killHandler = function(){
-	this.kill();
-};
-
 Client.prototype.kill = function(){
 	this._socket.removeListener("connect", this._connectHandler);
 	this._socket.removeListener("disconnect", this._disconnectHandler);
@@ -4221,6 +4211,16 @@ Client.prototype.kill = function(){
 	this._socket = void 0;
 
 	this._echo('dead');
+};
+
+Client.prototype._echoHandler = function(data){
+	var event = data.event,
+		eventData = data.data;
+	this._echo(event, eventData);
+};
+
+Client.prototype._killHandler = function(){
+	this.kill();
 };
 
 Client.prototype._register = function(){
@@ -4341,7 +4341,348 @@ Utils.getQueryParam = function(name){
   else
     return decodeURIComponent(results[1].replace(/\+/g, " "));
 };
-exports = {};
-exports.Minion = Client;
+var WorkerProvider = exports.WorkerProvider = function(env, client){
+	this._client = client;
+	this._workerCount = 0;
+	this._workerSockets = {};
+	this._emitter = new EventEmitter();
+	
+	_.bindAll(this, "getSocket", 
+					"_killHandler", 
+					"_resetHandler", 
+					"_spawnWorker", 
+					"_workerEventHandler", 
+					"_destroyWorkers");
+	
+	env.GetWorkerSocket = this.getWorkerSocket;
+
+	this._client.on("workerProvider:spawnWorker", this._spawnWorker);
+	this._client.on("workerProvider:toWorker", this._workerEventHandler);	
+	this._client.on("dead", this._killHandler);
+	this._client.on("reset", this._resetHandler);	
+};
+
+WorkerProvider.create = function(options){
+	var options = options || {},
+		env = options.env || window,
+		logger = options.logger,
+		client = options.client || Client.create({socketPath: options.socketPath, socket:options.socket, logger: logger});
+		workerProvider = new WorkerProvider(env, client);
+	
+	if(logger !== void 0){
+		workerProvider.setLogger(logger);
+	}
+
+	return workerProvider;
+};
+
+WorkerProvider.prototype.maxWorkerSocketCount = 10;
+
+// Iframes call this to get their work emission object
+WorkerProvider.prototype.getWorkerSocket = function(socketId){
+	var workerSocket = this._workerSockets[socketId];
+	return workerSocket;
+};
+
+WorkerProvider.prototype.kill = function(){
+	this._client.removeListener("workerProvider:spawnWorker", this._spawnWorker);
+	this._client.removeListener("workerProvider:toWorker", this._workerEventHandler);	
+	this._client.removeListener("dead", this._killHandler);
+	this._client.removeListener("reset", this._resetHandler);
+	this._client = void 0;
+
+	this._destroyWorkers();
+};
+
+WorkerProvider.prototype._spawnWorker = function(data){
+	var self = this,
+		socketId = data.id,
+		workerContext = data.context,
+		worker;
+
+	if(this._workerCount > this.maxWorkerSocketCount){
+		return;
+	}
+
+	this._workerCount += 1;
+	if(this._workerCount === this.maxWorkerSocketCount){
+		this._echo("unavailable");
+	}
+
+	workerSocket = WorkerSocket.create(socketId, {logger: this._logger});
+	workerSocket.on("emit", function(event, data){
+		self._emitFromWorker(socketId, event, data);	
+	});
+	workerSocket.on("done", function(){
+		self._workerDoneHandler(socketId);
+	});
+
+	this._workerSockets[socketId] = workerSocket;
+
+	this._echo("workerSpawned");
+	
+	workerSocket.setContext(workerContext);
+
+	return workerSocket;
+};
+
+WorkerProvider.prototype._killHandler = function(){
+	this.kill();
+}
+
+WorkerProvider.prototype._resetHandler = function(){
+	this._destroyWorkers();
+};
+
+WorkerProvider.prototype._destroyWorkers = function(){
+	_.each(this._workerSockets, function(socket){
+		socket.echo("kill");
+	});
+
+	this._workerSockets = {};
+	this._pendingFromWorkers = [];
+};
+
+WorkerProvider.prototype._emit = function(event, data){
+	this._browser.emit(event, data);
+};
+
+WorkerProvider.prototype._emitFromWorker = function(socketId, event, data){
+	var data = {
+		id: socketId,
+		event: event,
+		data: data
+	}
+	
+	this._emit("bullhorn:fromWorker", data);
+};
+
+WorkerProvider.prototype._workerDoneHandler = function(socketId){
+	var worker = this._workerSockets[socketId]
+	if(worker !== void 0){
+		delete this._workerSockets[socketId];
+		this._workerCount -= 1;
+		this._echo("workerDone");
+		if(this._workerCount === (this.maxWorkerSocketCount - 1)){
+			this._echo("available");
+		}
+	}
+};
+
+
+// Routes commands to workers
+WorkerProvider.prototype._workerEventHandler = function(data){
+	var socketId = data.id,
+		event = data.event,
+		eventData = data.data;
+
+	var workerSocket = this._workerSockets[socketId];
+	if(workerSocket === void 0){ // No longer listening to this worker
+		this._echo("killingStaleSocket");
+		this._emitFromWorker(socketId, "done");
+		return;
+	};
+
+	workerSocket.echo(event, eventData);
+};
+
+// Events
+WorkerProvider.prototype._echo = function(event, data){
+	this._emitter.emit(event, data);
+};
+
+WorkerProvider.prototype.on = function(event, callback){
+	this._emitter.on(event, callback);
+};
+
+WorkerProvider.prototype.once = function(event, callback){
+	this._emitter.once(event, callback);
+};
+
+WorkerProvider.prototype.removeListener = function(event, callback){
+	this._emitter.removeListener(event, callback);
+};
+
+// Logging
+WorkerProvider.prototype.eventsToLog = [
+	["info", "browserConnected", "Browser connected"],
+	["info", "browserDisconnected", "Browser disconnected"],
+	["info", "workerSpawned", "Worker spawned"],
+	["info", "workerDone", "Worker done, disconnected worker socket"],
+	["warn", "killingStaleSocket", "Worker socket no longer exists, sending kill command to worker"],
+	["warn", "unavailable", "Worker socket limit reached"],
+	["info", "available", "Available to spawn workers"]
+];
+
+WorkerProvider.prototype.setLogger = function(logger){
+	if(this._logger === logger){
+		return; // same as existing one
+	}
+	
+	var prefix = "[Bullhorn] ";
+	
+	if(this._logger !== void 0){
+		stopLoggingEvents(this, this._loggingFunctions);
+	};
+
+	this._logger = logger;
+
+	if(this._logger !== void 0){
+		this._loggingFunctions = logEvents(logger, this, prefix, this.eventsToLog);
+	};
+};
+var WorkerSocket = exports.WorkerSocket = function(id){
+	precondition.checkDefined(id, "WorkerSocket requires a socket id");
+
+	this._id = id;
+
+	_.bindAll(this, "_killCommandHandler");
+
+	this._emitter = new EventEmitter();
+	this._emitter.on("kill", this._killCommandHandler);
+};
+
+WorkerSocket.create = function(id, options){
+	var options = options || {},
+		workerSocket = new WorkerSocket(id); 
+
+	if(options.logger){
+		workerSocket.setLogger(options.logger);
+	}
+
+	return workerSocket;
+};
+
+WorkerSocket.prototype.loadingTimeout = 1000;
+
+WorkerSocket.prototype.getId = function(){
+	return this._id;
+};
+
+WorkerSocket.prototype.setContext = function(context){
+	this._unload();
+	
+	this._iframe = iframe = document.createElement("IFRAME"); 
+	document.body.appendChild(iframe);
+	
+	// If a context url is provided, navigate to it
+	if(context.url !== void 0){
+		this._loadExistingContext(context);
+	} else { // Otherwise build an empty context
+		this._constructEmptyContext(context);
+	}
+	this.echo("contextSet");
+};
+
+WorkerSocket.prototype.kill = function(){
+	this._emitter.removeListener("kill", this._killCommandHandler);
+	this._unload();
+	this.emit('done');
+	this.echo('done');
+	this.echo('dead');
+};
+
+WorkerSocket.prototype._killCommandHandler = function(){
+	this.kill();
+};
+
+WorkerSocket.prototype._unload = function(){
+	if(this._iframe !== void 0){
+		document.body.removeChild(this._iframe);	
+		this._iframe = void 0;
+	}
+};
+
+WorkerSocket.prototype._loadExistingContext = function(context){
+	var self = this,
+		iframe = this._iframe,
+		loadingTimeout;
+
+	iframe.setAttribute("src", context.url + "?workerSocketId=" + this._id); 
+	
+	loadingTimeout = setTimeout(function(){
+		self.kill();
+	}, this.loadingTimeout);
+
+	iframe.onload =function(){
+		clearTimeout(loadingTimeout);
+	};
+};
+
+WorkerSocket.prototype._constructEmptyContext = function(context){
+	var iframe,
+		iframeDoc,
+		iframeData,
+		iframeTemplate,
+		iframeContent;
+
+	iframe = this._iframe;
+	iframeDoc = (iframe.contentDocument) ? iframe.contentDocument : iframe.contentWindow.document;
+	iframeData = {scripts: context.scripts};
+	iframeTemplate = "";
+	
+	iframeTemplate += "<html>";
+	iframeTemplate += "<head>";
+	iframeTemplate += "</head>";
+	iframeTemplate += "<body>";
+	iframeTemplate += "<script>window.bullhorn = window.parent.GetWorkerSocket('" + this._id + "')</script>";
+	iframeTemplate += "{{#scripts}}";
+	iframeTemplate += '<script src="{{{.}}}"><\/script>';
+	iframeTemplate += "{{/scripts}}";
+	iframeTemplate += "</body>";
+	iframeTemplate += "</html>";
+
+	iframeContent = Mustache.render(iframeTemplate, iframeData);
+	
+	iframeDoc.open();
+	iframeDoc.write(iframeContent);
+	iframeDoc.close();
+};
+
+// Events
+WorkerSocket.prototype.on = function(event, callback){
+	return this._emitter.on(event, callback);
+};
+
+WorkerSocket.prototype.once = function(event, callback){
+	return this._emitter.once(event, callback);
+};
+
+WorkerSocket.prototype.removeListener = function(event, callback){
+	return this._emitter.removeListener(event, callback);
+};
+
+WorkerSocket.prototype.echo = function(event, data){
+	return this._emitter.emit(event, data);
+};
+
+WorkerSocket.prototype.emit = function(event, data){
+	return this._emitter.emit("emit", event, data);
+};
+
+// Logging
+WorkerSocket.prototype.eventsToLog = [
+	["info", "done", "Done"],
+	["info", "contextSet", "Context set"]
+];
+
+WorkerSocket.prototype.setLogger = function(logger){
+	if(this._logger === logger){
+		return; // same as existing one
+	}
+	
+	var prefix = "[WorkerSocket-" + this._id.substr(0,4) + "] ";
+	
+	if(this._logger !== void 0){
+		Utils.stopLoggingEvents(this, this._loggingFunctions);
+	};
+
+	this._logger = logger;
+
+	if(this._logger !== void 0){
+		this._loggingFunctions = Utils.logEvents(logger, this, prefix, this.eventsToLog);
+	};
+};
+
 return exports;
 }())));

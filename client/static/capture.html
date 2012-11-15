@@ -7,7 +7,7 @@
 <body>
 	<script src="./minion-master.js"></script>
 	<script>
-		var minion = MinionMaster.Minion.create({
+		var minion = MinionMaster.Client.create({
 			socketPath: "//" + window.location.host + "/capture", 
 			logger: console
 		});

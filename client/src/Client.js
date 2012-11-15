@@ -1,4 +1,4 @@
-var Client = function(socket){
+var Client = exports.Client = function(socket){
 	precondition.checkDefined(socket, "Client requires a socket");
 	
 	this._emitter = new EventEmitter();
@@ -44,16 +44,6 @@ Client.prototype.getAttributes = function(){
 	return _.extend({}, this._attributes);
 };
 
-Client.prototype._echoHandler = function(data){
-	var event = data.event,
-		eventData = data.data;
-	this._echo(event, eventData);
-};
-
-Client.prototype._killHandler = function(){
-	this.kill();
-};
-
 Client.prototype.kill = function(){
 	this._socket.removeListener("connect", this._connectHandler);
 	this._socket.removeListener("disconnect", this._disconnectHandler);
@@ -63,6 +53,16 @@ Client.prototype.kill = function(){
 	this._socket = void 0;
 
 	this._echo('dead');
+};
+
+Client.prototype._echoHandler = function(data){
+	var event = data.event,
+		eventData = data.data;
+	this._echo(event, eventData);
+};
+
+Client.prototype._killHandler = function(){
+	this.kill();
 };
 
 Client.prototype._register = function(){

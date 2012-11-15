@@ -7,5 +7,5 @@
     MinionMaster = exports; // <script>
   }
 }((function () {
-	var exports,
+	var exports = {},
 		WEB_SOCKET_SWF_LOCATION = "/minion-master/WebSocketMain.swf";
