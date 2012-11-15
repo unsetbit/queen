@@ -1,5 +1,4 @@
 exports = {};
-exports.Minion = Minion;
-exports.Logger = Logger;
+exports.Minion = Client;
 return exports;
 }())));

@@ -42,7 +42,12 @@ module.exports = function(grunt) {
       client: '<config:files.client>',
       grunt: '<config:files.grunt>'
     },
-
+    watch: {
+        client: {
+          files: '<config:files.client>',
+          tasks: 'concat min'
+        }
+    },
     jshint: {
       server: {
         options: JSHINT_NODE

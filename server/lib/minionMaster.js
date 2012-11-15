@@ -4,77 +4,41 @@ var socketio = require("socket.io"),
 	_ = require('underscore'),
 	uuid = require('node-uuid');
 
-var createBrowserHub = require('./browserHub.js').create,
+var createClientHub = require('./clientHub.js').create,
 	createStaticServer = require('./staticServer.js').create;
 
 exports.create = create = function(options){
 	var options = options || {},
-		emitter = options.emitter || new EventEmitter(),
 		logger = options.logger,
 		port = options.port || 80,
 		hostName = options.hostName || "localhost",
 		browserCapturePath = options.browserCapturePath || "/capture",
 		captureUrl = options.captureUrl || "http://" + hostName + ":" + port + browserCapturePath + ".html",
-		httpServer = options.httpServer || createStaticServer({port: port, captureUrl: captureUrl, gridHost: gridHost}),
-		gridHost = options.gridHost || "localhost",
-		gridPort = options.gridPort || 4444,
+		httpServer = options.httpServer || createStaticServer({port: port, captureUrl: captureUrl}),
 		socketServer = options.socketServer || socketio.listen(httpServer, {log: false}),
-		browserHub = options.browserHub || createBrowserHub(socketServer.of(browserCapturePath), {logger: logger}),
-		browserProvider = options.browserProvider;
-		
-	minionMaster = new MinionMaster(emitter, browserHub, browserProvider);
-
-	if(options.populateWith){
-		options.populateWith.forEach(function(browserCapabilities){
-			minionMaster.spawnBrowser(browserCapabilities);
-		});
-	}
+		clientHub = options.clientHub || createClientHub(socketServer.of(browserCapturePath), {logger: logger}),
+		minionMaster = new MinionMaster(clientHub);
 
 	return minionMaster;
 };
 
-exports.MinionMaster = MinionMaster = function(emitter, browserHub, browserProvider){
+exports.MinionMaster = MinionMaster = function(clientHub){
 	var self = this;
 
-	this._browserHub = browserHub;
-	this._browserProvider = browserProvider;
-	this._emitter = emitter;
+	this._emitter = new EventEmitter();
+	this._clientHub = clientHub;
 
-	this._browserHub.on("browserConnected", function(client){
+	this._clientHub.on("clientConnected", function(client){
 		self._emit("clientConnected", client);
 	});
 
-	this._browserHub.on("browserDisconnected", function(client){
+	this._clientHub.on("clientDisconnected", function(client){
 		self._emit("clientDisconnected", client);
 	});
 };
 
-MinionMaster.prototype.spawnBrowser = function(browserCapabilities, callback){
-	var self = this,
-		minionId = uuid.v4();
-
-	function idMatcher(browser){
-		if(browser.getId() === minionId){
-			self._browserHub.removeListener("browserConnected", idMatcher);
-			if(_.isFunction(callback)){
-				callback(browser);	
-			}
-		}
-	};
-	this._browserHub.on("browserConnected", idMatcher);
-	
-	this._browserProvider.createBrowser(minionId, browserCapabilities);
-
-	return minionId;
-};
-
-MinionMaster.prototype.killBrowser = function(driver, callback){
-	return this._browserProvider.killBrowser(driver, callback);
-};
-
 MinionMaster.prototype.kill = function(callback){
-	this._browserHub.kill();
-	this._browserProvider.kill(callback);
+	this._clientHub.kill();
 };
 
 // EVENT HANDLERS

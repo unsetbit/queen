@@ -1,4 +1,5 @@
 var _ = require("underscore");
+
 exports.isSimilar = isSimilar = function(subObject, superObject){
 	if(superObject === void 0){
 		return true;

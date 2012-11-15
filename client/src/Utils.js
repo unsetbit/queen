@@ -1,9 +1,15 @@
-Utils = {};
+var forEach = Array.prototype.forEach || function(fn, scope) {
+	for(var i = 0, len = this.length; i < len; ++i) {
+	  fn.call(scope, this[i], i, this);
+	}
+}
+
+var Utils = {};
 Utils.logEvents = function(logger, obj, prefix, eventsToLog){
 	var loggingFunctions = [];
 	prefix = prefix || "";
 
-	eventsToLog.forEach(function(eventToLog){
+	forEach.call(eventsToLog, function(eventToLog){
 		var level = eventToLog[0],
 			event = eventToLog[1],
 			message = prefix + eventToLog[2],
@@ -19,7 +25,7 @@ Utils.logEvents = function(logger, obj, prefix, eventsToLog){
 };
 
 Utils.stopLoggingEvents = function(obj, eventLoggingFunctions){
-	eventLoggingFunctions.forEach(function(eventLoggingFunction){
+	forEach.call(eventsToLog, function(eventLoggingFunction){
 		var event = eventLoggingFunction[0],
 			func = eventLoggingFunction[1];
 

@@ -1,8 +1,6 @@
 var path = require('path');
 
-exports.browser = require('./server/lib/browser.js');
-exports.browserHub = require('./server/lib/browserHub.js');
+exports.client = require('./server/lib/client.js');
+exports.clientHub = require('./server/lib/clientHub.js');
 exports.minionMaster = require('./server/lib/minionMaster.js');
-exports.seleniumBrowserProvider = require('./server/lib/browser_providers/selenium.js');
-exports.saucelabsBrowserProvider = require('./server/lib/browser_providers/saucelabs.js');
 exports.staticDir = path.resolve(path.dirname(module.filename), './client/static');

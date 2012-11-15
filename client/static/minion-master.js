@@ -1,4 +1,4 @@
-/*! minion-master - v0.0.2 - 2012-09-30
+/*! minion-master - v0.0.3 - 2012-11-15
 * Copyright (c) 2012 Ozan Turgut; Licensed  */
 
 /* Modernizr 2.6.2 (Custom Build) | MIT & BSD
@@ -246,6 +246,9 @@ EventEmitter.prototype.listeners = function(type) {
   }
   return this._events[type].slice(0);
 };
+/*! precondition - v1.0.0 - 2012-11-14
+* Copyright 2012 Ozan Turgut; Licensed MIT */
+(function(e){if(typeof module=="undefined"||!module.exports)return window.precondition=e;module.exports=e})(function(){var e={};e.check=function(e,n){if(e===!1)throw n&&typeof n!="string"?n(arguments.length>3?r(arguments[2],t.call(arguments,3)):arguments[2]):new Error(arguments.length>2?r(n,t.call(arguments,2)):n);return e},e.checkType=function(e,n){if(e===!1)throw new TypeError(arguments.length>2?r(n,t.call(arguments,2)):n);return e},e.checkDefined=function(e,n){if(e===void 0)throw new ReferenceError(arguments.length>2?r(n,t.call(arguments,2)):n);return e},e.checkRange=function(e,n){if(e===!1)throw new RangeError(arguments.length>2?r(n,t.call(arguments,2)):n);return e};var t=Array.prototype.splice,n=/%s/,r=function(e,t){var r=[],i=e.split(n),s=0,o=i.length;for(;s<o;s++)r.push(i[s]),r.push(t[s]);return r.join("")};return e}());
 /*! Socket.IO.js build:0.9.10, development. Copyright(c) 2011 LearnBoost <dev@learnboost.com> MIT Licensed */
 
 var io = ('undefined' === typeof module ? {} : module.exports);
@@ -4153,241 +4156,78 @@ this._chain)}});j(["concat","join","slice"],function(a){var b=k[a];m.prototype[a
 	var exports,
 		WEB_SOCKET_SWF_LOCATION = "/minion-master/WebSocketMain.swf";
 
-var Logger = function(options){
-	options = options || {};
-	this._threshold = options.threshold || this.threshold;
-};
-
-Logger.create = function(options){
-	var logger = new Logger(options);
-	return logger;
-};
-
-Logger.prototype.threshold = 4;
-
-Logger.prototype.setThreshold = function(threshold){
-	this._threshold = threshold;
-};
-
-Logger.prototype.levels = ['error', 'warn', 'info', 'debug', 'trace'];
-
-Logger.prototype.log = function(message, level){
-	if(!(console && console.log)){
-		return;
-	}
-
-	level = level || 'info';
-	var typeOfMessage = typeof message;
-	if(typeOfMessage === "string" || typeOfMessage === "number" || typeOfMessage === "boolean"){
-		console.log(level + ': ' + message);
-	} else {
-		console.log(level + ': ');
-		console.log(message);
-	}
-};
-
-(function(){
-	for(var i = 0, len = Logger.prototype.levels.length; i<len; i++){
-		var t = Logger.prototype.levels[i];
-		Logger.prototype[t] = function(t){
-			return function(message){
-				Logger.prototype.log.call(this, message, t);
-			};
-		}(t)
-	}
-}());
-var Minion = function(socket, emitter, id){
-	var self = this;
-
-	if(socket === void 0){
-		throw "Minion requires a socket";
-	}
-
-	if(emitter === void 0){
-		throw "Minion requires an emitter";
-	}
-
-	this._id = id;
-
-	this._pendingEmissions = [];
+var Client = function(socket){
+	precondition.checkDefined(socket, "Client requires a socket");
 	
-	this._logger = void 0;
-	this._loggingFunctions = void 0;
-
-	this._emitter = emitter;
-	this._userAgent = navigator.userAgent;
+	this._emitter = new EventEmitter();
 
 	_.bindAll(this,	"_connectHandler",
 					"_disconnectHandler",
-					"_reconnectHandler",
-					"_reconnectedHandler",
-					"_reconnectFailHandler", 
-					"_setIdHandler", 
 					"_echoHandler",
-					"_resetHandler",
 					"_killHandler");
 
-	this.setSocket(socket);
-};
+	this._socket = socket;
+	this._socket.on("connect", this._connectHandler);
+	this._socket.on("disconnect", this._disconnectHandler);
 
-Minion.create = function(options){
+	this._socket.on("echo", this._echoHandler);
+	this._socket.on("kill", this._killHandler);
+}; 
+
+Client.create = function(options){
 	var options = options || {},
 		socketPath = options.socketPath || "//" + window.location.host + "/capture",
 		socket = options.socket || io.connect(socketPath),
-		emitter = options.emitter || new EventEmitter(),
-		id = options.id || Minion.getQueryParam("minionId"),
-		minion = new Minion(socket, emitter, id);
+		client = new Client(socket);
 	
 	if(options.logger){
-		minion.setLogger(options.logger);
+		client.setLogger(options.logger);
 	}
 
-	return minion;
+	return client;
 };
 
-// By Artem Barger from http://stackoverflow.com/a/901144
-Minion.getQueryParam = function(name)
-{
-  name = name.replace(/[\[]/, "\\\[").replace(/[\]]/, "\\\]");
-  var regexS = "[\\?&]" + name + "=([^&#]*)";
-  var regex = new RegExp(regexS);
-  var results = regex.exec(window.location.search);
-  if(results == null)
-    return void 0;
-  else
-    return decodeURIComponent(results[1].replace(/\+/g, " "));
-}
-
-Minion.prototype.eventsToLog = [
-	["info", "connected", "Connected"],
-	["info", "disconnected", "Disconnected"],
-	["info", "reconnected", "Reconnected"],
-	["info", "reconnectFailed", "Reconnection failed"],
-	["debug", "socketConnected", "Socket connected"],
-	["debug", "socketDisconnected", "Socket disconnected"],
-	["debug", "dead", "Dead"]
-];
-
-Minion.prototype.setLogger = function(logger){
-	if(this._logger === logger){
-		return; // same as existing one
-	}
-	
-	var prefix = "[Browser] ";
-	
-	if(this._logger !== void 0){
-		stopLoggingEvents(this, this._loggingFunctions);
-	};
-
-	this._logger = logger;
-
-	if(this._logger !== void 0){
-		this._loggingFunctions = logEvents(logger, this, prefix, this.eventsToLog);
-	};
-};
-
-Minion.prototype.setSocket = function(socket){
-	if(this._socket !== void 0){
-		this._socket.removeListener("connect", this._connectHandler);
-		this._socket.removeListener("disconnect", this._disconnectHandler);
-		this._socket.removeListener("reconnect", this._reconnectHandler);
-		this._socket.removeListener("reconnected", this._reconnectedHandler);
-		this._socket.removeListener("reconnect_failed", this._reconnectFailHandler);
-
-		this._socket.removeListener("echo", this._echoHandler);
-		this._socket.removeListener("reset", this._resetHandler);
-		this._socket.removeListener("kill", this._killHandler);
-		this._socket.removeListener("setId", this._setIdHandler);	
-		this._echo("socketDisconnected");
-	}
-
-	this._socket = socket;
-
-	if(this._socket !== void 0){
-		this._socket.on("connect", this._connectHandler);
-		this._socket.on("disconnect", this._disconnectHandler);
-		this._socket.on("reconnect", this._reconnectHandler);
-		this._socket.on("reconnected", this._reconnectedHandler);
-		this._socket.on("reconnect_failed", this._reconnectFailHandler);
-
-		this._socket.on("echo", this._echoHandler);
-		this._socket.on("kill", this._killHandler);
-		this._socket.on("reset", this._resetHandler);
-		this._socket.on("setId", this._setIdHandler);
-		this._echo("socketConnected");
-	}
-};
-
-Minion.prototype._echo = function(event, data){
-	this._emitter.emit(event, data);
-};
-
-Minion.prototype.on = function(event, callback){
-	this._emitter.on(event, callback);
-};
-
-Minion.prototype.once = function(event, callback){
-	this._emitter.once(event, callback);
-};
-
-Minion.prototype.removeListener = function(event, callback){
-	this._emitter.removeListener(event, callback);
-};
-
-Minion.prototype.emit = function(event, data){
+Client.prototype.emit = function(event, data){
 	this._emit('echo', {
 		event: event,
 		data: data
 	});
 };
 
-Minion.prototype._emit = function(event, data){
-	if(this._connected){
-		this._socket.emit(event, data);	
-	} else {
-		this._pendingEmissions.push(event, data);
-	}
+Client.prototype.getAttribute = function(key){
+	return this._attributes[key];
 };
 
-Minion.prototype.setAttribute = function(key, value){
-	this._attributes[key] = value;
+Client.prototype.getAttributes = function(){
+	return _.extend({}, this._attributes);
 };
 
-Minion.prototype.getAttributes = function(){
-	return this._attributes;
-};
-
-Minion.prototype._echoHandler = function(data){
+Client.prototype._echoHandler = function(data){
 	var event = data.event,
 		eventData = data.data;
 	this._echo(event, eventData);
 };
 
-Minion.prototype._resetHandler = function(){
-	this.kill();
-	window.location.reload(true); // Hard refresh;
-};
-
-Minion.prototype._killHandler = function(){
+Client.prototype._killHandler = function(){
 	this.kill();
 };
 
-Minion.prototype._setIdHandler = function(id){
-	this._id = id;
-};
+Client.prototype.kill = function(){
+	this._socket.removeListener("connect", this._connectHandler);
+	this._socket.removeListener("disconnect", this._disconnectHandler);
 
-Minion.prototype.kill = function(){
-	this.setSocket(void 0);
+	this._socket.removeListener("echo", this._echoHandler);
+	this._socket.removeListener("kill", this._killHandler);
+	this._socket = void 0;
+
 	this._echo('dead');
 };
 
-Minion.prototype.getId = function(){
-	return this._id;
-};
-
-Minion.prototype._register = function(){
+Client.prototype._register = function(){
 	var attributes = {},
 		capabilities = {};
+
+	attributes.userAgent = navigator.userAgent;
 
 	// fill up capabilities
 	_.each(Modernizr, function(value, key){
@@ -4396,52 +4236,78 @@ Minion.prototype._register = function(){
 		}
 	});
 
-	attributes.id = this.getId();
-	attributes.userAgent = this._userAgent;
 	attributes.capabilities = capabilities;
 
 	this._emit("register", attributes);
 };
 
+Client.prototype._emit = function(event, data){
+	this._socket.emit(event, data);	
+};
+
 // CONNECTION HANDLERS
-Minion.prototype._connectHandler = function(){
-	this._connected = true;
+Client.prototype._connectHandler = function(){
 	this._register();
 	this._echo("connected");
 };
 
-Minion.prototype._reconnectHandler = function(){
-	this._connected = true;
-};
-
-Minion.prototype._disconnectHandler = function(){
-	this._connected = false;
+Client.prototype._disconnectHandler = function(){
 	this._echo("disconnected");
+}
+
+// Events
+Client.prototype._echo = function(event, data){
+	this._emitter.emit(event, data);
 };
 
-Minion.prototype._reconnectedHandler = function(){
-	var pendingEmissions = this._pendingEmissions.slice(0),
-		pendingEmission = pendingEmissions.splice(0, 2);
+Client.prototype.on = function(event, callback){
+	this._emitter.on(event, callback);
+};
 
-	this._pendingEmissions = [];
+Client.prototype.once = function(event, callback){
+	this._emitter.once(event, callback);
+};
 
-	while(pendingEmission.length === 2){
-		this._emit(pendingEmission[0], pendingEmission[1]);
-		pendingEmission = pendingEmissions.splice(0, 2)
+Client.prototype.removeListener = function(event, callback){
+	this._emitter.removeListener(event, callback);
+};
+
+// Logging
+Client.prototype.eventsToLog = [
+	["info", "connected", "Connected"],
+	["info", "disconnected", "Disconnected"],
+	["debug", "dead", "Dead"]
+];
+
+Client.prototype.setLogger = function(logger){
+	if(this._logger === logger){
+		return; // same as existing one
 	}
 	
-	this._echo("reconnected");
-};
+	var prefix = "[Browser] ";
+	
+	if(this._logger !== void 0){
+		Utils.stopLoggingEvents(this, this._loggingFunctions);
+	};
 
-Minion.prototype._reconnectFailHandler = function(){
-	this._echo("reconnectFailed");
-	this._kill();
+	this._logger = logger;
+
+	if(this._logger !== void 0){
+		this._loggingFunctions = Utils.logEvents(logger, this, prefix, this.eventsToLog);
+	};
 };
-var logEvents = function(logger, obj, prefix, eventsToLog){
+var forEach = Array.prototype.forEach || function(fn, scope) {
+	for(var i = 0, len = this.length; i < len; ++i) {
+	  fn.call(scope, this[i], i, this);
+	}
+}
+
+var Utils = {};
+Utils.logEvents = function(logger, obj, prefix, eventsToLog){
 	var loggingFunctions = [];
 	prefix = prefix || "";
 
-	eventsToLog.forEach(function(eventToLog){
+	forEach.call(eventsToLog, function(eventToLog){
 		var level = eventToLog[0],
 			event = eventToLog[1],
 			message = prefix + eventToLog[2],
@@ -4456,8 +4322,8 @@ var logEvents = function(logger, obj, prefix, eventsToLog){
 	return loggingFunctions;
 };
 
-var stopLoggingEvents = function(obj, eventLoggingFunctions){
-	eventLoggingFunctions.forEach(function(eventLoggingFunction){
+Utils.stopLoggingEvents = function(obj, eventLoggingFunctions){
+	forEach.call(eventsToLog, function(eventLoggingFunction){
 		var event = eventLoggingFunction[0],
 			func = eventLoggingFunction[1];
 
@@ -4465,8 +4331,17 @@ var stopLoggingEvents = function(obj, eventLoggingFunctions){
 	});
 };
 
+// By Artem Barger from http://stackoverflow.com/a/901144 (TODO: resolve the questionable efficiency)
+Utils.getQueryParam = function(name){
+  name = name.replace(/[\[]/, "\\\[").replace(/[\]]/, "\\\]");
+  var regex = new RegExp("[\\?&]" + name + "=([^&#]*)");
+  var results = regex.exec(window.location.search);
+  if(results == null)
+    return void 0;
+  else
+    return decodeURIComponent(results[1].replace(/\+/g, " "));
+};
 exports = {};
-exports.Minion = Minion;
-exports.Logger = Logger;
+exports.Minion = Client;
 return exports;
 }())));
