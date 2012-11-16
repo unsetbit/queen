@@ -6,7 +6,8 @@ var express = require('express'),
 exports.create = create = function(options){
 	var options = options || {},
 		port = options.port || 80,
-		httpServer = options.httpServer || require('http').createServer().listen(port),
+		hostname = options.hostname || 'localhost',
+		httpServer = options.httpServer || require('http').createServer().listen(port, hostname),
 		baseWebPath = options.baseWebPath || "",
 		webRoot =  options.webRoot || path.resolve(path.dirname(module.filename), '../../client/static'),
 		expressInstance = express();

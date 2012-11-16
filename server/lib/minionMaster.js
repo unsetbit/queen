@@ -13,10 +13,9 @@ exports.create = create = function(options){
 	var options = options || {},
 		logger = options.logger,
 		port = options.port || 80,
-		hostName = options.hostName || "localhost",
+		hostname = options.hostname || "localhost",
 		browserCapturePath = options.browserCapturePath || "/capture",
-		captureUrl = options.captureUrl || "http://" + hostName + ":" + port + browserCapturePath + ".html",
-		httpServer = options.httpServer || createStaticServer({port: port, captureUrl: captureUrl}),
+		httpServer = options.httpServer ||  createStaticServer({port: port, hostname: hostname}),
 		socketServer = options.socketServer || socketio.listen(httpServer, {log: false}),
 		clientHub = options.clientHub || createClientHub(socketServer.of(browserCapturePath), {logger: logger}),
 		minionMaster = new MinionMaster(clientHub);
@@ -91,7 +90,6 @@ MinionMaster.prototype.createWorkforce = function(context, options){
 	var workforce = createWorkforce(workerProviders, context, options);
 	
 	this._workforces.push(workforce);
-
 	workforce.on("dead", function(){
 		self.removeWorkforce(workforce);
 	});

@@ -16,7 +16,7 @@ exports.create = create = function(workerProviders, context, options){
 	}
 
 	if(options.onStart) workforce.on('start', options.onStart);
-	if(options.onStop) workforce.on('stop', options.onStop);
+	if(options.onDone) workforce.on('done', options.onDone);
 	if(options.onWorkStart) workforce.on('workStart', options.onWorkStart);
 	if(options.onWorkEnd) workforce.on('workEnd', options.onWorkEnd);
 
@@ -65,13 +65,17 @@ Workforce.prototype.start = function(){
 	});
 
 	if(this._timeout){
-		setTimeout(function(){
+		var timeout = setTimeout(function(){
 			_.each(self._workerSockets, function(workerSocket){
 				workerSocket.echo("timeout");
 			});
 
 			self.stop();
 		}, this._timeout);
+
+		this.on('done', function(){
+			clearTimeout(timeout);
+		});
 	}
 
 	this._emit("start");
@@ -120,7 +124,7 @@ Workforce.prototype._removeWorkerSocket = function(workerSocketId){
 
 	this._runningSockets -= 1;
 	if(this._runningSockets === 0){
-		this._emit("stop");
+		this._emit("done");
 		this.kill();
 	}
 };
@@ -143,7 +147,7 @@ Workforce.prototype.eventsToLog = [
 	["info", "start", "Start"],
 	["info", "stopping", "Stopping"],
 	["debug", "dead", "Dead"],
-	["debug", "stop", "Stopped"],
+	["debug", "done", "Done"],
 	["debug", "workerStart", "Worker started"],
 	["debug", "workerDead", "Worker dead"]
 ];
