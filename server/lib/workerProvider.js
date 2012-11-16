@@ -124,7 +124,7 @@ WorkerProvider.prototype.spawnWorker = function(context, timeout){
 		this._echo("unavailable");
 	}
 
-	workerSocket = createWorkerSocket();
+	workerSocket = createWorkerSocket(this);
 	socketId = workerSocket.getId();
 
 	data = {

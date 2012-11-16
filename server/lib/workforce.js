@@ -15,6 +15,11 @@ exports.create = create = function(workerProviders, context, options){
 		workforce.setLogger(options.logger);
 	}
 
+	if(options.onStart) workforce.on('start', options.onStart);
+	if(options.onStop) workforce.on('stop', options.onStop);
+	if(options.onWorkStart) workforce.on('workStart', options.onWorkStart);
+	if(options.onWorkEnd) workforce.on('workEnd', options.onWorkEnd);
+
 	return workforce;
 };
 
@@ -42,10 +47,7 @@ Workforce.prototype._startWorker = function(workerProvider){
 	var workerSocket = workerProvider.spawnWorker(this._context, this._timeout);
 
 	this._addWorkerSocket(workerSocket);
-	this._emit("workerStarted", {
-		provider: workerProvider,
-		socket: workerSocket
-	});
+	this._emit("workStart", workerSocket);
 };
 
 Workforce.prototype.isRunning = function(){
@@ -64,14 +66,15 @@ Workforce.prototype.start = function(){
 
 	if(this._timeout){
 		setTimeout(function(){
-			_.each(this._workerSockets, function(workerSocket){
+			_.each(self._workerSockets, function(workerSocket){
 				workerSocket.echo("timeout");
 			});
+
 			self.stop();
 		}, this._timeout);
 	}
 
-	this._emit("started");
+	this._emit("start");
 };
 
 Workforce.prototype.stop = function(){
@@ -107,15 +110,17 @@ Workforce.prototype._addWorkerSocket = function(workerSocket){
 };
 
 Workforce.prototype._removeWorkerSocket = function(workerSocketId){
-	if(this._workerSockets[workerSocketId] === void 0){
+	var workerSocket = this._workerSockets[workerSocketId]
+	if(workerSocket === void 0){
 		return;
 	}
 
 	delete this._workerSockets[workerSocketId];
+	this._emit('workEnd', workerSocket);
 
 	this._runningSockets -= 1;
 	if(this._runningSockets === 0){
-		this._emit("stopped");
+		this._emit("stop");
 		this.kill();
 	}
 };
@@ -135,11 +140,12 @@ Workforce.prototype._emit = function(event, data){
 
 // Logging
 Workforce.prototype.eventsToLog = [
-	["info", "started", "Started"],
-	["info", "stop", "Stopping"],
+	["info", "start", "Start"],
+	["info", "stopping", "Stopping"],
 	["debug", "dead", "Dead"],
-	["debug", "stopped", "Stopped"],
-	["debug", "workerStarted", "Worker started"]
+	["debug", "stop", "Stopped"],
+	["debug", "workerStart", "Worker started"],
+	["debug", "workerDead", "Worker dead"]
 ];
 
 Workforce.prototype.setLogger = function(logger){

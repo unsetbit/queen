@@ -97,6 +97,8 @@ MinionMaster.prototype.createWorkforce = function(context, options){
 	});
 
 	this._emit("workforceCreated", workforce);
+
+	if(options.autostart) workforce.start();
 	return workforce;
 };
 
