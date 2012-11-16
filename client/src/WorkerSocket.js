@@ -3,10 +3,11 @@ var WorkerSocket = exports.WorkerSocket = function(id){
 
 	this._id = id;
 
-	_.bindAll(this, "_killCommandHandler");
+	_.bindAll(this, "_doneHandler", "_killCommandHandler");
 
 	this._emitter = new EventEmitter();
 	this._emitter.on("kill", this._killCommandHandler);
+	this._emitter.on("done", this._doneHandler);
 };
 
 WorkerSocket.create = function(id, options){
@@ -15,6 +16,17 @@ WorkerSocket.create = function(id, options){
 
 	if(options.logger){
 		workerSocket.setLogger(options.logger);
+	}
+
+	if(options.timeout){
+		var timer = setTimeout(function(){
+			workerSocket.emit('timeout');
+			workerSocket.kill();
+		}, options.timeout);
+
+		workerSocket.on("done", function(){
+			clearTimeout(timer);
+		});
 	}
 
 	return workerSocket;
@@ -32,21 +44,24 @@ WorkerSocket.prototype.setContext = function(context){
 	this._iframe = iframe = document.createElement("IFRAME"); 
 	document.body.appendChild(iframe);
 	
-	// If a context url is provided, navigate to it
-	if(context.url !== void 0){
-		this._loadExistingContext(context);
-	} else { // Otherwise build an empty context
+	if(_.isArray(context)){
 		this._constructEmptyContext(context);
+	} else {
+		this._loadExistingContext(context);
 	}
-	this.echo("contextSet");
+
+	this.trigger("contextSet");
 };
 
 WorkerSocket.prototype.kill = function(){
 	this._emitter.removeListener("kill", this._killCommandHandler);
 	this._unload();
-	this.emit('done');
-	this.echo('done');
-	this.echo('dead');
+	this.trigger('dead');
+};
+
+WorkerSocket.prototype._doneHandler = function(){
+	this.kill();
+	this.emit('dead');
 };
 
 WorkerSocket.prototype._killCommandHandler = function(){
@@ -60,12 +75,12 @@ WorkerSocket.prototype._unload = function(){
 	}
 };
 
-WorkerSocket.prototype._loadExistingContext = function(context){
+WorkerSocket.prototype._loadExistingContext = function(contextUrl){
 	var self = this,
 		iframe = this._iframe,
 		loadingTimeout;
 
-	iframe.setAttribute("src", context.url + "?workerSocketId=" + this._id); 
+	iframe.setAttribute("src", contextUrl + "?workerSocketId=" + this._id); 
 	
 	loadingTimeout = setTimeout(function(){
 		self.kill();
@@ -76,7 +91,7 @@ WorkerSocket.prototype._loadExistingContext = function(context){
 	};
 };
 
-WorkerSocket.prototype._constructEmptyContext = function(context){
+WorkerSocket.prototype._constructEmptyContext = function(contextScripts){
 	var iframe,
 		iframeDoc,
 		iframeData,
@@ -85,22 +100,21 @@ WorkerSocket.prototype._constructEmptyContext = function(context){
 
 	iframe = this._iframe;
 	iframeDoc = (iframe.contentDocument) ? iframe.contentDocument : iframe.contentWindow.document;
-	iframeData = {scripts: context.scripts};
-	iframeTemplate = "";
+	iframeData = {scripts: contextScripts};
+	iframeContent = "";
 	
-	iframeTemplate += "<html>";
-	iframeTemplate += "<head>";
-	iframeTemplate += "</head>";
-	iframeTemplate += "<body>";
-	iframeTemplate += "<script>window.bullhorn = window.parent.GetWorkerSocket('" + this._id + "')</script>";
-	iframeTemplate += "{{#scripts}}";
-	iframeTemplate += '<script src="{{{.}}}"><\/script>';
-	iframeTemplate += "{{/scripts}}";
-	iframeTemplate += "</body>";
-	iframeTemplate += "</html>";
+	iframeContent += "<html>";
+	iframeContent += "<head>";
+	iframeContent += "</head>";
+	iframeContent += "<body>";
+	iframeContent += "<script>window.workerSocket = window.parent.GetWorkerSocket('" + this._id + "')</script>";
+	forEach.call(contextScripts, function(contextScript){
+		iframeContent += '<script src="' + contextScript + '"><\/script>';
+		
+	});
+	iframeContent += "</body>";
+	iframeContent += "</html>";
 
-	iframeContent = Mustache.render(iframeTemplate, iframeData);
-	
 	iframeDoc.open();
 	iframeDoc.write(iframeContent);
 	iframeDoc.close();
@@ -111,26 +125,23 @@ WorkerSocket.prototype.on = function(event, callback){
 	return this._emitter.on(event, callback);
 };
 
-WorkerSocket.prototype.once = function(event, callback){
-	return this._emitter.once(event, callback);
-};
-
 WorkerSocket.prototype.removeListener = function(event, callback){
 	return this._emitter.removeListener(event, callback);
 };
 
-WorkerSocket.prototype.echo = function(event, data){
-	return this._emitter.emit(event, data);
+WorkerSocket.prototype.trigger = function(event, data){
+	return this._emitter.trigger(event, [data]);
 };
 
 WorkerSocket.prototype.emit = function(event, data){
-	return this._emitter.emit("emit", event, data);
+	return this._emitter.trigger("emit", [event, data]);
 };
 
 // Logging
 WorkerSocket.prototype.eventsToLog = [
 	["info", "done", "Done"],
-	["info", "contextSet", "Context set"]
+	["info", "contextSet", "Context set"],
+	["warn", "timeout", "Timed out"]
 ];
 
 WorkerSocket.prototype.setLogger = function(logger){

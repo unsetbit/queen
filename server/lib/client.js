@@ -52,9 +52,9 @@ Client.prototype._killHandler = function(){
 Client.prototype.kill = function(){
 	this._socket.removeListener("echo", this._echoHandler);
 	this._socket.removeListener("kill", this._killHandler);
-	this._socket = void 0;
-	
 	this._echo("dead");
+	this._emitter.removeAllListeners();
+	this._socket = void 0;
 };
 
 Client.prototype.setAttributes = function(attributes){
@@ -87,7 +87,7 @@ Client.prototype.hasAttributes = function(attributeMap){
 };
 
 Client.prototype.emit = function(event, data){
-	this._emit('echo', {
+	this._socket.emit('trigger', {
 		event: event,
 		data: data
 	});
@@ -103,10 +103,6 @@ Client.prototype._echoHandler = function(data){
 // Event Handlers
 Client.prototype.on = function(event, callback){
 	this._emitter.on(event, callback);
-};
-
-Client.prototype.once = function(event, callback){
-	this._emitter.once(event, callback);
 };
 
 Client.prototype.removeListener = function(event, callback){

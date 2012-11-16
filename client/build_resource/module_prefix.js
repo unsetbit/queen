@@ -8,4 +8,4 @@
   }
 }((function () {
 	var exports = {},
-		WEB_SOCKET_SWF_LOCATION = "/minion-master/WebSocketMain.swf";
+		WEB_SOCKET_SWF_LOCATION = "/WebSocketMain.swf";

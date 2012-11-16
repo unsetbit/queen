@@ -5,14 +5,14 @@ var Client = exports.Client = function(socket){
 
 	_.bindAll(this,	"_connectHandler",
 					"_disconnectHandler",
-					"_echoHandler",
+					"_triggerHandler",
 					"_killHandler");
 
 	this._socket = socket;
 	this._socket.on("connect", this._connectHandler);
 	this._socket.on("disconnect", this._disconnectHandler);
 
-	this._socket.on("echo", this._echoHandler);
+	this._socket.on("trigger", this._triggerHandler);
 	this._socket.on("kill", this._killHandler);
 }; 
 
@@ -44,21 +44,25 @@ Client.prototype.getAttributes = function(){
 	return _.extend({}, this._attributes);
 };
 
+Client.prototype.reset = function(){
+	this._trigger('reset');
+};
+
 Client.prototype.kill = function(){
 	this._socket.removeListener("connect", this._connectHandler);
 	this._socket.removeListener("disconnect", this._disconnectHandler);
 
-	this._socket.removeListener("echo", this._echoHandler);
+	this._socket.removeListener("echo", this._triggerHandler);
 	this._socket.removeListener("kill", this._killHandler);
 	this._socket = void 0;
 
-	this._echo('dead');
+	this._trigger('dead');
 };
 
-Client.prototype._echoHandler = function(data){
+Client.prototype._triggerHandler = function(data){
 	var event = data.event,
 		eventData = data.data;
-	this._echo(event, eventData);
+	this._trigger(event, eventData);
 };
 
 Client.prototype._killHandler = function(){
@@ -90,24 +94,22 @@ Client.prototype._emit = function(event, data){
 // CONNECTION HANDLERS
 Client.prototype._connectHandler = function(){
 	this._register();
-	this._echo("connected");
+	this._trigger("connected");
 };
 
 Client.prototype._disconnectHandler = function(){
-	this._echo("disconnected");
-}
+	this._trigger("disconnected");
+	this.reset();
+};
+
 
 // Events
-Client.prototype._echo = function(event, data){
-	this._emitter.emit(event, data);
+Client.prototype._trigger = function(event, data){
+	this._emitter.trigger(event, [data]);
 };
 
 Client.prototype.on = function(event, callback){
 	this._emitter.on(event, callback);
-};
-
-Client.prototype.once = function(event, callback){
-	this._emitter.once(event, callback);
 };
 
 Client.prototype.removeListener = function(event, callback){
@@ -118,6 +120,7 @@ Client.prototype.removeListener = function(event, callback){
 Client.prototype.eventsToLog = [
 	["info", "connected", "Connected"],
 	["info", "disconnected", "Disconnected"],
+	["debug", "reset", "Reset"],
 	["debug", "dead", "Dead"]
 ];
 
@@ -126,7 +129,7 @@ Client.prototype.setLogger = function(logger){
 		return; // same as existing one
 	}
 	
-	var prefix = "[Browser] ";
+	var prefix = "[Client] ";
 	
 	if(this._logger !== void 0){
 		Utils.stopLoggingEvents(this, this._loggingFunctions);

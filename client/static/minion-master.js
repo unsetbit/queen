@@ -1,251 +1,15 @@
 /*! minion-master - v0.0.3 - 2012-11-15
 * Copyright (c) 2012 Ozan Turgut; Licensed  */
 
+/**
+ * EventEmitter v4.0.3 - git.io/ee
+ * Oliver Caldwell
+ * MIT license
+ */(function(e){"use strict";function t(){}function i(e,t){if(r)return t.indexOf(e);var n=t.length;while(n--)if(t[n]===e)return n;return-1}var n=t.prototype,r=Array.prototype.indexOf?!0:!1;n.getListeners=function(e){var t=this._events||(this._events={});return t[e]||(t[e]=[])},n.addListener=function(e,t){var n=this.getListeners(e);return i(t,n)===-1&&n.push(t),this},n.on=n.addListener,n.removeListener=function(e,t){var n=this.getListeners(e),r=i(t,n);return r!==-1&&(n.splice(r,1),n.length===0&&(this._events[e]=null)),this},n.off=n.removeListener,n.addListeners=function(e,t){return this.manipulateListeners(!1,e,t)},n.removeListeners=function(e,t){return this.manipulateListeners(!0,e,t)},n.manipulateListeners=function(e,t,n){var r,i,s=e?this.removeListener:this.addListener,o=e?this.removeListeners:this.addListeners;if(typeof t=="object")for(r in t)t.hasOwnProperty(r)&&(i=t[r])&&(typeof i=="function"?s.call(this,r,i):o.call(this,r,i));else{r=n.length;while(r--)s.call(this,t,n[r])}return this},n.removeEvent=function(e){return e?this._events[e]=null:this._events=null,this},n.emitEvent=function(e,t){var n=this.getListeners(e),r=n.length,i;while(r--)i=t?n[r].apply(null,t):n[r](),i===!0&&this.removeListener(e,n[r]);return this},n.trigger=n.emitEvent,typeof define=="function"&&define.amd?define(function(){return t}):e.EventEmitter=t})(this);
 /* Modernizr 2.6.2 (Custom Build) | MIT & BSD
  * Build: http://modernizr.com/download/#-fontface-backgroundsize-borderimage-borderradius-boxshadow-flexbox-flexbox_legacy-hsla-multiplebgs-opacity-rgba-textshadow-cssanimations-csscolumns-generatedcontent-cssgradients-cssreflections-csstransforms-csstransforms3d-csstransitions-applicationcache-canvas-canvastext-draganddrop-hashchange-history-audio-video-indexeddb-input-inputtypes-localstorage-postmessage-sessionstorage-websockets-websqldatabase-webworkers-geolocation-inlinesvg-smil-svg-svgclippaths-touch-webgl-teststyles-testprop-testallprops-hasevent-prefixes-domprefixes
  */
 ;window.Modernizr=function(a,b,c){function B(a){i.cssText=a}function C(a,b){return B(m.join(a+";")+(b||""))}function D(a,b){return typeof a===b}function E(a,b){return!!~(""+a).indexOf(b)}function F(a,b){for(var d in a){var e=a[d];if(!E(e,"-")&&i[e]!==c)return b=="pfx"?e:!0}return!1}function G(a,b,d){for(var e in a){var f=b[a[e]];if(f!==c)return d===!1?a[e]:D(f,"function")?f.bind(d||b):f}return!1}function H(a,b,c){var d=a.charAt(0).toUpperCase()+a.slice(1),e=(a+" "+o.join(d+" ")+d).split(" ");return D(b,"string")||D(b,"undefined")?F(e,b):(e=(a+" "+p.join(d+" ")+d).split(" "),G(e,b,c))}function I(){e.input=function(c){for(var d=0,e=c.length;d<e;d++)t[c[d]]=c[d]in j;return t.list&&(t.list=!!b.createElement("datalist")&&!!a.HTMLDataListElement),t}("autocomplete autofocus list placeholder max min multiple pattern required step".split(" ")),e.inputtypes=function(a){for(var d=0,e,g,h,i=a.length;d<i;d++)j.setAttribute("type",g=a[d]),e=j.type!=="text",e&&(j.value=k,j.style.cssText="position:absolute;visibility:hidden;",/^range$/.test(g)&&j.style.WebkitAppearance!==c?(f.appendChild(j),h=b.defaultView,e=h.getComputedStyle&&h.getComputedStyle(j,null).WebkitAppearance!=="textfield"&&j.offsetHeight!==0,f.removeChild(j)):/^(search|tel)$/.test(g)||(/^(url|email)$/.test(g)?e=j.checkValidity&&j.checkValidity()===!1:e=j.value!=k)),s[a[d]]=!!e;return s}("search tel url email datetime date month week time datetime-local number range color".split(" "))}var d="2.6.2",e={},f=b.documentElement,g="modernizr",h=b.createElement(g),i=h.style,j=b.createElement("input"),k=":)",l={}.toString,m=" -webkit- -moz- -o- -ms- ".split(" "),n="Webkit Moz O ms",o=n.split(" "),p=n.toLowerCase().split(" "),q={svg:"http://www.w3.org/2000/svg"},r={},s={},t={},u=[],v=u.slice,w,x=function(a,c,d,e){var h,i,j,k,l=b.createElement("div"),m=b.body,n=m||b.createElement("body");if(parseInt(d,10))while(d--)j=b.createElement("div"),j.id=e?e[d]:g+(d+1),l.appendChild(j);return h=["&#173;",'<style id="s',g,'">',a,"</style>"].join(""),l.id=g,(m?l:n).innerHTML+=h,n.appendChild(l),m||(n.style.background="",n.style.overflow="hidden",k=f.style.overflow,f.style.overflow="hidden",f.appendChild(n)),i=c(l,a),m?l.parentNode.removeChild(l):(n.parentNode.removeChild(n),f.style.overflow=k),!!i},y=function(){function d(d,e){e=e||b.createElement(a[d]||"div"),d="on"+d;var f=d in e;return f||(e.setAttribute||(e=b.createElement("div")),e.setAttribute&&e.removeAttribute&&(e.setAttribute(d,""),f=D(e[d],"function"),D(e[d],"undefined")||(e[d]=c),e.removeAttribute(d))),e=null,f}var a={select:"input",change:"input",submit:"form",reset:"form",error:"img",load:"img",abort:"img"};return d}(),z={}.hasOwnProperty,A;!D(z,"undefined")&&!D(z.call,"undefined")?A=function(a,b){return z.call(a,b)}:A=function(a,b){return b in a&&D(a.constructor.prototype[b],"undefined")},Function.prototype.bind||(Function.prototype.bind=function(b){var c=this;if(typeof c!="function")throw new TypeError;var d=v.call(arguments,1),e=function(){if(this instanceof e){var a=function(){};a.prototype=c.prototype;var f=new a,g=c.apply(f,d.concat(v.call(arguments)));return Object(g)===g?g:f}return c.apply(b,d.concat(v.call(arguments)))};return e}),r.flexbox=function(){return H("flexWrap")},r.canvas=function(){var a=b.createElement("canvas");return!!a.getContext&&!!a.getContext("2d")},r.canvastext=function(){return!!e.canvas&&!!D(b.createElement("canvas").getContext("2d").fillText,"function")},r.webgl=function(){return!!a.WebGLRenderingContext},r.touch=function(){var c;return"ontouchstart"in a||a.DocumentTouch&&b instanceof DocumentTouch?c=!0:x(["@media (",m.join("touch-enabled),("),g,")","{#modernizr{top:9px;position:absolute}}"].join(""),function(a){c=a.offsetTop===9}),c},r.geolocation=function(){return"geolocation"in navigator},r.postmessage=function(){return!!a.postMessage},r.websqldatabase=function(){return!!a.openDatabase},r.indexedDB=function(){return!!H("indexedDB",a)},r.hashchange=function(){return y("hashchange",a)&&(b.documentMode===c||b.documentMode>7)},r.history=function(){return!!a.history&&!!history.pushState},r.draganddrop=function(){var a=b.createElement("div");return"draggable"in a||"ondragstart"in a&&"ondrop"in a},r.websockets=function(){return"WebSocket"in a||"MozWebSocket"in a},r.rgba=function(){return B("background-color:rgba(150,255,150,.5)"),E(i.backgroundColor,"rgba")},r.hsla=function(){return B("background-color:hsla(120,40%,100%,.5)"),E(i.backgroundColor,"rgba")||E(i.backgroundColor,"hsla")},r.multiplebgs=function(){return B("background:url(https://),url(https://),red url(https://)"),/(url\s*\(.*?){3}/.test(i.background)},r.backgroundsize=function(){return H("backgroundSize")},r.borderimage=function(){return H("borderImage")},r.borderradius=function(){return H("borderRadius")},r.boxshadow=function(){return H("boxShadow")},r.textshadow=function(){return b.createElement("div").style.textShadow===""},r.opacity=function(){return C("opacity:.55"),/^0.55$/.test(i.opacity)},r.cssanimations=function(){return H("animationName")},r.csscolumns=function(){return H("columnCount")},r.cssgradients=function(){var a="background-image:",b="gradient(linear,left top,right bottom,from(#9f9),to(white));",c="linear-gradient(left top,#9f9, white);";return B((a+"-webkit- ".split(" ").join(b+a)+m.join(c+a)).slice(0,-a.length)),E(i.backgroundImage,"gradient")},r.cssreflections=function(){return H("boxReflect")},r.csstransforms=function(){return!!H("transform")},r.csstransforms3d=function(){var a=!!H("perspective");return a&&"webkitPerspective"in f.style&&x("@media (transform-3d),(-webkit-transform-3d){#modernizr{left:9px;position:absolute;height:3px;}}",function(b,c){a=b.offsetLeft===9&&b.offsetHeight===3}),a},r.csstransitions=function(){return H("transition")},r.fontface=function(){var a;return x('@font-face {font-family:"font";src:url("https://")}',function(c,d){var e=b.getElementById("smodernizr"),f=e.sheet||e.styleSheet,g=f?f.cssRules&&f.cssRules[0]?f.cssRules[0].cssText:f.cssText||"":"";a=/src/i.test(g)&&g.indexOf(d.split(" ")[0])===0}),a},r.generatedcontent=function(){var a;return x(["#",g,"{font:0/0 a}#",g,':after{content:"',k,'";visibility:hidden;font:3px/1 a}'].join(""),function(b){a=b.offsetHeight>=3}),a},r.video=function(){var a=b.createElement("video"),c=!1;try{if(c=!!a.canPlayType)c=new Boolean(c),c.ogg=a.canPlayType('video/ogg; codecs="theora"').replace(/^no$/,""),c.h264=a.canPlayType('video/mp4; codecs="avc1.42E01E"').replace(/^no$/,""),c.webm=a.canPlayType('video/webm; codecs="vp8, vorbis"').replace(/^no$/,"")}catch(d){}return c},r.audio=function(){var a=b.createElement("audio"),c=!1;try{if(c=!!a.canPlayType)c=new Boolean(c),c.ogg=a.canPlayType('audio/ogg; codecs="vorbis"').replace(/^no$/,""),c.mp3=a.canPlayType("audio/mpeg;").replace(/^no$/,""),c.wav=a.canPlayType('audio/wav; codecs="1"').replace(/^no$/,""),c.m4a=(a.canPlayType("audio/x-m4a;")||a.canPlayType("audio/aac;")).replace(/^no$/,"")}catch(d){}return c},r.localstorage=function(){try{return localStorage.setItem(g,g),localStorage.removeItem(g),!0}catch(a){return!1}},r.sessionstorage=function(){try{return sessionStorage.setItem(g,g),sessionStorage.removeItem(g),!0}catch(a){return!1}},r.webworkers=function(){return!!a.Worker},r.applicationcache=function(){return!!a.applicationCache},r.svg=function(){return!!b.createElementNS&&!!b.createElementNS(q.svg,"svg").createSVGRect},r.inlinesvg=function(){var a=b.createElement("div");return a.innerHTML="<svg/>",(a.firstChild&&a.firstChild.namespaceURI)==q.svg},r.smil=function(){return!!b.createElementNS&&/SVGAnimate/.test(l.call(b.createElementNS(q.svg,"animate")))},r.svgclippaths=function(){return!!b.createElementNS&&/SVGClipPath/.test(l.call(b.createElementNS(q.svg,"clipPath")))};for(var J in r)A(r,J)&&(w=J.toLowerCase(),e[w]=r[J](),u.push((e[w]?"":"no-")+w));return e.input||I(),e.addTest=function(a,b){if(typeof a=="object")for(var d in a)A(a,d)&&e.addTest(d,a[d]);else{a=a.toLowerCase();if(e[a]!==c)return e;b=typeof b=="function"?b():b,typeof enableClasses!="undefined"&&enableClasses&&(f.className+=" "+(b?"":"no-")+a),e[a]=b}return e},B(""),h=j=null,e._version=d,e._prefixes=m,e._domPrefixes=p,e._cssomPrefixes=o,e.hasEvent=y,e.testProp=function(a){return F([a])},e.testAllProps=H,e.testStyles=x,e}(this,this.document);
-// MODIFICATION NOTICE: Removed the concept of "domain"
-//
-// Copyright Joyent, Inc. and other Node contributors.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a
-// copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to permit
-// persons to whom the Software is furnished to do so, subject to the
-// following conditions:
-//
-// The above copyright notice and this permission notice shall be included
-// in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
-// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
-// USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-var isArray = function(arr){
-  return Object.prototype.toString.call(arr) === '[object Array]';
-};
-
-var domain;
-
-var EventEmitter = function() {}
-
-// By default EventEmitters will print a warning if more than
-// 10 listeners are added to it. This is a useful default which
-// helps finding memory leaks.
-//
-// Obviously not all Emitters should be limited to 10. This function allows
-// that to be increased. Set to zero for unlimited.
-var defaultMaxListeners = 10;
-EventEmitter.prototype.setMaxListeners = function(n) {
-  if (!this._events) this._events = {};
-  this._maxListeners = n;
-};
-
-
-EventEmitter.prototype.emit = function() {
-  var type = arguments[0];
-  // If there is no 'error' event listener then throw.
-  if (type === 'error') {
-    if (!this._events || !this._events.error ||
-        (isArray(this._events.error) && !this._events.error.length))
-    {
-      if (this.domain) {
-        var er = arguments[1];
-        er.domain_emitter = this;
-        er.domain = this.domain;
-        er.domain_thrown = false;
-        this.domain.emit('error', er);
-        return false;
-      }
-
-      if (arguments[1] instanceof Error) {
-        throw arguments[1]; // Unhandled 'error' event
-      } else {
-        throw new Error("Uncaught, unspecified 'error' event.");
-      }
-      return false;
-    }
-  }
-
-  if (!this._events) return false;
-  var handler = this._events[type];
-  if (!handler) return false;
-
-  if (typeof handler == 'function') {
-    if (this.domain) {
-      this.domain.enter();
-    }
-    switch (arguments.length) {
-      // fast cases
-      case 1:
-        handler.call(this);
-        break;
-      case 2:
-        handler.call(this, arguments[1]);
-        break;
-      case 3:
-        handler.call(this, arguments[1], arguments[2]);
-        break;
-      // slower
-      default:
-        var l = arguments.length;
-        var args = new Array(l - 1);
-        for (var i = 1; i < l; i++) args[i - 1] = arguments[i];
-        handler.apply(this, args);
-    }
-    if (this.domain) {
-      this.domain.exit();
-    }
-    return true;
-
-  } else if (isArray(handler)) {
-    if (this.domain) {
-      this.domain.enter();
-    }
-    var l = arguments.length;
-    var args = new Array(l - 1);
-    for (var i = 1; i < l; i++) args[i - 1] = arguments[i];
-
-    var listeners = handler.slice();
-    for (var i = 0, l = listeners.length; i < l; i++) {
-      listeners[i].apply(this, args);
-    }
-    if (this.domain) {
-      this.domain.exit();
-    }
-    return true;
-
-  } else {
-    return false;
-  }
-};
-
-EventEmitter.prototype.addListener = function(type, listener) {
-  if ('function' !== typeof listener) {
-    throw new Error('addListener only takes instances of Function');
-  }
-
-  if (!this._events) this._events = {};
-
-  // To avoid recursion in the case that type == "newListeners"! Before
-  // adding it to the listeners, first emit "newListeners".
-  this.emit('newListener', type, typeof listener.listener === 'function' ?
-            listener.listener : listener);
-
-  if (!this._events[type]) {
-    // Optimize the case of one listener. Don't need the extra array object.
-    this._events[type] = listener;
-  } else if (isArray(this._events[type])) {
-
-    // If we've already got an array, just append.
-    this._events[type].push(listener);
-
-  } else {
-    // Adding the second element, need to change to array.
-    this._events[type] = [this._events[type], listener];
-
-  }
-
-  // Check for listener leak
-  if (isArray(this._events[type]) && !this._events[type].warned) {
-    var m;
-    if (this._maxListeners !== undefined) {
-      m = this._maxListeners;
-    } else {
-      m = defaultMaxListeners;
-    }
-
-    if (m && m > 0 && this._events[type].length > m) {
-      this._events[type].warned = true;
-      console.error('(node) warning: possible EventEmitter memory ' +
-                    'leak detected. %d listeners added. ' +
-                    'Use emitter.setMaxListeners() to increase limit.',
-                    this._events[type].length);
-      console.trace();
-    }
-  }
-
-  return this;
-};
-
-EventEmitter.prototype.on = EventEmitter.prototype.addListener;
-
-EventEmitter.prototype.once = function(type, listener) {
-  if ('function' !== typeof listener) {
-    throw new Error('.once only takes instances of Function');
-  }
-
-  var self = this;
-  function g() {
-    self.removeListener(type, g);
-    listener.apply(this, arguments);
-  };
-
-  g.listener = listener;
-  self.on(type, g);
-
-  return this;
-};
-
-EventEmitter.prototype.removeListener = function(type, listener) {
-  if ('function' !== typeof listener) {
-    throw new Error('removeListener only takes instances of Function');
-  }
-
-  // does not use listeners(), so no side effect of creating _events[type]
-  if (!this._events || !this._events[type]) return this;
-
-  var list = this._events[type];
-
-  if (isArray(list)) {
-    var position = -1;
-    for (var i = 0, length = list.length; i < length; i++) {
-      if (list[i] === listener ||
-          (list[i].listener && list[i].listener === listener))
-      {
-        position = i;
-        break;
-      }
-    }
-
-    if (position < 0) return this;
-    list.splice(position, 1);
-    if (list.length == 0)
-      delete this._events[type];
-  } else if (list === listener ||
-             (list.listener && list.listener === listener))
-  {
-    delete this._events[type];
-  }
-
-  return this;
-};
-
-EventEmitter.prototype.removeAllListeners = function(type) {
-  if (arguments.length === 0) {
-    this._events = {};
-    return this;
-  }
-
-  // does not use listeners(), so no side effect of creating _events[type]
-  if (type && this._events && this._events[type]) this._events[type] = null;
-  return this;
-};
-
-EventEmitter.prototype.listeners = function(type) {
-  if (!this._events || !this._events[type]) return [];
-  if (!isArray(this._events[type])) {
-    return [this._events[type]];
-  }
-  return this._events[type].slice(0);
-};
 /*! precondition - v1.0.0 - 2012-11-14
 * Copyright 2012 Ozan Turgut; Licensed MIT */
 (function(e){if(typeof module=="undefined"||!module.exports)return window.precondition=e;module.exports=e})(function(){var e={};e.check=function(e,n){if(e===!1)throw n&&typeof n!="string"?n(arguments.length>3?r(arguments[2],t.call(arguments,3)):arguments[2]):new Error(arguments.length>2?r(n,t.call(arguments,2)):n);return e},e.checkType=function(e,n){if(e===!1)throw new TypeError(arguments.length>2?r(n,t.call(arguments,2)):n);return e},e.checkDefined=function(e,n){if(e===void 0)throw new ReferenceError(arguments.length>2?r(n,t.call(arguments,2)):n);return e},e.checkRange=function(e,n){if(e===!1)throw new RangeError(arguments.length>2?r(n,t.call(arguments,2)):n);return e};var t=Array.prototype.splice,n=/%s/,r=function(e,t){var r=[],i=e.split(n),s=0,o=i.length;for(;s<o;s++)r.push(i[s]),r.push(t[s]);return r.join("")};return e}());
@@ -4154,7 +3918,7 @@ this._chain)}});j(["concat","join","slice"],function(a){var b=k[a];m.prototype[a
   }
 }((function () {
 	var exports = {},
-		WEB_SOCKET_SWF_LOCATION = "/minion-master/WebSocketMain.swf";
+		WEB_SOCKET_SWF_LOCATION = "/WebSocketMain.swf";
 
 var Client = exports.Client = function(socket){
 	precondition.checkDefined(socket, "Client requires a socket");
@@ -4163,14 +3927,14 @@ var Client = exports.Client = function(socket){
 
 	_.bindAll(this,	"_connectHandler",
 					"_disconnectHandler",
-					"_echoHandler",
+					"_triggerHandler",
 					"_killHandler");
 
 	this._socket = socket;
 	this._socket.on("connect", this._connectHandler);
 	this._socket.on("disconnect", this._disconnectHandler);
 
-	this._socket.on("echo", this._echoHandler);
+	this._socket.on("trigger", this._triggerHandler);
 	this._socket.on("kill", this._killHandler);
 }; 
 
@@ -4202,21 +3966,25 @@ Client.prototype.getAttributes = function(){
 	return _.extend({}, this._attributes);
 };
 
+Client.prototype.reset = function(){
+	this._trigger('reset');
+};
+
 Client.prototype.kill = function(){
 	this._socket.removeListener("connect", this._connectHandler);
 	this._socket.removeListener("disconnect", this._disconnectHandler);
 
-	this._socket.removeListener("echo", this._echoHandler);
+	this._socket.removeListener("echo", this._triggerHandler);
 	this._socket.removeListener("kill", this._killHandler);
 	this._socket = void 0;
 
-	this._echo('dead');
+	this._trigger('dead');
 };
 
-Client.prototype._echoHandler = function(data){
+Client.prototype._triggerHandler = function(data){
 	var event = data.event,
 		eventData = data.data;
-	this._echo(event, eventData);
+	this._trigger(event, eventData);
 };
 
 Client.prototype._killHandler = function(){
@@ -4248,24 +4016,22 @@ Client.prototype._emit = function(event, data){
 // CONNECTION HANDLERS
 Client.prototype._connectHandler = function(){
 	this._register();
-	this._echo("connected");
+	this._trigger("connected");
 };
 
 Client.prototype._disconnectHandler = function(){
-	this._echo("disconnected");
-}
+	this._trigger("disconnected");
+	this.reset();
+};
+
 
 // Events
-Client.prototype._echo = function(event, data){
-	this._emitter.emit(event, data);
+Client.prototype._trigger = function(event, data){
+	this._emitter.trigger(event, [data]);
 };
 
 Client.prototype.on = function(event, callback){
 	this._emitter.on(event, callback);
-};
-
-Client.prototype.once = function(event, callback){
-	this._emitter.once(event, callback);
 };
 
 Client.prototype.removeListener = function(event, callback){
@@ -4276,6 +4042,7 @@ Client.prototype.removeListener = function(event, callback){
 Client.prototype.eventsToLog = [
 	["info", "connected", "Connected"],
 	["info", "disconnected", "Disconnected"],
+	["debug", "reset", "Reset"],
 	["debug", "dead", "Dead"]
 ];
 
@@ -4284,7 +4051,7 @@ Client.prototype.setLogger = function(logger){
 		return; // same as existing one
 	}
 	
-	var prefix = "[Browser] ";
+	var prefix = "[Client] ";
 	
 	if(this._logger !== void 0){
 		Utils.stopLoggingEvents(this, this._loggingFunctions);
@@ -4347,7 +4114,7 @@ var WorkerProvider = exports.WorkerProvider = function(env, client){
 	this._workerSockets = {};
 	this._emitter = new EventEmitter();
 	
-	_.bindAll(this, "getSocket", 
+	_.bindAll(this, "getWorkerSocket", 
 					"_killHandler", 
 					"_resetHandler", 
 					"_spawnWorker", 
@@ -4365,12 +4132,11 @@ var WorkerProvider = exports.WorkerProvider = function(env, client){
 WorkerProvider.create = function(options){
 	var options = options || {},
 		env = options.env || window,
-		logger = options.logger,
-		client = options.client || Client.create({socketPath: options.socketPath, socket:options.socket, logger: logger});
+		client = options.client || Client.create({socketPath: options.socketPath, socket:options.socket, logger: options.logger});
 		workerProvider = new WorkerProvider(env, client);
 	
-	if(logger !== void 0){
-		workerProvider.setLogger(logger);
+	if(options.logger){
+		workerProvider.setLogger(options.logger);
 	}
 
 	return workerProvider;
@@ -4398,6 +4164,7 @@ WorkerProvider.prototype._spawnWorker = function(data){
 	var self = this,
 		socketId = data.id,
 		workerContext = data.context,
+		timeout = data.timeout,
 		worker;
 
 	if(this._workerCount > this.maxWorkerSocketCount){
@@ -4406,20 +4173,22 @@ WorkerProvider.prototype._spawnWorker = function(data){
 
 	this._workerCount += 1;
 	if(this._workerCount === this.maxWorkerSocketCount){
-		this._echo("unavailable");
+		this._trigger("unavailable");
 	}
 
-	workerSocket = WorkerSocket.create(socketId, {logger: this._logger});
+	workerSocket = WorkerSocket.create(socketId, {logger: this._logger, timeout: timeout});
+
 	workerSocket.on("emit", function(event, data){
 		self._emitFromWorker(socketId, event, data);	
 	});
-	workerSocket.on("done", function(){
-		self._workerDoneHandler(socketId);
+	
+	workerSocket.on("dead", function(){
+		self._workerDeadHandler(socketId);
 	});
 
 	this._workerSockets[socketId] = workerSocket;
 
-	this._echo("workerSpawned");
+	this._trigger("workerSpawned");
 	
 	workerSocket.setContext(workerContext);
 
@@ -4436,7 +4205,7 @@ WorkerProvider.prototype._resetHandler = function(){
 
 WorkerProvider.prototype._destroyWorkers = function(){
 	_.each(this._workerSockets, function(socket){
-		socket.echo("kill");
+		socket.trigger("kill");
 	});
 
 	this._workerSockets = {};
@@ -4444,7 +4213,7 @@ WorkerProvider.prototype._destroyWorkers = function(){
 };
 
 WorkerProvider.prototype._emit = function(event, data){
-	this._browser.emit(event, data);
+	this._client.emit(event, data);
 };
 
 WorkerProvider.prototype._emitFromWorker = function(socketId, event, data){
@@ -4453,18 +4222,21 @@ WorkerProvider.prototype._emitFromWorker = function(socketId, event, data){
 		event: event,
 		data: data
 	}
-	
-	this._emit("bullhorn:fromWorker", data);
+
+	this._emit("workerProvider:fromWorker", data);
 };
 
-WorkerProvider.prototype._workerDoneHandler = function(socketId){
-	var worker = this._workerSockets[socketId]
+WorkerProvider.prototype._workerDeadHandler = function(socketId){
+	var worker = this._workerSockets[socketId];
+
 	if(worker !== void 0){
 		delete this._workerSockets[socketId];
+	
 		this._workerCount -= 1;
-		this._echo("workerDone");
+		this._trigger("workerDead");
+	
 		if(this._workerCount === (this.maxWorkerSocketCount - 1)){
-			this._echo("available");
+			this._trigger("available");
 		}
 	}
 };
@@ -4478,25 +4250,24 @@ WorkerProvider.prototype._workerEventHandler = function(data){
 
 	var workerSocket = this._workerSockets[socketId];
 	if(workerSocket === void 0){ // No longer listening to this worker
-		this._echo("killingStaleSocket");
-		this._emitFromWorker(socketId, "done");
+		if(event !== "kill"){
+			this._trigger("killingStaleSocket");
+			this._emitFromWorker(socketId, "kill");
+		}
+
 		return;
 	};
 
-	workerSocket.echo(event, eventData);
+	workerSocket.trigger(event, eventData);
 };
 
 // Events
-WorkerProvider.prototype._echo = function(event, data){
-	this._emitter.emit(event, data);
+WorkerProvider.prototype._trigger = function(event, data){
+	this._emitter.trigger(event, [data]);
 };
 
 WorkerProvider.prototype.on = function(event, callback){
 	this._emitter.on(event, callback);
-};
-
-WorkerProvider.prototype.once = function(event, callback){
-	this._emitter.once(event, callback);
 };
 
 WorkerProvider.prototype.removeListener = function(event, callback){
@@ -4508,7 +4279,7 @@ WorkerProvider.prototype.eventsToLog = [
 	["info", "browserConnected", "Browser connected"],
 	["info", "browserDisconnected", "Browser disconnected"],
 	["info", "workerSpawned", "Worker spawned"],
-	["info", "workerDone", "Worker done, disconnected worker socket"],
+	["info", "workerDead", "Worker dead, disconnected worker socket"],
 	["warn", "killingStaleSocket", "Worker socket no longer exists, sending kill command to worker"],
 	["warn", "unavailable", "Worker socket limit reached"],
 	["info", "available", "Available to spawn workers"]
@@ -4519,16 +4290,16 @@ WorkerProvider.prototype.setLogger = function(logger){
 		return; // same as existing one
 	}
 	
-	var prefix = "[Bullhorn] ";
+	var prefix = "[WorkerProvider] ";
 	
 	if(this._logger !== void 0){
-		stopLoggingEvents(this, this._loggingFunctions);
+		Utils.stopLoggingEvents(this, this._loggingFunctions);
 	};
 
 	this._logger = logger;
 
 	if(this._logger !== void 0){
-		this._loggingFunctions = logEvents(logger, this, prefix, this.eventsToLog);
+		this._loggingFunctions = Utils.logEvents(logger, this, prefix, this.eventsToLog);
 	};
 };
 var WorkerSocket = exports.WorkerSocket = function(id){
@@ -4536,10 +4307,11 @@ var WorkerSocket = exports.WorkerSocket = function(id){
 
 	this._id = id;
 
-	_.bindAll(this, "_killCommandHandler");
+	_.bindAll(this, "_doneHandler", "_killCommandHandler");
 
 	this._emitter = new EventEmitter();
 	this._emitter.on("kill", this._killCommandHandler);
+	this._emitter.on("done", this._doneHandler);
 };
 
 WorkerSocket.create = function(id, options){
@@ -4548,6 +4320,17 @@ WorkerSocket.create = function(id, options){
 
 	if(options.logger){
 		workerSocket.setLogger(options.logger);
+	}
+
+	if(options.timeout){
+		var timer = setTimeout(function(){
+			workerSocket.emit('timeout');
+			workerSocket.kill();
+		}, options.timeout);
+
+		workerSocket.on("done", function(){
+			clearTimeout(timer);
+		});
 	}
 
 	return workerSocket;
@@ -4565,21 +4348,24 @@ WorkerSocket.prototype.setContext = function(context){
 	this._iframe = iframe = document.createElement("IFRAME"); 
 	document.body.appendChild(iframe);
 	
-	// If a context url is provided, navigate to it
-	if(context.url !== void 0){
-		this._loadExistingContext(context);
-	} else { // Otherwise build an empty context
+	if(_.isArray(context)){
 		this._constructEmptyContext(context);
+	} else {
+		this._loadExistingContext(context);
 	}
-	this.echo("contextSet");
+
+	this.trigger("contextSet");
 };
 
 WorkerSocket.prototype.kill = function(){
 	this._emitter.removeListener("kill", this._killCommandHandler);
 	this._unload();
-	this.emit('done');
-	this.echo('done');
-	this.echo('dead');
+	this.trigger('dead');
+};
+
+WorkerSocket.prototype._doneHandler = function(){
+	this.kill();
+	this.emit('dead');
 };
 
 WorkerSocket.prototype._killCommandHandler = function(){
@@ -4593,12 +4379,12 @@ WorkerSocket.prototype._unload = function(){
 	}
 };
 
-WorkerSocket.prototype._loadExistingContext = function(context){
+WorkerSocket.prototype._loadExistingContext = function(contextUrl){
 	var self = this,
 		iframe = this._iframe,
 		loadingTimeout;
 
-	iframe.setAttribute("src", context.url + "?workerSocketId=" + this._id); 
+	iframe.setAttribute("src", contextUrl + "?workerSocketId=" + this._id); 
 	
 	loadingTimeout = setTimeout(function(){
 		self.kill();
@@ -4609,7 +4395,7 @@ WorkerSocket.prototype._loadExistingContext = function(context){
 	};
 };
 
-WorkerSocket.prototype._constructEmptyContext = function(context){
+WorkerSocket.prototype._constructEmptyContext = function(contextScripts){
 	var iframe,
 		iframeDoc,
 		iframeData,
@@ -4618,22 +4404,21 @@ WorkerSocket.prototype._constructEmptyContext = function(context){
 
 	iframe = this._iframe;
 	iframeDoc = (iframe.contentDocument) ? iframe.contentDocument : iframe.contentWindow.document;
-	iframeData = {scripts: context.scripts};
-	iframeTemplate = "";
+	iframeData = {scripts: contextScripts};
+	iframeContent = "";
 	
-	iframeTemplate += "<html>";
-	iframeTemplate += "<head>";
-	iframeTemplate += "</head>";
-	iframeTemplate += "<body>";
-	iframeTemplate += "<script>window.bullhorn = window.parent.GetWorkerSocket('" + this._id + "')</script>";
-	iframeTemplate += "{{#scripts}}";
-	iframeTemplate += '<script src="{{{.}}}"><\/script>';
-	iframeTemplate += "{{/scripts}}";
-	iframeTemplate += "</body>";
-	iframeTemplate += "</html>";
+	iframeContent += "<html>";
+	iframeContent += "<head>";
+	iframeContent += "</head>";
+	iframeContent += "<body>";
+	iframeContent += "<script>window.workerSocket = window.parent.GetWorkerSocket('" + this._id + "')</script>";
+	forEach.call(contextScripts, function(contextScript){
+		iframeContent += '<script src="' + contextScript + '"><\/script>';
+		
+	});
+	iframeContent += "</body>";
+	iframeContent += "</html>";
 
-	iframeContent = Mustache.render(iframeTemplate, iframeData);
-	
 	iframeDoc.open();
 	iframeDoc.write(iframeContent);
 	iframeDoc.close();
@@ -4644,26 +4429,23 @@ WorkerSocket.prototype.on = function(event, callback){
 	return this._emitter.on(event, callback);
 };
 
-WorkerSocket.prototype.once = function(event, callback){
-	return this._emitter.once(event, callback);
-};
-
 WorkerSocket.prototype.removeListener = function(event, callback){
 	return this._emitter.removeListener(event, callback);
 };
 
-WorkerSocket.prototype.echo = function(event, data){
-	return this._emitter.emit(event, data);
+WorkerSocket.prototype.trigger = function(event, data){
+	return this._emitter.trigger(event, [data]);
 };
 
 WorkerSocket.prototype.emit = function(event, data){
-	return this._emitter.emit("emit", event, data);
+	return this._emitter.trigger("emit", [event, data]);
 };
 
 // Logging
 WorkerSocket.prototype.eventsToLog = [
 	["info", "done", "Done"],
-	["info", "contextSet", "Context set"]
+	["info", "contextSet", "Context set"],
+	["warn", "timeout", "Timed out"]
 ];
 
 WorkerSocket.prototype.setLogger = function(logger){
