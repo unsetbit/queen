@@ -123,8 +123,8 @@ BrowserClient.prototype.eventsToLog = [
 	["info", "connected", "Connected"],
 	["info", "disconnected", "Disconnected"],
 	["info", "reconnect", "Reconnected"],
-	["debug", "reset", "Reset"],
-	["debug", "dead", "Dead"]
+	["info", "reset", "Reset"],
+	["info", "dead", "Dead"]
 ];
 
 BrowserClient.prototype.setLogger = function(logger){
