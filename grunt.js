@@ -16,6 +16,7 @@ module.exports = function(grunt) {
     files: {
       server: ['server/lib/*.js'],
       client: ['client/lib/*.js', 'client/build_resource/module_prefix.js', 'client/src/*.js', 'client/build_resource/module_postfix.js'],
+      styles: ['client/lib/*.css', 'client/styles/**/*.css'],
       grunt: ['grunt.js', 'tasks/*.js']
     },
     meta: {
@@ -29,6 +30,10 @@ module.exports = function(grunt) {
       dist: {
         src: ['<banner:meta.banner>', '<config:files.client>'],
         dest: 'client/static/<%= pkg.name %>.js'
+      },
+      styles: {
+        src: ['<banner:meta.banner>', '<config:files.styles>'],
+        dest: 'client/static/<%= pkg.name %>.css'
       }
     },
     min: {
@@ -45,7 +50,11 @@ module.exports = function(grunt) {
     watch: {
         client: {
           files: '<config:files.client>',
-          tasks: 'concat min'
+          tasks: 'concat'
+        },
+        styles: {
+          files: '<config:files.styles>',
+          tasks: 'concat:styles'
         }
     },
     jshint: {
@@ -78,5 +87,5 @@ module.exports = function(grunt) {
     }
   });
 
-  grunt.registerTask('default', 'concat min');
+  grunt.registerTask('default', 'concat');
 };

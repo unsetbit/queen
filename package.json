@@ -1,6 +1,6 @@
 {
   "name": "minion-master",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Rule browsers remotely",
   "main": "index.js",
   "dependencies": {

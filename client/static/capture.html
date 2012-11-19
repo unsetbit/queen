@@ -3,14 +3,20 @@
 <head>
   <meta charset="utf-8">
   <title></title>
+  <link rel="stylesheet" href="/minion-master.css" type="text/css">
 </head>
 <body>
 	<script src="./minion-master.js"></script>
 	<script>
-		var minion = MinionMaster.WorkerProvider.create({
-			socketPath: "//" + window.location.host + "/capture", 
-			logger: console
-		});
+    var minionConfig = {
+      socketPath: "//" + window.location.host + "/capture"
+    };
+
+    if(console !== void 0){
+      minionConfig.logger = console;
+    }
+		
+    var minion = MinionMaster.WorkerProvider.create(minionConfig);
 	</script>
 </body>
 </html>

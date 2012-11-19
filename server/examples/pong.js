@@ -4,10 +4,12 @@ var winston = require("winston"),
 
 var minionMaster = createMinionMaster({	logger:logger });
 minionMaster.on("workerProviderConnected", function(){
-	var workforce = minionMaster.createWorkforce(['http://localhost/ping.js'], {
-		timeout:5000,
-		autostart:true,
-		onWorkStart: function(worker){
+	var workforce, i;
+
+	for(i = 2; i > 0; i--){
+		workforce = minionMaster.getWorkforce();
+
+		workforce.on('workStart', function(worker){
 			worker.on('ping', function(){
 				console.log('ping');
 				worker.emit('pong');
@@ -17,6 +19,8 @@ minionMaster.on("workerProviderConnected", function(){
 			worker.on('timeout', function(){
 				console.log('timeout');
 			});
-		}
-	});
+		});
+
+		workforce.start({scripts: ['http://localhost/ping.js']}, 1000 * 10);
+	}
 });

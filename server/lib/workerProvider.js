@@ -3,7 +3,7 @@ var _ = require("underscore"),
 	precondition = require('precondition');
 
 var EventEmitter = require("events").EventEmitter;
-var createWorkerSocket = require("./workerSocket.js").create;
+var createWorkerSocket = require("./worker.js").create;
 
 var	logEvents = require("./utils.js").logEvents,
 	stopLoggingEvents = require("./utils.js").stopLoggingEvents;
@@ -52,7 +52,7 @@ WorkerProvider.prototype.isAvailable = function(){
 	return this._workerSocketCount < this.maxWorkerCount;
 };
 
-WorkerProvider.prototype.maxWorkerCount = 10;
+WorkerProvider.prototype.maxWorkerCount = 100;
 
 WorkerProvider.prototype._emit = function(event, data){
 	this._client.emit(event, data);
@@ -90,6 +90,9 @@ WorkerProvider.prototype._clientDeadHandler = function(){
 };
 
 WorkerProvider.prototype.kill = function(){
+	if(this._isDead) return;
+	this._isDead = true;
+	
 	this._destroyWorkers();
 
 	this._client.removeListener("workerProvider:fromWorker", this._workerEventHandler);
@@ -107,7 +110,7 @@ WorkerProvider.prototype._destroyWorkers = function(){
 	this._workerSockets = {};
 };
 
-WorkerProvider.prototype.spawnWorker = function(context, timeout){
+WorkerProvider.prototype.spawnWorker = function(workerConfig, timeout){
 	var self = this,
 		workerSocket, 
 		socketId,
@@ -129,7 +132,7 @@ WorkerProvider.prototype.spawnWorker = function(context, timeout){
 
 	data = {
 		id: socketId,
-		context: context,
+		workerConfig: workerConfig,
 		timeout: timeout
 	};
 
@@ -137,7 +140,7 @@ WorkerProvider.prototype.spawnWorker = function(context, timeout){
 		self._emitToWorker(socketId, event, data);
 	});
 
-	workerSocket.on("done", function(){
+	workerSocket.on("dead", function(){
 		self._disconnectWorkerSocket(workerSocket);
 	});
 

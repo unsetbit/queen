@@ -1,4 +1,4 @@
-/*! minion-master - v0.0.3 - 2012-11-15
+/*! minion-master - v0.0.3 - 2012-11-18
 * Copyright (c) 2012 Ozan Turgut; Licensed  */
 
 /**
@@ -3920,7 +3920,7 @@ this._chain)}});j(["concat","join","slice"],function(a){var b=k[a];m.prototype[a
 	var exports = {},
 		WEB_SOCKET_SWF_LOCATION = "/WebSocketMain.swf";
 
-var Client = exports.Client = function(socket){
+var BrowserClient = exports.BrowserClient = function(socket){
 	precondition.checkDefined(socket, "Client requires a socket");
 	
 	this._emitter = new EventEmitter();
@@ -3938,11 +3938,13 @@ var Client = exports.Client = function(socket){
 	this._socket.on("kill", this._killHandler);
 }; 
 
-Client.create = function(options){
+BrowserClient.create = function(options){
 	var options = options || {},
 		socketPath = options.socketPath || "//" + window.location.host + "/capture",
-		socket = options.socket || io.connect(socketPath),
-		client = new Client(socket);
+		socket = options.socket || io.connect(socketPath, {
+			'max reconnection attempts': Infinity
+		}),
+		client = new BrowserClient(socket);
 	
 	if(options.logger){
 		client.setLogger(options.logger);
@@ -3951,47 +3953,43 @@ Client.create = function(options){
 	return client;
 };
 
-Client.prototype.emit = function(event, data){
+BrowserClient.prototype.emit = function(event, data){
 	this._emit('echo', {
 		event: event,
 		data: data
 	});
 };
 
-Client.prototype.getAttribute = function(key){
-	return this._attributes[key];
-};
-
-Client.prototype.getAttributes = function(){
-	return _.extend({}, this._attributes);
-};
-
-Client.prototype.reset = function(){
+BrowserClient.prototype._reset = function(){
 	this._trigger('reset');
 };
 
-Client.prototype.kill = function(){
+BrowserClient.prototype._reload = function(){
+	window.location.reload(true);
+};
+
+BrowserClient.prototype.kill = function(){
 	this._socket.removeListener("connect", this._connectHandler);
 	this._socket.removeListener("disconnect", this._disconnectHandler);
 
-	this._socket.removeListener("echo", this._triggerHandler);
+	this._socket.removeListener("trigger", this._triggerHandler);
 	this._socket.removeListener("kill", this._killHandler);
 	this._socket = void 0;
 
 	this._trigger('dead');
 };
 
-Client.prototype._triggerHandler = function(data){
+BrowserClient.prototype._triggerHandler = function(data){
 	var event = data.event,
 		eventData = data.data;
 	this._trigger(event, eventData);
 };
 
-Client.prototype._killHandler = function(){
+BrowserClient.prototype._killHandler = function(){
 	this.kill();
 };
 
-Client.prototype._register = function(){
+BrowserClient.prototype._register = function(){
 	var attributes = {},
 		capabilities = {};
 
@@ -4009,49 +4007,54 @@ Client.prototype._register = function(){
 	this._emit("register", attributes);
 };
 
-Client.prototype._emit = function(event, data){
+BrowserClient.prototype._emit = function(event, data){
 	this._socket.emit(event, data);	
 };
 
 // CONNECTION HANDLERS
-Client.prototype._connectHandler = function(){
-	this._register();
-	this._trigger("connected");
+BrowserClient.prototype._connectHandler = function(){
+	if(this._isReconnecting){
+		this._reload(); // Reload on reconnect
+	} else {
+		this._register();
+		this._trigger("connected");
+	}
 };
 
-Client.prototype._disconnectHandler = function(){
+BrowserClient.prototype._disconnectHandler = function(){
+	this._reset();
 	this._trigger("disconnected");
-	this.reset();
+	this._isReconnecting = true;
 };
-
 
 // Events
-Client.prototype._trigger = function(event, data){
+BrowserClient.prototype._trigger = function(event, data){
 	this._emitter.trigger(event, [data]);
 };
 
-Client.prototype.on = function(event, callback){
+BrowserClient.prototype.on = function(event, callback){
 	this._emitter.on(event, callback);
 };
 
-Client.prototype.removeListener = function(event, callback){
+BrowserClient.prototype.removeListener = function(event, callback){
 	this._emitter.removeListener(event, callback);
 };
 
 // Logging
-Client.prototype.eventsToLog = [
+BrowserClient.prototype.eventsToLog = [
 	["info", "connected", "Connected"],
 	["info", "disconnected", "Disconnected"],
+	["info", "reconnect", "Reconnected"],
 	["debug", "reset", "Reset"],
 	["debug", "dead", "Dead"]
 ];
 
-Client.prototype.setLogger = function(logger){
+BrowserClient.prototype.setLogger = function(logger){
 	if(this._logger === logger){
 		return; // same as existing one
 	}
 	
-	var prefix = "[Client] ";
+	var prefix = "[BrowserClient] ";
 	
 	if(this._logger !== void 0){
 		Utils.stopLoggingEvents(this, this._loggingFunctions);
@@ -4063,6 +4066,154 @@ Client.prototype.setLogger = function(logger){
 		this._loggingFunctions = Utils.logEvents(logger, this, prefix, this.eventsToLog);
 	};
 };
+var IframeWorker = exports.IframeWorker = function(id){
+	precondition.checkDefined(id, "IframeWorker requires a socket id");
+
+	this._id = id;
+	this._iframe = iframe = document.createElement("IFRAME"); 
+	document.body.appendChild(iframe);
+
+	_.bindAll(this, "_killCommandHandler");
+
+	this._emitter = new EventEmitter();
+	this._emitter.on("kill", this._killCommandHandler);
+};
+
+IframeWorker.create = function(id, options){
+	var options = options || {},
+		logger = options.logger,
+		iframeWorker = new IframeWorker(id); 
+
+	if(logger){
+		iframeWorker.setLogger(logger);
+	}
+
+	return iframeWorker;
+};
+
+IframeWorker.prototype.getId = function(){
+	return this._id;
+};
+
+IframeWorker.prototype.start = function(config){
+	if(this._started) return false;
+
+	this._started = true;
+
+	if(config.scripts !== void 0){
+		this._runScripts(config.scripts);
+	} else if(config.url !== void 0){
+		this._loadUrl(config.url);
+	} else { // config.script !== void 0
+		this._runScript(config.script);
+	}
+};
+
+IframeWorker.prototype._runScripts = function(scriptArray){
+	var iframe,
+		iframeDoc,
+		iframeData,
+		iframeTemplate,
+		iframeContent;
+
+	iframe = this._iframe;
+	iframeDoc = (iframe.contentDocument) ? iframe.contentDocument : iframe.contentWindow.document;
+	
+	iframeContent = "<html><head><title></title></head><body>";
+	iframeContent += "<script>window.workerSocket = window.parent.GetWorkerSocket('" + this._id + "')</script>";
+	forEach.call(scriptArray, function(script){
+		iframeContent += '<script src="' + script + '"><\/script>';
+		
+	});
+	iframeContent += "</body></html>";
+
+	iframeDoc.open();
+	iframeDoc.write(iframeContent);
+	iframeDoc.close();
+};
+
+IframeWorker.prototype._runScript = function(script){
+	var iframe,
+		iframeDoc,
+		iframeData,
+		iframeTemplate,
+		iframeContent;
+
+	iframe = this._iframe;
+	iframeDoc = (iframe.contentDocument) ? iframe.contentDocument : iframe.contentWindow.document;
+	
+	iframeContent =  "<html><head><title></title></head><body>";
+	iframeContent += "<script>window.workerSocket = window.parent.GetWorkerSocket('" + this._id + "')</script>";
+	iframeContent += "<script>" + script + "</script>";
+	iframeContent += "</body></html>";
+
+	iframeDoc.open();
+	iframeDoc.write(iframeContent);
+	iframeDoc.close();
+};
+
+IframeWorker.prototype._loadUrl = function(url){
+	var iframe = this._iframe;
+	
+	iframe.setAttribute("src", url + "?iframeWorkerId=" + this._id); 
+};
+
+IframeWorker.prototype._destroy = function(){
+	this._emitter.removeListener("kill", this._killCommandHandler);
+
+	document.body.removeChild(this._iframe);	
+	this._iframe = void 0;
+
+	this.trigger('dead');
+};
+
+IframeWorker.prototype.kill = function(){
+	this.emit('dead');
+	this._destroy();
+};
+
+IframeWorker.prototype._killCommandHandler = function(){
+	this._destroy();
+};
+
+// Events
+IframeWorker.prototype.on = function(event, callback){
+	return this._emitter.on(event, callback);
+};
+
+IframeWorker.prototype.removeListener = function(event, callback){
+	return this._emitter.removeListener(event, callback);
+};
+
+IframeWorker.prototype.trigger = function(event, data){
+	return this._emitter.trigger(event, [data]);
+};
+
+IframeWorker.prototype.emit = function(event, data){
+	return this._emitter.trigger("emit", [event, data]);
+};
+
+// Logging
+IframeWorker.prototype.eventsToLog = [];
+
+IframeWorker.prototype.setLogger = function(logger){
+	if(this._logger === logger){
+		return; // same as existing one
+	}
+	
+	var prefix = "[IframeWorker-" + this._id.substr(0,4) + "] ";
+	
+	if(this._logger !== void 0){
+		Utils.stopLoggingEvents(this, this._loggingFunctions);
+	};
+
+	this._logger = logger;
+
+	if(this._logger !== void 0){
+		this._loggingFunctions = Utils.logEvents(logger, this, prefix, this.eventsToLog);
+	};
+};
+
 var forEach = Array.prototype.forEach || function(fn, scope) {
 	for(var i = 0, len = this.length; i < len; ++i) {
 	  fn.call(scope, this[i], i, this);
@@ -4108,10 +4259,11 @@ Utils.getQueryParam = function(name){
   else
     return decodeURIComponent(results[1].replace(/\+/g, " "));
 };
-var WorkerProvider = exports.WorkerProvider = function(env, client){
+var WorkerProvider = exports.WorkerProvider = function(env, client, workerFactory){
 	this._client = client;
 	this._workerCount = 0;
 	this._workerSockets = {};
+	this._workerFactory = workerFactory;
 	this._emitter = new EventEmitter();
 	
 	_.bindAll(this, "getWorkerSocket", 
@@ -4132,17 +4284,28 @@ var WorkerProvider = exports.WorkerProvider = function(env, client){
 WorkerProvider.create = function(options){
 	var options = options || {},
 		env = options.env || window,
-		client = options.client || Client.create({socketPath: options.socketPath, socket:options.socket, logger: options.logger});
-		workerProvider = new WorkerProvider(env, client);
+		maxTimeout = options.maxTimeout,
+		defaultTimeout = options.defaultTimeout,
+		workerFactory = options.workerFactory || IframeWorker.create,
+		client = options.client || BrowserClient.create({socketPath: options.socketPath, socket:options.socket, logger: options.logger});
+		workerProvider = new WorkerProvider(env, client, workerFactory);
 	
 	if(options.logger){
 		workerProvider.setLogger(options.logger);
 	}
 
+	if(maxTimeout){
+		workerProvider.setMaxTimeout(maxTimeout);
+	}
+
+	if(defaultTimeout){
+		workerProvider.setDefaultTimeout(defaultTimeout);
+	}
+
 	return workerProvider;
 };
 
-WorkerProvider.prototype.maxWorkerSocketCount = 10;
+WorkerProvider.prototype.maxWorkerSocketCount = 100;
 
 // Iframes call this to get their work emission object
 WorkerProvider.prototype.getWorkerSocket = function(socketId){
@@ -4160,39 +4323,61 @@ WorkerProvider.prototype.kill = function(){
 	this._destroyWorkers();
 };
 
+WorkerProvider.prototype._defaultTimeout = 1000 * 60 * 2; // 2 minutes
+WorkerProvider.prototype.getDefaultTimeout = function(){ return this._defaultTimeout;};
+WorkerProvider.prototype.setDefaultTimeout = function(defaultTimeout){
+	this._defaultTimeout = defaultTimeout;
+};
+
+WorkerProvider.prototype._maxTimeout = 1000 * 60 * 10; // 10 minutes
+WorkerProvider.prototype.getMaxTimeout = function(){ return this._maxTimeout;};
+WorkerProvider.prototype.setMaxTimeout = function(maxTimeout){
+	this._maxTimeout = maxTimeout;
+};
+
 WorkerProvider.prototype._spawnWorker = function(data){
 	var self = this,
 		socketId = data.id,
-		workerContext = data.context,
-		timeout = data.timeout,
-		worker;
+		workerConfig = data.workerConfig,
+		timeout = data.timeout || this._defaultTimeout,
+		worker,
+		workerTimeout;
 
 	if(this._workerCount > this.maxWorkerSocketCount){
 		return;
 	}
 
+	if(timeout > this._maxTimeout){
+		timeout = this._maxTimeout;	
+	}
+	
 	this._workerCount += 1;
 	if(this._workerCount === this.maxWorkerSocketCount){
 		this._trigger("unavailable");
 	}
 
-	workerSocket = WorkerSocket.create(socketId, {logger: this._logger, timeout: timeout});
+	worker = this._workerFactory(socketId, {logger: this._logger});
 
-	workerSocket.on("emit", function(event, data){
+	worker.on("emit", function(event, data){
 		self._emitFromWorker(socketId, event, data);	
 	});
+
+	workerTimeout = setTimeout(function(){
+		worker.kill();
+	}, timeout);
 	
-	workerSocket.on("dead", function(){
+	worker.on("dead", function(){
+		clearTimeout(workerTimeout);
 		self._workerDeadHandler(socketId);
 	});
 
-	this._workerSockets[socketId] = workerSocket;
+	this._workerSockets[socketId] = worker;
 
 	this._trigger("workerSpawned");
 	
-	workerSocket.setContext(workerContext);
+	worker.start(workerConfig);
 
-	return workerSocket;
+	return worker;
 };
 
 WorkerProvider.prototype._killHandler = function(){
@@ -4302,169 +4487,5 @@ WorkerProvider.prototype.setLogger = function(logger){
 		this._loggingFunctions = Utils.logEvents(logger, this, prefix, this.eventsToLog);
 	};
 };
-var WorkerSocket = exports.WorkerSocket = function(id){
-	precondition.checkDefined(id, "WorkerSocket requires a socket id");
-
-	this._id = id;
-
-	_.bindAll(this, "_doneHandler", "_killCommandHandler");
-
-	this._emitter = new EventEmitter();
-	this._emitter.on("kill", this._killCommandHandler);
-	this._emitter.on("done", this._doneHandler);
-};
-
-WorkerSocket.create = function(id, options){
-	var options = options || {},
-		workerSocket = new WorkerSocket(id); 
-
-	if(options.logger){
-		workerSocket.setLogger(options.logger);
-	}
-
-	if(options.timeout){
-		var timer = setTimeout(function(){
-			workerSocket.emit('timeout');
-			workerSocket.kill();
-		}, options.timeout);
-
-		workerSocket.on("done", function(){
-			clearTimeout(timer);
-		});
-	}
-
-	return workerSocket;
-};
-
-WorkerSocket.prototype.loadingTimeout = 1000;
-
-WorkerSocket.prototype.getId = function(){
-	return this._id;
-};
-
-WorkerSocket.prototype.setContext = function(context){
-	this._unload();
-	
-	this._iframe = iframe = document.createElement("IFRAME"); 
-	document.body.appendChild(iframe);
-	
-	if(_.isArray(context)){
-		this._constructEmptyContext(context);
-	} else {
-		this._loadExistingContext(context);
-	}
-
-	this.trigger("contextSet");
-};
-
-WorkerSocket.prototype.kill = function(){
-	this._emitter.removeListener("kill", this._killCommandHandler);
-	this._unload();
-	this.trigger('dead');
-};
-
-WorkerSocket.prototype._doneHandler = function(){
-	this.kill();
-	this.emit('dead');
-};
-
-WorkerSocket.prototype._killCommandHandler = function(){
-	this.kill();
-};
-
-WorkerSocket.prototype._unload = function(){
-	if(this._iframe !== void 0){
-		document.body.removeChild(this._iframe);	
-		this._iframe = void 0;
-	}
-};
-
-WorkerSocket.prototype._loadExistingContext = function(contextUrl){
-	var self = this,
-		iframe = this._iframe,
-		loadingTimeout;
-
-	iframe.setAttribute("src", contextUrl + "?workerSocketId=" + this._id); 
-	
-	loadingTimeout = setTimeout(function(){
-		self.kill();
-	}, this.loadingTimeout);
-
-	iframe.onload =function(){
-		clearTimeout(loadingTimeout);
-	};
-};
-
-WorkerSocket.prototype._constructEmptyContext = function(contextScripts){
-	var iframe,
-		iframeDoc,
-		iframeData,
-		iframeTemplate,
-		iframeContent;
-
-	iframe = this._iframe;
-	iframeDoc = (iframe.contentDocument) ? iframe.contentDocument : iframe.contentWindow.document;
-	iframeData = {scripts: contextScripts};
-	iframeContent = "";
-	
-	iframeContent += "<html>";
-	iframeContent += "<head>";
-	iframeContent += "</head>";
-	iframeContent += "<body>";
-	iframeContent += "<script>window.workerSocket = window.parent.GetWorkerSocket('" + this._id + "')</script>";
-	forEach.call(contextScripts, function(contextScript){
-		iframeContent += '<script src="' + contextScript + '"><\/script>';
-		
-	});
-	iframeContent += "</body>";
-	iframeContent += "</html>";
-
-	iframeDoc.open();
-	iframeDoc.write(iframeContent);
-	iframeDoc.close();
-};
-
-// Events
-WorkerSocket.prototype.on = function(event, callback){
-	return this._emitter.on(event, callback);
-};
-
-WorkerSocket.prototype.removeListener = function(event, callback){
-	return this._emitter.removeListener(event, callback);
-};
-
-WorkerSocket.prototype.trigger = function(event, data){
-	return this._emitter.trigger(event, [data]);
-};
-
-WorkerSocket.prototype.emit = function(event, data){
-	return this._emitter.trigger("emit", [event, data]);
-};
-
-// Logging
-WorkerSocket.prototype.eventsToLog = [
-	["info", "done", "Done"],
-	["info", "contextSet", "Context set"],
-	["warn", "timeout", "Timed out"]
-];
-
-WorkerSocket.prototype.setLogger = function(logger){
-	if(this._logger === logger){
-		return; // same as existing one
-	}
-	
-	var prefix = "[WorkerSocket-" + this._id.substr(0,4) + "] ";
-	
-	if(this._logger !== void 0){
-		Utils.stopLoggingEvents(this, this._loggingFunctions);
-	};
-
-	this._logger = logger;
-
-	if(this._logger !== void 0){
-		this._loggingFunctions = Utils.logEvents(logger, this, prefix, this.eventsToLog);
-	};
-};
-
 return exports;
 }())));

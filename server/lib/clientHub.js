@@ -87,6 +87,9 @@ ClientHub.prototype.getClients = function(filters){
 * 	@fires ClientHub#dead
 */
 ClientHub.prototype.kill = function(){
+	if(this._isDead) return;
+	this._isDead = true;
+	
 	_.each(this._clients, function(client){
 		client.kill();
 	});
@@ -100,7 +103,7 @@ ClientHub.prototype.kill = function(){
 	* @event ClientHub#dead
 	*/
 	this._emit("dead");
-	this._emitter = void 0;
+	this._emitter.removeAllListeners();
 };
 
 // EVENT HANDLERS
@@ -193,9 +196,12 @@ ClientHub.prototype._connectionHandler = function(socket){
 			*	@event ClientHub#socketDisconnected
 			*	@property {Socket} The socket that has disconnected
 			*/
-			self._emit("socketDisconnected");
 			self._detachClient(client);
 		});
+	});
+
+	socket.on('disconnect', function(){
+		self._emit("socketDisconnected");
 	});
 };
 

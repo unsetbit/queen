@@ -51,8 +51,9 @@ MinionMaster.prototype._clientConnectedHandler = function(client){
 };
 
 MinionMaster.prototype._clientDisconnectedHandler = function(client){
-	var clientId = client.getId();
-	var workerProvider = this._workerProviders[clientId];
+	var clientId = client.getId(),
+		workerProvider = this._workerProviders[clientId];
+
 	if(workerProvider !== void 0){
 		delete this._workerProviders[clientId];
 		this._emit("workerProviderDisconnected", workerProvider);
@@ -77,9 +78,8 @@ MinionMaster.prototype.getWorkerProviders = function(filters){
 	return workerProviders;
 };
 
-
 // WORKFORCE FACTORIES
-MinionMaster.prototype.createWorkforce = function(context, options){
+MinionMaster.prototype.getWorkforce = function(workerConfig, options){
 	var self = this,
 		options = options || {},
 		workerFilters = options.workerFilters,
@@ -87,11 +87,11 @@ MinionMaster.prototype.createWorkforce = function(context, options){
 
 	options.logger = options.logger || this._logger;
 
-	var workforce = createWorkforce(workerProviders, context, options);
+	var workforce = createWorkforce(workerProviders, workerConfig, options);
 	
 	this._workforces.push(workforce);
 	workforce.on("dead", function(){
-		self.removeWorkforce(workforce);
+		self._removeWorkforce(workforce);
 	});
 
 	this._emit("workforceCreated", workforce);
@@ -100,7 +100,7 @@ MinionMaster.prototype.createWorkforce = function(context, options){
 	return workforce;
 };
 
-MinionMaster.prototype.removeWorkforce = function(workforce){
+MinionMaster.prototype._removeWorkforce = function(workforce){
 	var index = _.indexOf(this._workforces, workforce);
 
 	if(index > -1){
@@ -108,18 +108,20 @@ MinionMaster.prototype.removeWorkforce = function(workforce){
 	}
 };
 
-MinionMaster.prototype.killWorkforces = function(){
+MinionMaster.prototype._killWorkforces = function(){
 	this._workforces.forEach(function(workforce){
 		workforce.kill();
 	});
 };
 
 MinionMaster.prototype.kill = function(callback){
+	if(this._isDead) return;
+	this._isDead = true;
+	
 	// All workProviders have the clientHub as origin, so they'll be
 	// killed with this action also
 	this._clientHub.kill();
-
-	this.killWorkforces();
+	this._killWorkforces();
 	this._emit("dead");
 };
 
@@ -138,7 +140,10 @@ MinionMaster.prototype._emit = function(event, data){
 
 // Logging
 MinionMaster.prototype.eventsToLog = [
-	["info", "workerProviderConnected", "Workforce created"]
+	["info", "workerProviderConnected", "Worker provider connected"],
+	["info", "workerProviderDisconnected", "Worker provider disconnected"],
+	["info", "workforceCreated", "Workforce created"],
+	["info", "dead", "Dead"]
 ];
 
 MinionMaster.prototype.setLogger = function(logger){

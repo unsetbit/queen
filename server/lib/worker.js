@@ -5,12 +5,12 @@ var EventEmitter = require("events").EventEmitter,
 
 exports.create = create = function(provider, options){
 	var options = options || {},
-		workerSocket = new WorkerSocket(provider);
+		worker = new Worker(provider);
 
-	return workerSocket;
+	return worker;
 };
 
-exports.WorkerSocket = WorkerSocket = function(provider){
+exports.Worker = Worker = function(provider){
 	var self = this;
 	
 	this._id = uuid.v4();
@@ -19,33 +19,35 @@ exports.WorkerSocket = WorkerSocket = function(provider){
 };
 
 
-WorkerSocket.prototype.getId = function(){
+Worker.prototype.getId = function(){
 	return this._id;
 };
 
-WorkerSocket.prototype.getProvider = function(){
-	return this._provider;
+Worker.prototype.getAttributes = function(){
+	return this._provider.getAttributes();
 };
 
-WorkerSocket.prototype.on = function(event, callback){
+Worker.prototype.on = function(event, callback){
 	return this._emitter.on(event, callback);
 };
 
-WorkerSocket.prototype.removeListener = function(event, callback){
+Worker.prototype.removeListener = function(event, callback){
 	return this._emitter.removeListener(event, callback);
 };
 
-WorkerSocket.prototype.echo = function(event, data){
+Worker.prototype.echo = function(event, data){
 	return this._emitter.emit(event, data);
 };
 
-WorkerSocket.prototype.emit = function(event, data){
+Worker.prototype.emit = function(event, data){
 	return this._emitter.emit("emit", event, data);
 };
 
-WorkerSocket.prototype.kill = function(){
+Worker.prototype.kill = function(){
+	if(this._isDead) return;
+	this._isDead = true;
+	
 	this.emit('kill');
-	this.echo('done');
 	this.echo('dead');
 	this._emitter.removeAllListeners();
 };

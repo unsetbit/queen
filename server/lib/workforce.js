@@ -6,34 +6,28 @@ var EventEmitter = require('events').EventEmitter,
 var	logEvents = require("./utils.js").logEvents,
 	stopLoggingEvents = require("./utils.js").stopLoggingEvents;
 
-exports.create = create = function(workerProviders, context, options){
+exports.create = create = function(workerProviders, workerConfig, options){
 	var options = options || {},
 		timeout = options.timeout,
-		workforce = new Workforce(workerProviders, context, timeout);
+		workforce = new Workforce(workerProviders, workerConfig, timeout);
 
 	if(options.logger){
 		workforce.setLogger(options.logger);
 	}
 
-	if(options.onStart) workforce.on('start', options.onStart);
-	if(options.onDone) workforce.on('done', options.onDone);
-	if(options.onWorkStart) workforce.on('workStart', options.onWorkStart);
-	if(options.onWorkEnd) workforce.on('workEnd', options.onWorkEnd);
-
 	return workforce;
 };
 
-exports.Workforce = Workforce = function(workerProviders, context, timeout){
+exports.Workforce = Workforce = function(workerProviders, workerConfig, timeout){
 	precondition.checkDefined(workerProviders, "Worker Providers must be defined");
-	precondition.checkDefined(context, "A context must be defined");
 
 	this._id = uuid.v4();
 	this._emitter = new EventEmitter();
 	
-	this._context = context;
+	this._workerProviders = workerProviders;
+	this._workerConfig = workerConfig;
 	this._timeout = timeout;
 
-	this._workerProviders = workerProviders;
 	this._workerSockets = {};
 	this._runningSockets = 0;
 	this._started = false;
@@ -44,10 +38,12 @@ Workforce.prototype.getId = function(){
 };
 
 Workforce.prototype._startWorker = function(workerProvider){
-	var workerSocket = workerProvider.spawnWorker(this._context, this._timeout);
+	var workerSocket = workerProvider.spawnWorker(this._workerConfig, this._timeout);
+	
+	if(workerSocket === void 0) return;
 
 	this._addWorkerSocket(workerSocket);
-	this._emit("workStart", workerSocket);
+	this._emit("newWorker", workerSocket);
 };
 
 Workforce.prototype.isRunning = function(){
@@ -55,7 +51,9 @@ Workforce.prototype.isRunning = function(){
 };
 
 Workforce.prototype.start = function(){
-	var self = this;
+	var self = this,
+		timer,
+		workers;
 
 	if(this._started) return;
 	this._started = true;
@@ -65,7 +63,7 @@ Workforce.prototype.start = function(){
 	});
 
 	if(this._timeout){
-		var timeout = setTimeout(function(){
+		timer = setTimeout(function(){
 			_.each(self._workerSockets, function(workerSocket){
 				workerSocket.echo("timeout");
 			});
@@ -73,8 +71,8 @@ Workforce.prototype.start = function(){
 			self.stop();
 		}, this._timeout);
 
-		this.on('done', function(){
-			clearTimeout(timeout);
+		this.on('dead', function(){
+			clearTimeout(timer);
 		});
 	}
 
@@ -82,19 +80,26 @@ Workforce.prototype.start = function(){
 };
 
 Workforce.prototype.stop = function(){
-	this._emit("stopping");
+	this._emit("stop");	// stopped event fires once all workers have stopped
+
 	_.each(this._workerSockets, function(workerSocket){
 		workerSocket.kill();
 	});
-
-	// stopped event fires once all workers have stopped
 };
 
 Workforce.prototype.kill = function(){
+	if(this._isDead) return;
+	this._isDead = true;
+	
 	this.stop();
 	this._emit("dead");
+	this._emitter.removeAllListeners();
 	this._workerProviders = [];
 	this._workerSockets = {};
+};
+
+Workforce.prototype._getWorkerSockets = function(){
+	return _.values(this._workerSockets);
 };
 
 Workforce.prototype._addWorkerSocket = function(workerSocket){
@@ -120,11 +125,10 @@ Workforce.prototype._removeWorkerSocket = function(workerSocketId){
 	}
 
 	delete this._workerSockets[workerSocketId];
-	this._emit('workEnd', workerSocket);
+	this._emit('workerDead', workerSocket);
 
 	this._runningSockets -= 1;
 	if(this._runningSockets === 0){
-		this._emit("done");
 		this.kill();
 	}
 };
@@ -145,10 +149,9 @@ Workforce.prototype._emit = function(event, data){
 // Logging
 Workforce.prototype.eventsToLog = [
 	["info", "start", "Start"],
-	["info", "stopping", "Stopping"],
+	["info", "stop", "Stopping"],
 	["debug", "dead", "Dead"],
-	["debug", "done", "Done"],
-	["debug", "workerStart", "Worker started"],
+	["debug", "newWorker", "New Worker"],
 	["debug", "workerDead", "Worker dead"]
 ];
 

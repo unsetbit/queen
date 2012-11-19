@@ -50,6 +50,9 @@ Client.prototype._killHandler = function(){
 };
 
 Client.prototype.kill = function(){
+	if(this._isDead) return;
+	this._isDead = true;
+	
 	this._socket.removeListener("echo", this._echoHandler);
 	this._socket.removeListener("kill", this._killHandler);
 	this._echo("dead");

@@ -1,0 +1,10 @@
+iframe{
+	width:1px;
+	height:1px;
+	border:25px solid lime;
+	border-radius:26px;
+	margin:1px;
+}
+body{
+	line-height: 10px;
+}
