@@ -12,7 +12,7 @@
       socketPath: "//" + window.location.host + "/capture"
     };
 
-    if(console !== void 0){
+    if(typeof console !== "undefined"){
       minionConfig.logger = console;
     }
 		
