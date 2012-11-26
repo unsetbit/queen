@@ -9,9 +9,8 @@
     "socket.io": "~0.9.10",
     "underscore": "~1.3.3",
     "useragent": "~1.1.0",
-    "webdriverjs": "~0.6.9",
     "precondition": "~1.0.0",
-    "wd": "~0.0.25"
+    "json-over-tcp": "~0.0.6"
   },
   "optionalDependencies": {
     "winston": "~0.6.2"

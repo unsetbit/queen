@@ -5,5 +5,7 @@ workerSocket.on('pong', function(){
 		workerSocket.emit('ping');
 	},1000);
 });
-
-workerSocket.emit('ping');
+setTimeout(function(){
+	console.log('ping');
+	workerSocket.emit('ping');	
+}, 1000);

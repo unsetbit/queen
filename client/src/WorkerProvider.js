@@ -1,23 +1,36 @@
-var WorkerProvider = exports.WorkerProvider = function(env, client, workerFactory){
-	this._client = client;
-	this._workerCount = 0;
-	this._workerSockets = {};
-	this._workerFactory = workerFactory;
+var WorkerProvider = exports.WorkerProvider = function(env, socket, workerFactory){
+	precondition.checkDefined(socket, "Client requires a socket");
+	
 	this._emitter = new EventEmitter();
-	
-	_.bindAll(this, "getWorkerSocket", 
-					"_killHandler", 
-					"_resetHandler", 
-					"_spawnWorker", 
-					"_workerEventHandler", 
-					"_destroyWorkers");
-	
-	env.GetWorkerSocket = this.getWorkerSocket;
+	this._workerCount = 0;
+	this._workers = {};
+	this._workerFactory = workerFactory;
 
-	this._client.on("workerProvider:spawnWorker", this._spawnWorker);
-	this._client.on("workerProvider:toWorker", this._workerEventHandler);	
-	this._client.on("dead", this._killHandler);
-	this._client.on("reset", this._resetHandler);	
+	_.bindAll(this,	"_connectHandler",
+					"_disconnectHandler",
+					"_spawnWorkerHandler", 
+					"_workerEventHandler",
+					"getWorkerSocket");
+
+	env.GetWorkerSocket = this.getWorkerSocket;
+	
+	this._socket = socket;
+	this._socket.on("spawnWorker", this._spawnWorkerHandler);
+	this._socket.on("toWorker", this._workerEventHandler);	
+	this._socket.on("connect", this._connectHandler); // work around for bug in socket.io
+	this._socket.on("disconnect", this._disconnectHandler);
+}; 
+
+WorkerProvider.prototype._defaultTimeout = 1000 * 60 * 2; // 2 minutes
+WorkerProvider.prototype.getDefaultTimeout = function(){ return this._defaultTimeout;};
+WorkerProvider.prototype.setDefaultTimeout = function(defaultTimeout){
+	this._defaultTimeout = defaultTimeout;
+};
+
+WorkerProvider.prototype._maxTimeout = 1000 * 60 * 10; // 10 minutes
+WorkerProvider.prototype.getMaxTimeout = function(){ return this._maxTimeout;};
+WorkerProvider.prototype.setMaxTimeout = function(maxTimeout){
+	this._maxTimeout = maxTimeout;
 };
 
 WorkerProvider.create = function(options){
@@ -26,9 +39,12 @@ WorkerProvider.create = function(options){
 		maxTimeout = options.maxTimeout,
 		defaultTimeout = options.defaultTimeout,
 		workerFactory = options.workerFactory || IframeWorker.create,
-		client = options.client || BrowserClient.create({socketPath: options.socketPath, socket:options.socket, logger: options.logger});
-		workerProvider = new WorkerProvider(env, client, workerFactory);
-	
+		socketPath = options.socketPath || "//" + window.location.host + "/capture",
+		socket = options.socket || io.connect(socketPath, {
+			'max reconnection attempts': Infinity
+		}),
+		workerProvider = new WorkerProvider(env, socket, workerFactory);
+
 	if(options.logger){
 		workerProvider.setLogger(options.logger);
 	}
@@ -44,37 +60,38 @@ WorkerProvider.create = function(options){
 	return workerProvider;
 };
 
-WorkerProvider.prototype.maxWorkerSocketCount = 100;
-
-// Iframes call this to get their work emission object
-WorkerProvider.prototype.getWorkerSocket = function(socketId){
-	var workerSocket = this._workerSockets[socketId];
-	return workerSocket;
+WorkerProvider.prototype._reload = function(){
+	window.location.reload(true);
 };
 
 WorkerProvider.prototype.kill = function(){
-	this._client.removeListener("workerProvider:spawnWorker", this._spawnWorker);
-	this._client.removeListener("workerProvider:toWorker", this._workerEventHandler);	
-	this._client.removeListener("dead", this._killHandler);
-	this._client.removeListener("reset", this._resetHandler);
-	this._client = void 0;
-
 	this._destroyWorkers();
+
+	this._socket.removeListener("connect", this._connectHandler);
+	this._socket.removeListener("disconnect", this._disconnectHandler);
+	this._socket.removeListener("spawnWorker", this._spawnWorkerHandler);
+	this._socket.removeListener("toWorker", this._workerEventHandler);	
+
+	this._socket = void 0;
+
+	this._trigger('dead');
 };
 
-WorkerProvider.prototype._defaultTimeout = 1000 * 60 * 2; // 2 minutes
-WorkerProvider.prototype.getDefaultTimeout = function(){ return this._defaultTimeout;};
-WorkerProvider.prototype.setDefaultTimeout = function(defaultTimeout){
-	this._defaultTimeout = defaultTimeout;
+// Iframes call this to get their work emission object
+WorkerProvider.prototype.getWorkerSocket = function(socketId){
+	return this._workers[socketId];
 };
 
-WorkerProvider.prototype._maxTimeout = 1000 * 60 * 10; // 10 minutes
-WorkerProvider.prototype.getMaxTimeout = function(){ return this._maxTimeout;};
-WorkerProvider.prototype.setMaxTimeout = function(maxTimeout){
-	this._maxTimeout = maxTimeout;
+WorkerProvider.prototype._destroyWorkers = function(){
+	_.each(this._workers, function(worker){
+		worker.trigger("kill");
+	});
+
+	this._workers = {};	
+	this._workerCount = 0;
 };
 
-WorkerProvider.prototype._spawnWorker = function(data){
+WorkerProvider.prototype._spawnWorkerHandler = function(data){
 	var self = this,
 		socketId = data.id,
 		workerConfig = data.workerConfig,
@@ -98,7 +115,7 @@ WorkerProvider.prototype._spawnWorker = function(data){
 	worker = this._workerFactory(socketId, {logger: this._logger});
 
 	worker.on("emit", function(event, data){
-		self._emitFromWorker(socketId, event, data);	
+		self._emitWorkerEvent(socketId, event, data);	
 	});
 
 	workerTimeout = setTimeout(function(){
@@ -110,7 +127,7 @@ WorkerProvider.prototype._spawnWorker = function(data){
 		self._workerDeadHandler(socketId);
 	});
 
-	this._workerSockets[socketId] = worker;
+	this._workers[socketId] = worker;
 
 	this._trigger("workerSpawned");
 	
@@ -119,42 +136,21 @@ WorkerProvider.prototype._spawnWorker = function(data){
 	return worker;
 };
 
-WorkerProvider.prototype._killHandler = function(){
-	this.kill();
-}
-
-WorkerProvider.prototype._resetHandler = function(){
-	this._destroyWorkers();
-};
-
-WorkerProvider.prototype._destroyWorkers = function(){
-	_.each(this._workerSockets, function(socket){
-		socket.trigger("kill");
-	});
-
-	this._workerSockets = {};
-	this._pendingFromWorkers = [];
-};
-
-WorkerProvider.prototype._emit = function(event, data){
-	this._client.emit(event, data);
-};
-
-WorkerProvider.prototype._emitFromWorker = function(socketId, event, data){
+WorkerProvider.prototype._emitWorkerEvent = function(socketId, event, data){
 	var data = {
 		id: socketId,
 		event: event,
 		data: data
 	}
 
-	this._emit("workerProvider:fromWorker", data);
+	this._emit("workerEvent", data);
 };
 
 WorkerProvider.prototype._workerDeadHandler = function(socketId){
-	var worker = this._workerSockets[socketId];
+	var worker = this._workers[socketId];
 
 	if(worker !== void 0){
-		delete this._workerSockets[socketId];
+		delete this._workers[socketId];
 	
 		this._workerCount -= 1;
 		this._trigger("workerDead");
@@ -165,14 +161,13 @@ WorkerProvider.prototype._workerDeadHandler = function(socketId){
 	}
 };
 
-
 // Routes commands to workers
 WorkerProvider.prototype._workerEventHandler = function(data){
 	var socketId = data.id,
 		event = data.event,
 		eventData = data.data;
 
-	var workerSocket = this._workerSockets[socketId];
+	var workerSocket = this._workers[socketId];
 	if(workerSocket === void 0){ // No longer listening to this worker
 		if(event !== "kill"){
 			this._trigger("killingStaleSocket");
@@ -185,9 +180,46 @@ WorkerProvider.prototype._workerEventHandler = function(data){
 	workerSocket.trigger(event, eventData);
 };
 
-// Events
-WorkerProvider.prototype._trigger = function(event, data){
-	this._emitter.trigger(event, [data]);
+WorkerProvider.prototype._register = function(){
+	var attributes = {},
+		capabilities = {};
+
+	attributes.userAgent = navigator.userAgent;
+
+	// fill up capabilities
+	_.each(Modernizr, function(value, key){
+		if(!_.isFunction(value) && !_.isArray(value) && key !== "_version"){
+			capabilities[key] = value;
+		}
+	});
+
+	attributes.capabilities = capabilities;
+	this._emit("register", attributes);
+	this._trigger('registered');
+};
+
+WorkerProvider.prototype._emit = function(event, data){
+	this._socket.emit(event, data);	
+};
+
+// CONNECTION HANDLERS
+WorkerProvider.prototype._connectHandler = function(){
+	if(this._isReconnecting){
+		this._reload(); // Reload on reconnect
+	} else {
+		this._register();
+		this._trigger("connected");
+	}
+};
+
+WorkerProvider.prototype._trigger = function() {
+	this._emitter.trigger.apply(this._emitter, arguments);
+};
+
+WorkerProvider.prototype._disconnectHandler = function(){
+	this._destroyWorkers();
+	this._trigger("disconnected");
+	this._isReconnecting = true;
 };
 
 WorkerProvider.prototype.on = function(event, callback){
@@ -198,15 +230,15 @@ WorkerProvider.prototype.removeListener = function(event, callback){
 	this._emitter.removeListener(event, callback);
 };
 
+
 // Logging
 WorkerProvider.prototype.eventsToLog = [
-	["info", "browserConnected", "Browser connected"],
-	["info", "browserDisconnected", "Browser disconnected"],
-	["info", "workerSpawned", "Worker spawned"],
-	["info", "workerDead", "Worker dead, disconnected worker socket"],
-	["warn", "killingStaleSocket", "Worker socket no longer exists, sending kill command to worker"],
-	["warn", "unavailable", "Worker socket limit reached"],
-	["info", "available", "Available to spawn workers"]
+	["info", "connected", "Connected"],
+	["info", "disconnected", "Disconnected"],
+	["info", "reconnect", "Reconnected"],
+	["info", "registered", "Registered"],
+	["debug", "reset", "Reset"],
+	["debug", "dead", "Dead"]
 ];
 
 WorkerProvider.prototype.setLogger = function(logger){

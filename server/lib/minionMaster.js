@@ -1,15 +1,26 @@
-var socketio = require("socket.io"),
+var _ = require("underscore"),
+	socketio = require("socket.io"),
 	http = require('http'),
-	EventEmitter = require('events').EventEmitter,
-	_ = require('underscore'),
-	uuid = require('node-uuid');
+	EventEmitter = require("events").EventEmitter,
+	uuid = require('node-uuid'),
+	net = require('net'),
+	precondition = require('precondition');
 
-var createClientHub = require('./clientHub.js').create,
+var createWorkerProvider = require("./browserWorkerProvider.js").create,
 	createStaticServer = require('./staticServer.js').create,
 	createWorkforce = require('./workforce.js').create,
-	createWorkerProvider = require('./workerProvider.js').create;
+	logEvents = require("./utils.js").logEvents,
+	stopLoggingEvents = require("./utils.js").stopLoggingEvents;
 
-exports.create = create = function(options){
+/** Factory function for MinionMaster instances
+* 
+*	@param {Object} socketServer A socket server to monitor connections on
+*	@param {Object} [options] A map of optional construction parameters
+*	@param {Object} [options.logger] A logger to output logging to
+*	@param {Number} [options.registerationTimeout] Timeout to determine how long
+						to wait for a connection to register before closing it
+*/
+exports.create = function(options){
 	var options = options || {},
 		logger = options.logger,
 		port = options.port || 80,
@@ -17,49 +28,50 @@ exports.create = create = function(options){
 		browserCapturePath = options.browserCapturePath || "/capture",
 		httpServer = options.httpServer ||  createStaticServer({port: port, hostname: hostname}),
 		socketServer = options.socketServer || socketio.listen(httpServer, {log: false}),
-		clientHub = options.clientHub || createClientHub(socketServer.of(browserCapturePath), {logger: logger}),
-		minionMaster = new MinionMaster(clientHub);
-	
+		minionMaster = new MinionMaster(socketServer.of(browserCapturePath));
+
+	// If logger exists, attach to it
 	if(options.logger){
 		minionMaster.setLogger(options.logger);
 	}
 	
+	if(options.registerationTimeout){
+		minionMaster.registerationTimeout = options.registerationTimeout;
+	}
+
 	return minionMaster;
 };
 
-exports.MinionMaster = MinionMaster = function(clientHub){
-	var self = this;
+/** MinionMaster keeps track of connected worker providers
+*
+* @constructor
+* @param socketServer The socketServer server to which worker providers establish connection with
+*/
+var MinionMaster = exports.MinionMaster = function(socketServer, controlServer){
+	precondition.checkDefined(socketServer, "MinionMaster requires a socket server");
 
 	this._emitter = new EventEmitter();
-	this._clientHub = clientHub;
 	this._workerProviders = {};
 	this._workforces = [];
-	
-	_.bindAll(this, "_clientConnectedHandler",
-					"_clientDisconnectedHandler");
+	this._server = socketServer;
+	this._controlServer = controlServer;
 
-	this._clientHub.on("clientConnected", this._clientConnectedHandler);
-	this._clientHub.on("clientDisconnected", this._clientDisconnectedHandler);
+	_.bindAll(this, "_connectionHandler");
+	this._server.on("connection", this._connectionHandler);
 };
 
-MinionMaster.prototype._clientConnectedHandler = function(client){
-	var workerProvider = createWorkerProvider(client, {logger: this._logger}),
-		clientId = client.getId();
-	
-	this._workerProviders[clientId] = workerProvider;
-	this._emit("workerProviderConnected", workerProvider);
-};
 
-MinionMaster.prototype._clientDisconnectedHandler = function(client){
-	var clientId = client.getId(),
-		workerProvider = this._workerProviders[clientId];
+/** @default */
+MinionMaster.prototype.registerationTimeout = 2000;
 
-	if(workerProvider !== void 0){
-		delete this._workerProviders[clientId];
-		this._emit("workerProviderDisconnected", workerProvider);
-	}
-};
 
+/** Given a list of filters, returns all matching providers in the worker provider
+* 	pool. Filters are maps of desired attributes.
+*
+* 	@param {Array<Object>} filters The attributes to match against
+*
+* 	@returns {Array<WorkerProvider>} The matching workerProviders
+*/
 MinionMaster.prototype.getWorkerProviders = function(filters){
 	if(!filters){
 		return _.values(this._workerProviders);
@@ -68,7 +80,7 @@ MinionMaster.prototype.getWorkerProviders = function(filters){
 	if(!_.isArray(filters)){
 		filters = [filters];
 	}
-	
+
 	var workerProviders = _.filter(this._workerProviders, function(workerProvider){
 		return _.any(filters, function(filter){
 			return workerProvider.hasAttributes(filter);
@@ -78,27 +90,36 @@ MinionMaster.prototype.getWorkerProviders = function(filters){
 	return workerProviders;
 };
 
-// WORKFORCE FACTORIES
-MinionMaster.prototype.getWorkforce = function(workerConfig, options){
+
+// Workforce factory
+MinionMaster.prototype.getWorkforce = function(workerFilters){
 	var self = this,
-		options = options || {},
-		workerFilters = options.workerFilters,
-		workerProviders = this.getWorkerProviders(workerFilters);
-
-	options.logger = options.logger || this._logger;
-
-	var workforce = createWorkforce(workerProviders, workerConfig, options);
+		workforce = createWorkforce({logger: this._logger});
 	
 	this._workforces.push(workforce);
 	workforce.on("dead", function(){
 		self._removeWorkforce(workforce);
 	});
 
+	workforce.on("start", function(config){
+		self._populateWorkforce(workforce, workerFilters, config);
+	});
+
 	this._emit("workforceCreated", workforce);
 
-	if(options.autostart) workforce.start();
 	return workforce;
 };
+
+MinionMaster.prototype._populateWorkforce = function(workforce, workerFilters, config){
+	var workerProviders = this.getWorkerProviders(workerFilters);
+	workerProviders.forEach(function(workerProvider){
+		var worker = workerProvider.spawnWorker(config.workerConfig, config.timeout);
+	
+		if(worker === void 0) return; //worker provider unavailable
+
+		workforce.addWorker(worker);
+	});
+}
 
 MinionMaster.prototype._removeWorkforce = function(workforce){
 	var index = _.indexOf(this._workforces, workforce);
@@ -108,22 +129,30 @@ MinionMaster.prototype._removeWorkforce = function(workforce){
 	}
 };
 
-MinionMaster.prototype._killWorkforces = function(){
-	this._workforces.forEach(function(workforce){
-		workforce.kill();
-	});
-};
-
-MinionMaster.prototype.kill = function(callback){
+/**	Kills this instance
+*
+* 	@fires MinionMaster#dead
+*/
+MinionMaster.prototype.kill = function(){
 	if(this._isDead) return;
 	this._isDead = true;
 	
-	// All workProviders have the clientHub as origin, so they'll be
-	// killed with this action also
-	this._clientHub.kill();
-	this._killWorkforces();
+	_.each(this._workerProviders, function(workerProvider){
+		workerProvider.kill();
+	});
+	this._workerProviders = {};
+	
+	this._server.removeListener("connection", this._connectionHandler);
+	
+	/**
+	* Signals that this object should no longer be used
+	* 
+	* @event MinionMaster#dead
+	*/
 	this._emit("dead");
+	this._emitter.removeAllListeners();
 };
+
 
 // EVENT HANDLERS
 MinionMaster.prototype.on = function(event, callback){
@@ -138,19 +167,99 @@ MinionMaster.prototype._emit = function(event, data){
 	this._emitter.emit(event, data);
 };
 
-// Logging
+/** Attach a worker provider instance to the hub
+*
+*	@private
+*	@param {WorkerProvider} workerProvider A worker provider instance to attach
+*   @fires MinionMaster#workerProviderConnected
+*/
+MinionMaster.prototype._attachWorkerProvider = function(workerProvider){
+	workerProviderId = workerProvider.getId();
+	this._workerProviders[workerProviderId] = workerProvider;
+
+	/**
+	*	@event MinionMaster#workerProviderConnected
+	*	@property {WorkerProvider} The worker provider instance that has connected
+	*/
+	this._emit("workerProviderConnected", workerProvider);
+};
+
+/** Detach a worker provider instance from the hub
+*
+*	@private
+*	@param {WorkerProvider} workerProvider The worker provider instance to detach
+*	@fires MinionMaster#workerProviderDisconnected
+*/
+MinionMaster.prototype._detachWorkerProvider = function(workerProvider){
+	var workerProviderId = workerProvider.getId();
+
+	if(this._workerProviders[workerProviderId] !== void 0){
+		workerProvider.kill();
+
+		delete this._workerProviders[workerProviderId];
+
+		/**
+		*	@event MinionMaster#workerProviderDisconnected
+		*	@property {WorkerProvider} The worker provider instance that has connected
+		*/
+		this._emit("workerProviderDisconnected", workerProvider);
+	}
+};
+
+/** Handles new connections on the socket server
+*
+*	@private
+*	@param {Socket} socket The socket that has just connected
+*	@fires MinionMaster#socketConnected
+*	@fires MinionMaster#socketDisconnected
+*/
+MinionMaster.prototype._connectionHandler = function(socket){
+	var self = this;
+	
+	/**
+	*	@event MinionMaster#socketConnected
+	*	@property {Socket} The socket that has connected
+	*/
+	self._emit("socketConnected", socket);
+
+	var registerationTimeout = setTimeout(function(){
+		self._emit('socketTimeout', socket);
+		socket.disconnect();
+	}, this.registerationTimeout);
+	
+	socket.on("register", function(registerationData){
+		var workerProvider;
+
+		clearTimeout(registerationTimeout);
+		
+		workerProvider = createWorkerProvider(socket, {attributes: registerationData, logger: self._logger});
+		self._attachWorkerProvider(workerProvider);
+		
+		socket.on("disconnect", function(){
+
+			/**
+			*	@event MinionMaster#socketDisconnected
+			*	@property {Socket} The socket that has disconnected
+			*/
+			self._detachWorkerProvider(workerProvider);
+		});
+	});
+
+	socket.on('disconnect', function(){
+		self._emit("socketDisconnected");
+	});
+};
+
+// Optional logging helpers
 MinionMaster.prototype.eventsToLog = [
-	["info", "workerProviderConnected", "Worker provider connected"],
-	["info", "workerProviderDisconnected", "Worker provider disconnected"],
-	["info", "workforceCreated", "Workforce created"],
-	["info", "dead", "Dead"]
+	["info", "socketConnected", "Socket connected"],
+	["debug", "socketTimeout", "Socket didn't register in time (timed out)"],
+	["info", "socketDisconnected", "Socket disconnected"],
+	["info", "workerProviderConnected", "Worker Provider connected"],
+	["info", "workerProviderDisconnected", "Worker provider disconnected"]
 ];
 
 MinionMaster.prototype.setLogger = function(logger){
-	if(this._logger === logger){
-		return; // same as existing one
-	}
-
 	var prefix = "[MinionMaster] ";
 	
 	if(this._logger !== void 0){

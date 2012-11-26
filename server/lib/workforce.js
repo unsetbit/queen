@@ -6,10 +6,10 @@ var EventEmitter = require('events').EventEmitter,
 var	logEvents = require("./utils.js").logEvents,
 	stopLoggingEvents = require("./utils.js").stopLoggingEvents;
 
-exports.create = create = function(workerProviders, workerConfig, options){
-	var options = options || {},
-		timeout = options.timeout,
-		workforce = new Workforce(workerProviders, workerConfig, timeout);
+exports.create = create = function(options){
+	options = options || {};
+	
+	var workforce = new Workforce();
 
 	if(options.logger){
 		workforce.setLogger(options.logger);
@@ -18,73 +18,63 @@ exports.create = create = function(workerProviders, workerConfig, options){
 	return workforce;
 };
 
-exports.Workforce = Workforce = function(workerProviders, workerConfig, timeout){
-	precondition.checkDefined(workerProviders, "Worker Providers must be defined");
-
+exports.Workforce = Workforce = function(){
 	this._id = uuid.v4();
 	this._emitter = new EventEmitter();
 	
-	this._workerProviders = workerProviders;
-	this._workerConfig = workerConfig;
-	this._timeout = timeout;
-
-	this._workerSockets = {};
-	this._runningSockets = 0;
+	this._workers = {};
+	this._runningWorkers = 0;
 	this._started = false;
+	this._isDone = false;
 };
 
 Workforce.prototype.getId = function(){
 	return this._id;
 };
 
-Workforce.prototype._startWorker = function(workerProvider){
-	var workerSocket = workerProvider.spawnWorker(this._workerConfig, this._timeout);
-	
-	if(workerSocket === void 0) return;
-
-	this._addWorkerSocket(workerSocket);
-	this._emit("newWorker", workerSocket);
-};
-
 Workforce.prototype.isRunning = function(){
-	return this._runningSockets > 0;
+	return this._runningWorkers > 0;
 };
 
-Workforce.prototype.start = function(){
+Workforce.prototype.start = function(workerConfig, timeout){
 	var self = this,
-		timer,
-		workers;
+		timer;
 
 	if(this._started) return;
 	this._started = true;
 
-	this._workerProviders.forEach(function(workerProvider){
-		self._startWorker(workerProvider);
-	});
-
-	if(this._timeout){
+	if(timeout){
 		timer = setTimeout(function(){
-			_.each(self._workerSockets, function(workerSocket){
-				workerSocket.echo("timeout");
+			_.each(self._workers, function(worker){
+				worker.echo("timeout");
 			});
 
 			self.stop();
-		}, this._timeout);
+		}, timeout);
 
-		this.on('dead', function(){
+		this.on('stopped', function(){
 			clearTimeout(timer);
 		});
 	}
 
-	this._emit("start");
+	this._emit("start", {
+		timeout: timeout,
+		workerConfig: workerConfig
+	});
+
+	return;
 };
 
 Workforce.prototype.stop = function(){
 	this._emit("stop");	// stopped event fires once all workers have stopped
 
-	_.each(this._workerSockets, function(workerSocket){
-		workerSocket.kill();
-	});
+	if(this._runningWorkers === 0){
+		this._emit('stopped');
+	} else {
+		_.each(this._workers, function(worker){
+			worker.kill();
+		});
+	}
 };
 
 Workforce.prototype.kill = function(){
@@ -95,51 +85,60 @@ Workforce.prototype.kill = function(){
 	this._emit("dead");
 	this._emitter.removeAllListeners();
 	this._workerProviders = [];
-	this._workerSockets = {};
+	this._workers = {};
 };
 
-Workforce.prototype._getWorkerSockets = function(){
-	return _.values(this._workerSockets);
+Workforce.prototype._getWorkers = function(){
+	return _.values(this._workers);
 };
 
-Workforce.prototype._addWorkerSocket = function(workerSocket){
+Workforce.prototype.addWorker = function(worker){
 	var self = this;
-	var workerSocketId = workerSocket.getId();
+	var workerId = worker.getId();
+	if(this._workers[workerId] !== void 0){
+		return; // worker exists
+	}
+
+	this._workers[workerId] = worker;
 	
-	this._workerSockets[workerSocketId] = workerSocket;
-	
-	workerSocket.on("dead", function(){
-		self._removeWorkerSocket(workerSocketId);
+	worker.on("dead", function(){
+		self._removeWorker(worker);
 	});
 
-	this._runningSockets += 1;
-	if(this._runningSockets === 1){
+	this._runningWorkers += 1;
+	if(this._runningWorkers === 1){
 		this._emit("running");
 	}
+
+	this._emit("workerAdded", worker);
 };
 
-Workforce.prototype._removeWorkerSocket = function(workerSocketId){
-	var workerSocket = this._workerSockets[workerSocketId]
-	if(workerSocket === void 0){
+Workforce.prototype._removeWorker = function(worker){
+	var workerId = worker.getId(),
+		worker = this._workers[workerId];
+	
+	if(worker === void 0){
 		return;
 	}
 
-	delete this._workerSockets[workerSocketId];
-	this._emit('workerDead', workerSocket);
+	delete this._workers[workerId];
+	this._emit('workerDead', worker);
 
-	this._runningSockets -= 1;
-	if(this._runningSockets === 0){
-		this.kill();
+	this._runningWorkers -= 1;
+	if(this._runningWorkers === 0){
+		this._emit('stopped');
 	}
 };
 
 // Events
 Workforce.prototype.on = function(event, callback){
 	this._emitter.on(event, callback);
+	return this;
 };
 
 Workforce.prototype.removeListener = function(event, callback){
 	this._emitter.removeListener(event, callback);
+	return this;
 };
 
 Workforce.prototype._emit = function(event, data){
@@ -150,8 +149,9 @@ Workforce.prototype._emit = function(event, data){
 Workforce.prototype.eventsToLog = [
 	["info", "start", "Start"],
 	["info", "stop", "Stopping"],
+	["info", "stopped", "Stopped"],
 	["debug", "dead", "Dead"],
-	["debug", "newWorker", "New Worker"],
+	["debug", "workerAdded", "Worker added"],
 	["debug", "workerDead", "Worker dead"]
 ];
 
