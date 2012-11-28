@@ -40,3 +40,5 @@ exports.stopLoggingEvents = stopLoggingEvents = function(obj, eventLoggingFuncti
 		obj.removeListener(event, func);
 	});
 };
+
+exports.noop = function(){};
