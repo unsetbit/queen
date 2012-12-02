@@ -1,53 +1,47 @@
-var EventEmitter = require("events").EventEmitter,
+var	generateId = require('node-uuid').v4,
 	precondition = require('precondition'),
-	_ = require("underscore"),
-	uuid = require('node-uuid');
-
-exports.create = create = function(provider, options){
-	var options = options || {},
-		worker = new Worker(provider);
-
-	return worker;
-};
-
-exports.Worker = Worker = function(provider){
-	var self = this;
+	utils = require('../utils.js');
 	
-	this._id = uuid.v4();
-	this._provider = provider;
-	this._emitter = new EventEmitter();
+var create = module.exports = function(id, attributes, emitter, onEmitToSocket){
+	precondition.checkDefined(emitter, "An emitter is required for workers");
+
+	var self = {
+		id: id,
+		attributes: attributes,
+		emitter: emitter,
+		emitToSocket: onEmitToSocket
+	}
+
+	self.kill = kill.bind(self);
+
+	// When the worker is dead disable the kill function
+	emitter.on('dead', function(){
+		self.kill = utils.noop;
+		emitter.removeAllListeners();
+	});
+
+	return getApi.call(self);
 };
 
+var getApi = function(){
+	var api = this.emitToSocket;
+	api.on = this.emitter.on.bind(this.emitter);
+	api.removeListener = this.emitter.removeListener.bind(this.emitter);
+	api.kill = this.kill;
 
-Worker.prototype.getId = function(){
-	return this._id;
+	Object.defineProperty(api, "id", { 
+		value: this.id,
+		enumerable: true 
+	});
+
+	Object.defineProperty(api, "attributes", {
+		value: this.attributes,
+		enumerable: true
+	});
+
+	return api;
 };
 
-Worker.prototype.getAttributes = function(){
-	return this._provider.getAttributes();
-};
-
-Worker.prototype.on = function(event, callback){
-	return this._emitter.on(event, callback);
-};
-
-Worker.prototype.removeListener = function(event, callback){
-	return this._emitter.removeListener(event, callback);
-};
-
-Worker.prototype.echo = function(event, data){
-	return this._emitter.emit(event, data);
-};
-
-Worker.prototype.emit = function(event, data){
-	return this._emitter.emit("emit", event, data);
-};
-
-Worker.prototype.kill = function(){
-	if(this._isDead) return;
-	this._isDead = true;
-	
-	this.emit('kill');
-	this.echo('dead');
-	this._emitter.removeAllListeners();
+var kill = function(){
+	emitter.emit('dead');
 };

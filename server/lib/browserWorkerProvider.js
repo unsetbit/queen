@@ -1,72 +1,19 @@
-var _ = require("underscore"),
-	EventEmitter = require("events").EventEmitter,
+var EventEmitter = require('events').EventEmitter,
+	_ = require('underscore'),
 	useragent = require("useragent"),
-	uuid = require('node-uuid'),
+	generateId = require('node-uuid').v4,
 	precondition = require('precondition');
 
-var isSimilar = require("./utils.js").isSimilar,
-	createWorker = require("./worker.js").create,
-	logEvents = require("./utils.js").logEvents,
-	stopLoggingEvents = require("./utils.js").stopLoggingEvents;
+var createWorker = require('./worker.js');
 
-exports.create = create = function(socket, options){
-	var options = options || {},
-		workerProvider = new BrowserWorkerProvider(socket);
-	
-	// If logger exists, attach to it
-	if(options.logger){
-		workerProvider.setLogger(options.logger);
-	}
+var create = module.exports = function(socket, options){
+	precondition.checkDefined(socket, "BrowserWorkerProvider requires a socket.");
 
-	if(options.attributes){
-		workerProvider.setAttributes(options.attributes);	
-	}
-	
-	return workerProvider;
-};
+	options = options || {};
 
-exports.BrowserWorkerProvider = BrowserWorkerProvider = function(socket){
-	precondition.checkDefined(socket, "Browser Worker Provider requires a socket");
-	
-	var self = this;
-	
-	this._id = uuid.v4();
-	this._emitter = new EventEmitter();
-
-	this._attributes = {};
-	this._workerCount = 0;
-	this._workers = {};
-
-	_.bindAll(this, "_workerEventHandler");
-
-	this._socket = socket;
-	this._socket.on("workerEvent", this._workerEventHandler);
-};
-
-BrowserWorkerProvider.prototype.getId = function(){
-	return this._id;
-};
-
-BrowserWorkerProvider.prototype.kill = function(){
-	if(this._isDead) return;
-	this._isDead = true;
-
-	// Kill workers
-	_.each(this._workers, function(workerSocket){
-		workerSocket.kill();
-	});
-
-	this._workers = {};
-
-	this._socket.removeListener("workerEvent", this._workerEventHandler);
-	this._echo("dead");
-	this._emitter.removeAllListeners();
-	this._socket = void 0;
-};
-
-BrowserWorkerProvider.prototype.setAttributes = function(attributes){
-	var ua;
-	this._attributes = attributes = attributes || {};
+	var attributes = options.attributes || {},
+		ua,
+		self;
 
 	if(attributes.userAgent){
 		ua = useragent.parse(attributes.userAgent);
@@ -79,153 +26,115 @@ BrowserWorkerProvider.prototype.setAttributes = function(attributes){
 			path: ua.patch
 		};
 	}
+
+	self = {
+		socket: socket,
+		emitter: new EventEmitter(),
+		workerEmitters: {},
+		workerCount: 0,
+		maxWorkers: options.maxWorkers || 1000,
+		log: options.logger || utils.noop,
+		attributes: Object.freeze(attributes),
+	};
+
+	self.kill = kill.bind(self);
+	self.removeWorker = removeWorker.bind(this);
+	
+	socket.on('disconnect', self.kill);
+	socket.on('killWorker', self.removeWorker);
+	socket.on('workerEvent', workerEventHandler.bind(self));
+
+	return  getApi.call(self);
 };
 
-BrowserWorkerProvider.prototype.getAttribute = function(key){
-	return this._attributes[key];
+var killWorkerHandler = function(workerId){
+	self.removeWorker(workerId);
+	delete this.workerEmitters[workerId];
+	if(this.workerCount-- === this.maxWorkers){
+		this.log("Able to spawn more workers");
+		this.emitter.emit('available');
+	}
 };
 
-BrowserWorkerProvider.prototype.getAttributes = function(){
-	return _.extend({}, this._attributes);
+var getApi = function(){
+	var api = getWorker.bind(this);
+	api.kill =  _.once(kill.bind(this));
+	api.on = this.emitter.on.bind(this.emitter);
+	api.removeListener = this.emitter.removeListener.bind(this.emitter);
+	api.attributes = this.attributes;
+
+	return api;
 };
 
-BrowserWorkerProvider.prototype.hasAttributes = function(attributeMap){
-	return isSimilar(attributeMap, this._attributes);
+var kill = function(){
+	var self = this;
+	_.each(this.workerEmitters, function(workerEmitter, workerId){
+		self.socket.emit('killWorker', workerId);
+		workerEmitter.emit('dead'); // Emulate the immediate death of the socket
+	});
+	this.workerEmitters = {};
+	this.emitter.emit('dead');
+	this.emitter.removeAllListeners();
 };
 
-BrowserWorkerProvider.prototype.isAvailable = function(){
-	return this._workerCount < this.maxWorkerCount;
+var workerEventHandler = function(data){
+	var worker = this.workerEmitters[data.id];
+	if(worker === void 0) return;
+	worker.emit(data.event, data.data);
 };
 
-BrowserWorkerProvider.prototype.maxWorkerCount = 100;
+var getWorker = function(workerConfig){
+	var self = this;
+	if(workerConfig === void 0) return;
 
-BrowserWorkerProvider.prototype.spawnWorker = function(workerConfig, timeout){
-	var self = this,
-		worker, 
-		workerId,
-		data;
-
-	if(!this.isAvailable()){
-		if(this._logger) this._logger.debug("Unable to spawn worker because of reached limit");
-		
+	if(this.workerCount >= this.maxWorkers){
+		this.log("Unable to spawn worker because of reached limit");
 		return;
 	}
 
-	this._workerCount += 1;
-	if(this._workerCount === this.maxWorkerCount){
-		this._echo("unavailable");
-	}
-
-	worker = createWorker(this);
-	workerId = worker.getId();
-
-	data = {
-		id: workerId,
-		workerConfig: workerConfig,
-		timeout: timeout
-	};
-
-	worker.on("emit", function(event, data){
-		self._emitToWorker(workerId, event, data);
-	});
-
-	worker.on("dead", function(){
-		self._disconnectWorkerSocket(worker);
-	});
-
-	this._workers[workerId] = worker;
+	var workerId = generateId(),
+		workerEmitter = new EventEmitter(),
+		onEmitToSocket = function(event, data){
+			self.socket.emit('workerEvent', {
+				id: workerId,
+				event: event,
+				data: data
+			});
+		},
+		worker = createWorker(workerId, this.attributes, workerEmitter, onEmitToSocket);
 	
-	this._emit("spawnWorker", data);
+	this.workerEmitters[workerId] = workerEmitter;
 
-	this._echo("workerConnected", worker);
+	// Handle the case when a kill signal is sent from the server side
+	worker.on("dead", function(){
+		var workerEmitter = self.workerEmitters[workerId];
+		if(workerEmitter === void 0){
+			self.socket.emit('killWorker', workerId);
+			self.removeWorker(workerId);
+		}
+	});
+
+	this.log("Spawning new worker");
+	this.socket.emit("spawnWorker", {
+		id: workerId,
+		config: workerConfig
+	});
+
+	this.emitter.emit("worker", worker);
+
+	this.workerCount++;
+	if(this.workerCount === this.maxWorkers){
+		this.log("Worker capacity reached, unable to spawn additional workers");
+		this.emitter.emit("unavailable");
+	}
 
 	return worker;
 };
 
-BrowserWorkerProvider.prototype._disconnectWorkerSocket = function(worker){
-	var workerId = worker.getId();
-	
-	this._workerCount -= 1;
-	if(this._workerCount === (this.maxWorkerCount - 1)){
-		this._echo("available");
+var removeWorker = function(workerId){
+	delete this.workerEmitters[workerId];
+	if(this.workerCount-- === this.maxWorkers){
+		this.log("Able to spawn more workers");
+		this.emitter.emit('available');
 	}
-
-	delete this._workers[workerId];
-
-	this._echo("workerDisconnected", worker);
-};
-
-
-BrowserWorkerProvider.prototype._emitToWorker = function(workerId, event, data){
-	var message = {
-		id: workerId,
-		event: event,
-		data: data
-	};
-	this._emit("toWorker", message);
-};
-
-BrowserWorkerProvider.prototype._workerEventHandler = function(message){
-	var workerId = message.id,
-		event = message.event,
-		data = message.data,
-		workerSocket = this._workers[workerId];
-	
-	if(workerSocket === void 0){ // No longer listening to this worker
-		if(event !== "done"){
-			this._echo("killingStaleSocket", workerId);
-			this._emitToWorker(workerId, "kill");	
-		}
-
-		return;
-	} 
-	
-	workerSocket.echo(event, data);
-};
-
-// Event Handlers
-BrowserWorkerProvider.prototype.on = function(event, callback){
-	this._emitter.on(event, callback);
-	return this;
-};
-
-BrowserWorkerProvider.prototype.removeListener = function(event, callback){
-	this._emitter.removeListener(event, callback);
-	return this;
-};
-
-BrowserWorkerProvider.prototype._echo = function(event, data){
-	this._emitter.emit(event, data);
-};
-
-BrowserWorkerProvider.prototype._emit = function(event, data){
-	this._socket.emit(event, data);
-};
-
-// Logging
-BrowserWorkerProvider.prototype.eventsToLog = [
-	["debug", "dead", "Dead"],
-	["info", "workerConnected", "Worker connected"],
-	["info", "workerDisconnected", "Worker disconnected"],
-	["warn", "killingStaleSocket", "Worker socket no longer exists, sending kill command to worker."],
-	["info", "available", "Available to spawn more workers"],
-	["warn", "unavailable", "Worker limit reached, can't spawn more workers"]
-];
-
-BrowserWorkerProvider.prototype.setLogger = function(logger){
-	if(this._logger === logger){
-		return; // same as existing one
-	}
-	
-	var prefix = "[BrowserWorkerProvider-" + this.getId().substr(0,4) + "] ";
-	
-	if(this._logger !== void 0){
-		stopLoggingEvents(this, this._loggingFunctions);
-	};
-
-	this._logger = logger;
-
-	if(this._logger !== void 0){
-		this._loggingFunctions = logEvents(logger, this, prefix, this.eventsToLog);
-	};
 };

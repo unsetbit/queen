@@ -1,17 +1,32 @@
 var winston = require("winston"),
 	logger = new (winston.Logger)({transports: [new (winston.transports.Console)({level: 'info'}) ]}),
-	createRemoteMinionMaster = require("../lib/remoteClient/minionMaster.js").create;
+	socketio = require("socket.io"),
+	http = require('http'),
+	createMinionMaster = require("../lib/minionMaster.js"),
+	createControlServer = require("../lib/controlServer/server.js"),
+	createRemoteMinionMaster = require("../lib/remote/minionMaster.js"),
+	createStaticServer = require("../lib/staticServer.js").create;
 
-var minionMaster = createRemoteMinionMaster({logger:logger});
+var port = 80,
+	hostname = "localhost",
+	browserCapturePath = "/capture",
+	httpServer = createStaticServer({port: port, hostname: hostname}),
+	socketServer = socketio.listen(httpServer, {log: false}),
+	socket = socketServer.of(browserCapturePath),
+	minionMaster = createMinionMaster(socket, {logger:logger.info.bind(logger)}),
+	controlServer = createControlServer(minionMaster),
+	remoteMinionMaster = createRemoteMinionMaster();
 
-for(i = 2; i > 0; i--){
-	workforce = minionMaster.getWorkforce();
-	workforce.on('workerAdded', function(worker){
-							worker.on('ping', function(){
-							console.log('ping');
-							worker.emit('pong');
-							console.log('pong');
-						})
-					});
-	workforce.start({scripts: ['http://localhost/ping.js']}, 1000 * 10, ['ping', 'pong']);
-}
+remoteMinionMaster.on('workerProvider', function(){
+	var workforce = minionMaster({
+		scripts: ['http://localhost/ping.js'],
+		timeout: 1000 * 6
+	},
+	function(worker){
+		worker.on('ping', function(){
+			console.log('ping');
+			worker('pong');
+			console.log('pong');
+		});
+	});
+});

@@ -16,7 +16,7 @@ var WorkerProvider = exports.WorkerProvider = function(env, socket, workerFactor
 	
 	this._socket = socket;
 	this._socket.on("spawnWorker", this._spawnWorkerHandler);
-	this._socket.on("toWorker", this._workerEventHandler);	
+	this._socket.on("workerEvent", this._workerEventHandler);	
 	this._socket.on("connect", this._connectHandler); // work around for bug in socket.io
 	this._socket.on("disconnect", this._disconnectHandler);
 }; 
@@ -70,7 +70,7 @@ WorkerProvider.prototype.kill = function(){
 	this._socket.removeListener("connect", this._connectHandler);
 	this._socket.removeListener("disconnect", this._disconnectHandler);
 	this._socket.removeListener("spawnWorker", this._spawnWorkerHandler);
-	this._socket.removeListener("toWorker", this._workerEventHandler);	
+	this._socket.removeListener("workerEvent", this._workerEventHandler);	
 
 	this._socket = void 0;
 
@@ -94,8 +94,8 @@ WorkerProvider.prototype._destroyWorkers = function(){
 WorkerProvider.prototype._spawnWorkerHandler = function(data){
 	var self = this,
 		socketId = data.id,
-		workerConfig = data.workerConfig,
-		timeout = data.timeout || this._defaultTimeout,
+		workerConfig = data.config,
+		timeout = data.config.timeout || this._defaultTimeout,
 		worker,
 		workerTimeout;
 

@@ -1,20 +1,28 @@
 var winston = require("winston"),
 	logger = new (winston.Logger)({transports: [new (winston.transports.Console)({level: 'info'}) ]}),
-	createMinionMaster = require("../../").minionMaster.create;
+	socketio = require("socket.io"),
+	http = require('http'),
+	createMinionMaster = require("../lib/minionMaster.js"),
+	createStaticServer = require("../lib/staticServer.js").create;
 
-var minionMaster = createMinionMaster({	logger:logger });
-minionMaster.on("workerProviderConnected", function(){
-	var workforce, i;
+var port = 80,
+	hostname = "localhost",
+	browserCapturePath = "/capture",
+	httpServer = createStaticServer({port: port, hostname: hostname}),
+	socketServer = socketio.listen(httpServer, {log: false}),
+	socket = socketServer.of(browserCapturePath),
+	minionMaster = createMinionMaster(socket, {logger:logger.info.bind(logger)});
 
-	for(i = 2; i > 0; i--){
-		workforce = minionMaster.getWorkforce()
-						.on('workerAdded', function(worker){
-								worker.on('ping', function(){
-								console.log('ping');
-								worker.emit('pong');
-								console.log('pong');
-							})
-						})
-						.start({scripts: ['http://localhost/ping.js']}, 1001 * 3);
-	}
+minionMaster.on('workerProvider', function(){
+	var workforce = minionMaster({
+		scripts: ['http://localhost/ping.js'],
+		timeout: 1000 * 6
+	},
+	function(worker){
+		worker.on('ping', function(){
+			console.log('ping');
+			worker('pong');
+			console.log('pong');
+		});
+	});
 });
