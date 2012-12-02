@@ -3,7 +3,9 @@ var _ = require("underscore"),
 	net = require('net'),
 	precondition = require('precondition');
 
-var createWorkforce = require('./workforce.js').create;
+var utils = require('../utils'),
+	createClientWorkforce = require('./workforce.js'),
+	createWorkerProvider = require('./workerProvider.js');
 
 var create = module.exports = function(socket, minionMaster, options){
 	precondition.checkDefined(socket, "Client requires a socket");
@@ -14,38 +16,67 @@ var create = module.exports = function(socket, minionMaster, options){
 		minionMaster: minionMaster,
 		log: options.logger,
 		workforces: {}
-	}
+	};
 
-	socket.on('data', dataHandler.bind(self));
-	minionMaster.on('workerProvider', workerProviderHandler.bind(self));
-
-	return getApi.call(self);
+	self.kill = _.once(kill.bind(self));
+	self.sendToSocket = sendToSocket.bind(self);
+	self.workerProviderHandler = workerProviderHandler.bind(self)
+	self.createWorkforce = createWorkforce.bind(self);
+	socket.on('data', messageHandler.bind(self));
+	socket.on('close', self.kill);
+	socket.on('end', self.kill);
+	socket.on('error', self.kill);
+	minionMaster.workerProviders.forEach(self.workerProviderHandler)
+	minionMaster.on('workerProvider', self.workerProviderHandler);
+	socket.write('ready');
+	
 };
 
-var getApi = function(){
-	var api = {};
-	return api;
+var kill = function(){
+	this.sendToSocket = utils.noop;
+	
+	_.each(this.workforces, function(workforce){
+		workforce.kill();
+	});
+	this.minionMaster.removeListener('workerProvider', this.workerProviderHandler);
+};
+
+var sendToSocket = function(message){
+	this.socket.write(message);		
 };
 
 var workerProviderHandler = function(workerProvider){
+	var self = this,
+		onSendToSocket;
+
+	onSendToSocket = function(message){
+		message.workerProviderId = workerProvider.id;
+		self.sendToSocket(message);
+	};
+
+	createWorkerProvider(onSendToSocket, workerProvider);
+
 	this.socket.write({
-		action: 'workerProvider',
-		attributes: workerProvider.attributes
+		type: 'workerProvider',
+		id: workerProvider.id,
+		attributes: workerProvider.attributes,
+		maxWorkerCount: workerProvider.maxWorkerCount,
+		workerCount: workerProvider.workerCount
 	});
 };
 
-var dataHandler = function(data){
-	if(data.action === "spawnWorkforce"){
-		this.createWorkforce(data.id, data.config);
-	}else if(data.workforceId !== void 0){
-		var workforce = this.workforces[data.workforceId];
+var messageHandler = function(message){
+	if(message.workforceId !== void 0){
+		var workforce = this.workforces[message.workforceId];
 		if(workforce !== void 0){
-			workforce(data);
+			workforce(message);
 		} else {
-			this.log("Workforce no longer exists: " + JSON.stringify(data));
+			this.log("Workforce doesn't exist: " + JSON.stringify(message));
 		}
+	} else if (message.type === "spawnWorkforce"){
+		this.createWorkforce(message.id, message.config);
 	} else {
-		this.log("Unknown action: " + JSON.stringify(data));
+		this.log("Unknown action: " + JSON.stringify(message));
 	}
 };
 
@@ -54,12 +85,12 @@ var createWorkforce = function(remoteId, workforceConfig){
 		workforce,
 		onEmitToSocket;
 	
-	onEmitToSocket = function(data){
-		data.workforceId = remoteId;
-		self.socket.write(data);
+	onSendToSocket = function(message){
+		message.workforceId = remoteId;
+		self.sendToSocket(message);
 	};
 
-	workforce = createClientWorkforce(this.minionMaster, workforceConfig, onEmitToSocket);
+	workforce = createClientWorkforce(this.minionMaster, workforceConfig, onSendToSocket);
 
 	this.workforces[remoteId] = workforce;
 	workforce.on('dead', function(){

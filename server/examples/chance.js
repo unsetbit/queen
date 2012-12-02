@@ -14,20 +14,32 @@ var port = 80,
 	minionMaster = createMinionMaster(socket, {logger:logger.info.bind(logger)});
 
 minionMaster.on('workerProvider', function(){
+	var startTime = (new Date()).getTime();
+	var workforces = [];
 	for(var i = 0; i < 100; i++){
 		var workforce = minionMaster({
-			scripts: ['http://localhost/ping.js'],
-			timeout: 1000 * 6,
-			handler: function(worker){
-				worker.on('message', function(){
-					console.log('ping');
-					worker('pong');
-					console.log('pong');
-				});
-			},
+			scripts: ['http://localhost/chance.js'],
 			done: function(){
-				console.log('done!');
 			}
 		});
+
+		var numberToFind = 42;
+		var maxNumber = 10000;
+
+		workforce.on('message', function(number, worker){
+			if(number === 42){
+				workforces.forEach(function(workforce){
+					workforce.kill();	
+				});
+				var endTime = (new Date()).getTime();
+				var secondsToComplete = (endTime - startTime) / 1000;
+				console.log('Done! That took ' + secondsToComplete + " seconds. The winner was " + worker.provider.attributes.name);
+			}
+		});
+		workforces.push(workforce);
 	}
+	workforces.forEach(function(workforce){
+		workforce(maxNumber);
+	});
 });
+

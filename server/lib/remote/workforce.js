@@ -3,17 +3,30 @@ var EventEmitter = require('events').EventEmitter,
 	precondition = require('precondition'),
 	createWorker = require('../worker.js');
 
-var create = module.exports = function(onEmitToSocket, workerConfig, options){
-	precondition.checkDefined(workerConfig, "Worker config list required");
+var utils = require('../utils.js');
+
+var create = module.exports = function(getWorkerProvider, socket, onSendToSocket, workerConfig){
+	precondition.checkType(typeof getWorkerProvider === "function", "getWorkerProvider function required");
+	precondition.checkDefined(socket, "Socket required");
+	precondition.checkType(typeof onSendToSocket === "function", "Emit to socket function required");
+	precondition.checkDefined(workerConfig, "Worker config required");
 
 	var self = {
 		emitter: new EventEmitter(),
-		emitToSocket: onEmitToSocket,
+		sendToSocket: onSendToSocket,
 		workerConfig: workerConfig,
-		workerHandler: options.workerHandler || utils.noop,
-		onDead: options.onDead || utils.noop
+		workerHandler: workerConfig.handler || utils.noop,
+		doneHandler: workerConfig.done || utils.noop,
+		getWorkerProvider: getWorkerProvider,
+		workerEmitters: {}
 	};
 
+	self.kill = _.once(kill.bind(self));
+	self.addWorkerHandler = addWorkerHandler.bind(self);
+	self.workerMessageHandler = workerMessageHandler.bind(self);
+
+	socket.on('message', messageHandler.bind(self));
+	
 	return getApi.call(self);
 };
 
@@ -21,18 +34,31 @@ var getApi = function(){
 	var api = broadcast.bind(this);
 	api.on = this.emitter.on.bind(this.emitter);
 	api.removeListener = this.emitter.removeListener.bind(this.emitter);
-	api.kill = _.once(kill.bind(this));
+	api.kill = this.kill;
 	
 	return api;
 };
 
-var kill = function(){
-	this.emitToSocket({
-		action: "kill"
-	});
+var messageHandler = function(message){
+	switch(message.type){
+		case "workerMessage":
+			this.workerMessageHandler(message);
+			return;
+		case "addWorker":
+			this.addWorkerHandler(message);
+			return;
+		case "done":
+			this.doneHandler();
+			this.kill();
+			return;
+	}
+};
 
-	this.workers.forEach(function(worker){
-		worker.kill();
+var kill = function(){
+	this.sendToSocket({type:"kill"});
+
+	_.each(this.workerEmitters, function(workerEmitter){
+		workerEmitter.emit('dead');
 	});
 	
 	this.workers = void 0;
@@ -40,53 +66,49 @@ var kill = function(){
 	this.emitter.removeAllListeners();
 };
 
-var broadcast = function(event, data){
-	this.emitToSocket({
-		action: "broadcast",
-		event: event,
-		data: data
+var broadcast = function(message){
+	this.sendToSocket({
+		type: "broadcast",
+		message: message
 	});
 };
 
-var addWorker = function(id, attributes){
+var addWorkerHandler = function(message){
 	var self = this,
+		workerId = message.id,
+		workerProvider = this.getWorkerProvider(message.providerId),
 		workerEmitter = new EventEmitter(),
 		worker,
 		onEmitToSocket;
 
-	onEmitToSocket = function(event, data){
-		self.emitToSocket({
-			action: 'workerEvent',
-			id: id,
-			event: event,
-			data: data
+	onSendToSocket = function(message){
+		self.sendToSocket({
+			type: 'workerMessage',
+			id: workerId,
+			message: message
 		});
 	};
 
-	worker = createWorker(id, attributes, workerEmitter, onEmitToSocket);
+	worker = createWorker(workerId, workerProvider, workerEmitter, onSendToSocket);
 
-	this.workerEmitters[id] = workerEmitter;
+	this.workerEmitters[workerId] = workerEmitter;
 	worker.on('dead', function(){
-		var workerEmitter = self.workerEmitters[worker.id];
+		var workerEmitter = self.workerEmitters[workerId];
 		if(workerEmitter !== void 0){
-			delete self.workerEmitters[worker.id];
+			delete self.workerEmitters[workerId];
 		}
+	});
+
+	worker.on('message', function(message){
+		self.emitter.emit('message', message, worker);
 	});
 
 	this.workerHandler(worker);
 };
 
-var workerEventHandler = function(id, event, data){
-	var workerEmitter = this.workerEmitters[id];
+var workerMessageHandler = function(message){
+	var workerEmitter = this.workerEmitters[message.id];
 	if(workerEmitter !== void 0){
-		workerEmitter.emit(event, data);
+		workerEmitter.emit('message', message.message);
 	}
 }
-
-var actionHandler = function(data){
-	if(data.action === "workerEvent"){
-		this.workerEventHandler(data.id, data.event, data.data);
-	} else if(data.action === "addWorker"){
-		this.addWorker(data.id, data.attributes);
-	}
-};

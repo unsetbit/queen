@@ -15,7 +15,11 @@ module.exports = function(grunt) {
     pkg: '<json:package.json>',
     files: {
       server: ['server/lib/*.js'],
-      client: ['client/lib/*.js', 'client/build_resource/module_prefix.js', 'client/src/*.js', 'client/build_resource/module_postfix.js'],
+      client: {
+        src: 'client/src',
+        srcFiles: 'client/src/**/*',
+        lib: 'client/lib/**/*.js'
+      },
       styles: ['client/lib/*.css', 'client/styles/**/*.css'],
       grunt: ['grunt.js', 'tasks/*.js']
     },
@@ -27,18 +31,22 @@ module.exports = function(grunt) {
         ' Licensed <%= _.pluck(pkg.licenses, "type").join(", ") %> */'
     },
     concat: {
-      dist: {
-        src: ['<banner:meta.banner>', '<config:files.client>'],
-        dest: 'client/static/<%= pkg.name %>.js'
-      },
       styles: {
         src: ['<banner:meta.banner>', '<config:files.styles>'],
         dest: 'client/static/<%= pkg.name %>.css'
       }
     },
+    hug: {
+      dist: {
+        header: '<config:files.client.lib>',
+        src: '<config:files.client.src>',
+        dest: 'client/static/<%= pkg.name %>.js',
+        exportsVariable: 'MinionMaster'
+      }
+    },
     min: {
       dist: {
-        src: ['<banner:meta.banner>', '<config:concat.dist.dest>'],
+        src: ['<banner:meta.banner>', '<config:hug.dist.dest>'],
         dest: 'client/static/<%= pkg.name %>.min.js'
       }
     },
@@ -49,8 +57,8 @@ module.exports = function(grunt) {
     },
     watch: {
         client: {
-          files: '<config:files.client>',
-          tasks: 'concat'
+          files: '<config:files.client.srcFiles>',
+          tasks: 'hug'
         },
         styles: {
           files: '<config:files.styles>',
@@ -87,5 +95,7 @@ module.exports = function(grunt) {
     }
   });
 
-  grunt.registerTask('default', 'concat');
+  grunt.loadNpmTasks('grunt-contrib-hug');
+
+  grunt.registerTask('default', 'hug');
 };

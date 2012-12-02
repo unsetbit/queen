@@ -1,15 +1,15 @@
 var	generateId = require('node-uuid').v4,
 	precondition = require('precondition'),
-	utils = require('../utils.js');
+	utils = require('./utils.js');
 	
-var create = module.exports = function(id, attributes, emitter, onEmitToSocket){
+var create = module.exports = function(id, provider, emitter, onSendToSocket){
 	precondition.checkDefined(emitter, "An emitter is required for workers");
 
 	var self = {
 		id: id,
-		attributes: attributes,
+		provider: provider,
 		emitter: emitter,
-		emitToSocket: onEmitToSocket
+		sendToSocket: onSendToSocket
 	}
 
 	self.kill = kill.bind(self);
@@ -24,7 +24,7 @@ var create = module.exports = function(id, attributes, emitter, onEmitToSocket){
 };
 
 var getApi = function(){
-	var api = this.emitToSocket;
+	var api = this.sendToSocket;
 	api.on = this.emitter.on.bind(this.emitter);
 	api.removeListener = this.emitter.removeListener.bind(this.emitter);
 	api.kill = this.kill;
@@ -34,8 +34,8 @@ var getApi = function(){
 		enumerable: true 
 	});
 
-	Object.defineProperty(api, "attributes", {
-		value: this.attributes,
+	Object.defineProperty(api, "provider", {
+		value: this.provider,
 		enumerable: true
 	});
 
@@ -43,5 +43,5 @@ var getApi = function(){
 };
 
 var kill = function(){
-	emitter.emit('dead');
+	this.emitter.emit('dead');
 };

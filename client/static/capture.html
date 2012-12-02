@@ -13,7 +13,9 @@
     };
 
     if(typeof console !== "undefined"){
-      minionConfig.logger = console;
+      minionConfig.logger = function(message){
+        console.log(message);
+      };
     }
 		
     var minion = MinionMaster.WorkerProvider.create(minionConfig);

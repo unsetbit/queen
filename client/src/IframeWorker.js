@@ -1,82 +1,70 @@
-var IframeWorker = exports.IframeWorker = function(id){
-	precondition.checkDefined(id, "IframeWorker requires a socket id");
+var _ = require('./lib/underscore.js');
 
-	this._id = id;
-	this._iframe = iframe = document.createElement("IFRAME"); 
-	document.body.appendChild(iframe);
+exports.create = function(id, onSendToSocket, options){
+	var self = {
+		id: id,
+		sendToSocket: onSendToSocket,
+		iframe: document.createElement("IFRAME"),
+		runScripts: runScripts,
+		runScript: runScript,
+		loadUrl: loadUrl,
+		pendingMessages: [],
+		onDead: options.onDead || function(){}
+	};
 
-	_.bindAll(this, "_killCommandHandler");
+	_.bindAll(self);
 
-	this._emitter = new EventEmitter();
-	this._emitter.on("kill", this._killCommandHandler);
+	self.api = getApi.call(self);
+
+	document.body.appendChild(self.iframe);
+
+	return self.api;
 };
 
-IframeWorker.create = function(id, options){
-	var options = options || {},
-		logger = options.logger,
-		iframeWorker = new IframeWorker(id); 
+var getApi = function(){
+	var api = this.sendToSocket;
+	api.id = this.id;
+	api.onmessage = _.bind(addToPendingMessages, this);
+	api.kill = _.once(_.bind(kill, this));
+	api.start = _.once(_.bind(start, this));
+	api.ready = _.once(_.bind(ready, this));
 
-	if(logger){
-		iframeWorker.setLogger(logger);
-	}
-
-	return iframeWorker;
+	return api;
 };
 
-IframeWorker.prototype.getId = function(){
-	return this._id;
+var addToPendingMessages = function(message){
+	this.pendingMessages.push(message);
 };
 
-IframeWorker.prototype.start = function(config){
-	if(this._started) return false;
-
-	this._started = true;
-
-	if(config.scripts !== void 0){
-		this._runScripts(config.scripts);
-	} else if(config.url !== void 0){
-		this._loadUrl(config.url);
-	} else { // config.script !== void 0
-		this._runScript(config.script);
-	}
-};
-
-IframeWorker.prototype._runScripts = function(scriptArray){
-	var iframe,
-		iframeDoc,
-		iframeData,
-		iframeTemplate,
-		iframeContent;
-
-	iframe = this._iframe;
-	iframeDoc = (iframe.contentDocument) ? iframe.contentDocument : iframe.contentWindow.document;
-	
-	iframeContent = "<html><head><title></title></head><body>";
-	iframeContent += "<script>window.workerSocket = window.parent.GetWorkerSocket('" + this._id + "')</script>";
-	forEach.call(scriptArray, function(script){
-		iframeContent += '<script src="' + script + '"><\/script>';
-		
+var ready = function(){
+	var self = this;
+	_.each(this.pendingMessages, function(message){
+		self.api.onmessage(message);
 	});
-	iframeContent += "</body></html>";
-
-	iframeDoc.open();
-	iframeDoc.write(iframeContent);
-	iframeDoc.close();
 };
 
-IframeWorker.prototype._runScript = function(script){
-	var iframe,
+var start = function(config){
+	if(config.scripts !== void 0){
+		this.runScripts(config.scripts);
+	} else if(config.url !== void 0){
+		this.loadUrl(config.url);
+	} else { // config.script !== void 0
+		this.runScript(config.script);
+	}
+};
+
+var runScript = function(script){
+		var iframe,
 		iframeDoc,
-		iframeData,
-		iframeTemplate,
 		iframeContent;
 
-	iframe = this._iframe;
+	iframe = this.iframe;
 	iframeDoc = (iframe.contentDocument) ? iframe.contentDocument : iframe.contentWindow.document;
 	
 	iframeContent =  "<html><head><title></title></head><body>";
-	iframeContent += "<script>window.workerSocket = window.parent.GetWorkerSocket('" + this._id + "')</script>";
+	iframeContent += "<script>window.workerSocket = window.parent.GetWorkerSocket('" + this.id + "')</script>";
 	iframeContent += "<script>" + script + "</script>";
+	iframeContent += "<script>window.workerSocket.ready()</script>";
 	iframeContent += "</body></html>";
 
 	iframeDoc.open();
@@ -84,64 +72,34 @@ IframeWorker.prototype._runScript = function(script){
 	iframeDoc.close();
 };
 
-IframeWorker.prototype._loadUrl = function(url){
-	var iframe = this._iframe;
+var runScripts = function(scripts){
+	var iframe,
+		iframeDoc,
+		iframeContent;
+
+	iframe = this.iframe;
+	iframeDoc = (iframe.contentDocument) ? iframe.contentDocument : iframe.contentWindow.document;
 	
-	iframe.setAttribute("src", url + "?iframeWorkerId=" + this._id); 
+	iframeContent = "<html><head><title></title></head><body>";
+	iframeContent += "<script>window.workerSocket = window.parent.GetWorkerSocket('" + this.id + "')</script>";
+	_.each(scripts, function(script){
+		iframeContent += '<script src="' + script + '"><\/script>';
+	});
+	iframeContent += "<script>window.workerSocket.ready()</script>";
+	iframeContent += "</body></html>";
+
+	iframeDoc.open();
+	iframeDoc.write(iframeContent);
+	iframeDoc.close();
 };
 
-IframeWorker.prototype._destroy = function(){
-	this._emitter.removeListener("kill", this._killCommandHandler);
-
-	document.body.removeChild(this._iframe);	
-	this._iframe = void 0;
-
-	this.trigger('dead');
+var loadUrl = function(url){
+	var iframe = this.iframe;
+	iframe.setAttribute("src", url + "?iframeWorkerId=" + this.id); 
 };
 
-IframeWorker.prototype.kill = function(){
-	this.emit('dead');
-	this._destroy();
-};
-
-IframeWorker.prototype._killCommandHandler = function(){
-	this._destroy();
-};
-
-// Events
-IframeWorker.prototype.on = function(event, callback){
-	return this._emitter.on(event, callback);
-};
-
-IframeWorker.prototype.removeListener = function(event, callback){
-	return this._emitter.removeListener(event, callback);
-};
-
-IframeWorker.prototype.trigger = function(event, data){
-	return this._emitter.trigger(event, [data]);
-};
-
-IframeWorker.prototype.emit = function(event, data){
-	return this._emitter.trigger("emit", [event, data]);
-};
-
-// Logging
-IframeWorker.prototype.eventsToLog = [];
-
-IframeWorker.prototype.setLogger = function(logger){
-	if(this._logger === logger){
-		return; // same as existing one
-	}
-	
-	var prefix = "[IframeWorker-" + this._id.substr(0,4) + "] ";
-	
-	if(this._logger !== void 0){
-		Utils.stopLoggingEvents(this, this._loggingFunctions);
-	};
-
-	this._logger = logger;
-
-	if(this._logger !== void 0){
-		this._loggingFunctions = Utils.logEvents(logger, this, prefix, this.eventsToLog);
-	};
+var kill = function(){
+	document.body.removeChild(this.iframe);	
+	this.iframe = void 0;
+	this.onDead();
 };

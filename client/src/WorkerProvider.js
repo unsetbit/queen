@@ -1,186 +1,186 @@
-var WorkerProvider = exports.WorkerProvider = function(env, socket, workerFactory){
-	precondition.checkDefined(socket, "Client requires a socket");
-	
-	this._emitter = new EventEmitter();
-	this._workerCount = 0;
-	this._workers = {};
-	this._workerFactory = workerFactory;
+var workerFactory = require('./IframeWorker.js').create;
+var io = require('./lib/socket.io.js');
+var _ = require('./lib/underscore.js');
 
-	_.bindAll(this,	"_connectHandler",
-					"_disconnectHandler",
-					"_spawnWorkerHandler", 
-					"_workerEventHandler",
-					"getWorkerSocket");
-
-	env.GetWorkerSocket = this.getWorkerSocket;
-	
-	this._socket = socket;
-	this._socket.on("spawnWorker", this._spawnWorkerHandler);
-	this._socket.on("workerEvent", this._workerEventHandler);	
-	this._socket.on("connect", this._connectHandler); // work around for bug in socket.io
-	this._socket.on("disconnect", this._disconnectHandler);
-}; 
-
-WorkerProvider.prototype._defaultTimeout = 1000 * 60 * 2; // 2 minutes
-WorkerProvider.prototype.getDefaultTimeout = function(){ return this._defaultTimeout;};
-WorkerProvider.prototype.setDefaultTimeout = function(defaultTimeout){
-	this._defaultTimeout = defaultTimeout;
-};
-
-WorkerProvider.prototype._maxTimeout = 1000 * 60 * 10; // 10 minutes
-WorkerProvider.prototype.getMaxTimeout = function(){ return this._maxTimeout;};
-WorkerProvider.prototype.setMaxTimeout = function(maxTimeout){
-	this._maxTimeout = maxTimeout;
-};
-
-WorkerProvider.create = function(options){
+exports.create = function(options){
 	var options = options || {},
 		env = options.env || window,
-		maxTimeout = options.maxTimeout,
-		defaultTimeout = options.defaultTimeout,
-		workerFactory = options.workerFactory || IframeWorker.create,
 		socketPath = options.socketPath || "//" + window.location.host + "/capture",
 		socket = options.socket || io.connect(socketPath, {
 			'max reconnection attempts': Infinity
-		}),
-		workerProvider = new WorkerProvider(env, socket, workerFactory);
+		});
 
-	if(options.logger){
-		workerProvider.setLogger(options.logger);
-	}
 
-	if(maxTimeout){
-		workerProvider.setMaxTimeout(maxTimeout);
-	}
+	var self = {
+		log: options.logger,
+		socket: socket,
+		sendToSocket: sendToSocket,
+		workerFactory: workerFactory,
+		connectionHandler: connectionHandler,
+		disconnectionHandler: disconnectionHandler,
+		destroyWorkers: destroyWorkers,
+		register: register,
+		workers: {},
+		workerMessageHandler: workerMessageHandler,
+		spawnWorkerHandler: spawnWorkerHandler,
+		messageHandler: messageHandler,
+		killWorkerHandler: killWorkerHandler,
+		kill: kill,
+		workerCount: 0,
+		maxWorkerCount: 1000,
+		maxTimeout: 1000 * 60
+	};
+	window.minionSelf = self;
+	_.bindAll(self);
 
-	if(defaultTimeout){
-		workerProvider.setDefaultTimeout(defaultTimeout);
-	}
+	socket.on("connect", self.connectionHandler);
+	socket.on("message", self.messageHandler);
+	socket.on("disconnect", self.disconnectionHandler);
 
-	return workerProvider;
+	return getApi.call(self);
 };
 
-WorkerProvider.prototype._reload = function(){
-	window.location.reload(true);
+var getApi = function(){
+	var api = {};
+
+	api.getWorkerSocket = getWorkerSocket.bind(this);
+	window.GetWorkerSocket = api.getWorkerSocket;
+
+	return api;
 };
 
-WorkerProvider.prototype.kill = function(){
-	this._destroyWorkers();
+var kill = function(){
+	this.destroyWorkers();
 
-	this._socket.removeListener("connect", this._connectHandler);
-	this._socket.removeListener("disconnect", this._disconnectHandler);
-	this._socket.removeListener("spawnWorker", this._spawnWorkerHandler);
-	this._socket.removeListener("workerEvent", this._workerEventHandler);	
-
-	this._socket = void 0;
-
-	this._trigger('dead');
-};
-
-// Iframes call this to get their work emission object
-WorkerProvider.prototype.getWorkerSocket = function(socketId){
-	return this._workers[socketId];
-};
-
-WorkerProvider.prototype._destroyWorkers = function(){
-	_.each(this._workers, function(worker){
-		worker.trigger("kill");
-	});
-
-	this._workers = {};	
-	this._workerCount = 0;
-};
-
-WorkerProvider.prototype._spawnWorkerHandler = function(data){
-	var self = this,
-		socketId = data.id,
-		workerConfig = data.config,
-		timeout = data.config.timeout || this._defaultTimeout,
-		worker,
-		workerTimeout;
-
-	if(this._workerCount > this.maxWorkerSocketCount){
-		return;
-	}
-
-	if(timeout > this._maxTimeout){
-		timeout = this._maxTimeout;	
-	}
+	this.socket.removeListener("connect", this.connectionHandler);
+	this.socket.removeListener("message", this.messageHandler);
+	this.socket.removeListener("disconnect", this.disconnectionHandler);
 	
-	this._workerCount += 1;
-	if(this._workerCount === this.maxWorkerSocketCount){
-		this._trigger("unavailable");
-	}
+	this.socket = void 0;
+};
 
-	worker = this._workerFactory(socketId, {logger: this._logger});
+var sendToSocket = function(message){
+	this.socket.send(JSON.stringify(message));
+};
 
-	worker.on("emit", function(event, data){
-		self._emitWorkerEvent(socketId, event, data);	
-	});
-
-	workerTimeout = setTimeout(function(){
-		worker.kill();
-	}, timeout);
-	
-	worker.on("dead", function(){
-		clearTimeout(workerTimeout);
-		self._workerDeadHandler(socketId);
-	});
-
-	this._workers[socketId] = worker;
-
-	this._trigger("workerSpawned");
-	
-	worker.start(workerConfig);
-
+var getWorkerSocket = function(workerId){
+	var worker = this.workers[workerId];
 	return worker;
 };
 
-WorkerProvider.prototype._emitWorkerEvent = function(socketId, event, data){
-	var data = {
-		id: socketId,
-		event: event,
-		data: data
-	}
-
-	this._emit("workerEvent", data);
-};
-
-WorkerProvider.prototype._workerDeadHandler = function(socketId){
-	var worker = this._workers[socketId];
-
-	if(worker !== void 0){
-		delete this._workers[socketId];
-	
-		this._workerCount -= 1;
-		this._trigger("workerDead");
-	
-		if(this._workerCount === (this.maxWorkerSocketCount - 1)){
-			this._trigger("available");
-		}
+var connectionHandler = function(){
+	this.log('Connected');
+	if(this.isReconnecting){
+		window.location.reload(true); // Reload on reconnect
+	} else {
+		this.register();
 	}
 };
 
-// Routes commands to workers
-WorkerProvider.prototype._workerEventHandler = function(data){
-	var socketId = data.id,
-		event = data.event,
-		eventData = data.data;
+var messageHandler = function(message){
+	message = JSON.parse(message);
+	switch(message.type){
+		case "workerMessage":
+			this.workerMessageHandler(message);
+			break;
+		case "spawnWorker":
+			this.spawnWorkerHandler(message);
+			break;
+		case "killWorker":
+			this.killWorkerHandler(message);
+	}
+};
 
-	var workerSocket = this._workers[socketId];
-	if(workerSocket === void 0){ // No longer listening to this worker
-		if(event !== "kill"){
-			this._trigger("killingStaleSocket");
-			this._emitFromWorker(socketId, "kill");
-		}
+var workerMessageHandler = function(message){
+	var workerId = message.id,
+		message = message.message;
 
+	var worker = this.workers[workerId];
+	if(worker === void 0){ // No longer listening to this worker
 		return;
 	};
 
-	workerSocket.trigger(event, eventData);
+	worker.onmessage(message);
 };
 
-WorkerProvider.prototype._register = function(){
+var spawnWorkerHandler = function(message){
+	this.log('Spawning Worker');
+
+	var self = this,
+		workerId = message.id,
+		workerConfig = message.config,
+		timeout = workerConfig.timeout,
+		worker,
+		workerTimeout;
+
+	if(this.workerCount > this.maxWorkerCount){
+		return;
+	}
+	
+	this.workerCount += 1;
+	if(this.workerCount === this.maxWorkerCount){
+		return;
+	}
+
+	var onSendToSocket = function(message){
+		self.sendToSocket({
+			type: "workerMessage",
+			id: workerId,
+			message: message
+		});
+	};
+
+	worker = this.workerFactory(workerId, onSendToSocket, {
+		onDead: function(){
+			if(workerConfig.timeout){
+				clearTimeout(workerTimeout);
+			}
+
+			delete self.workers[workerId];
+
+			self.workerCount -= 1;
+			self.sendToSocket({
+				type: "workerDead",
+				id: workerId
+			})
+		}
+	});
+
+	if(workerConfig.timeout){
+		workerTimeout = setTimeout(function(){
+			worker.kill();
+		}, workerConfig.timeout);
+	}
+	
+	this.workers[workerId] = worker;
+	
+	worker.start(workerConfig);
+	
+	return worker;
+};
+
+var killWorkerHandler = function(message){
+	var worker = this.workers[message.id];
+	if(worker === void 0) return;
+	worker.kill();
+};
+
+var disconnectionHandler = function(){
+	this.log('Disconnected');
+	this.destroyWorkers();
+	this.isReconnecting = true;
+};
+
+var destroyWorkers = function(){
+	_.each(this.workers, function(worker){
+		worker.kill();
+	});
+
+	this.workers = {};	
+	this.workerCount = 0;
+};
+
+var register = function(){
 	var attributes = {},
 		capabilities = {};
 
@@ -194,67 +194,8 @@ WorkerProvider.prototype._register = function(){
 	});
 
 	attributes.capabilities = capabilities;
-	this._emit("register", attributes);
-	this._trigger('registered');
-};
-
-WorkerProvider.prototype._emit = function(event, data){
-	this._socket.emit(event, data);	
-};
-
-// CONNECTION HANDLERS
-WorkerProvider.prototype._connectHandler = function(){
-	if(this._isReconnecting){
-		this._reload(); // Reload on reconnect
-	} else {
-		this._register();
-		this._trigger("connected");
-	}
-};
-
-WorkerProvider.prototype._trigger = function() {
-	this._emitter.trigger.apply(this._emitter, arguments);
-};
-
-WorkerProvider.prototype._disconnectHandler = function(){
-	this._destroyWorkers();
-	this._trigger("disconnected");
-	this._isReconnecting = true;
-};
-
-WorkerProvider.prototype.on = function(event, callback){
-	this._emitter.on(event, callback);
-};
-
-WorkerProvider.prototype.removeListener = function(event, callback){
-	this._emitter.removeListener(event, callback);
-};
-
-
-// Logging
-WorkerProvider.prototype.eventsToLog = [
-	["info", "connected", "Connected"],
-	["info", "disconnected", "Disconnected"],
-	["info", "reconnect", "Reconnected"],
-	["info", "registered", "Registered"],
-	["debug", "reset", "Reset"],
-	["debug", "dead", "Dead"]
-];
-
-WorkerProvider.prototype.setLogger = function(logger){
-	if(this._logger === logger){
-		return; // same as existing one
-	}
-	
-	var prefix = "[WorkerProvider] ";
-	
-	if(this._logger !== void 0){
-		Utils.stopLoggingEvents(this, this._loggingFunctions);
-	};
-
-	this._logger = logger;
-
-	if(this._logger !== void 0){
-		this._loggingFunctions = Utils.logEvents(logger, this, prefix, this.eventsToLog);
-	};
+	this.sendToSocket({
+		type: "register",
+		attributes: attributes
+	});
 };

@@ -2,7 +2,7 @@ var jot = require('json-over-tcp'),
 	precondition = require('precondition');
 
 var createClient = require('./client.js'),
-	utils = require('../../utils.js');
+	utils = require('../utils.js');
 
 var create = module.exports = function(minionMaster, options){
 	precondition.checkDefined(minionMaster, "ControlServer requires a minion master instance");
@@ -22,5 +22,5 @@ var create = module.exports = function(minionMaster, options){
 };
 
 var connectionHandler = function(connection){
-	var client = createClient(connection, this.minionMaster, {logger: this.log});
+	createClient(connection, this.minionMaster, {logger: this.log});
 };

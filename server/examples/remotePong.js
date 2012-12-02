@@ -3,6 +3,8 @@ var winston = require("winston"),
 	socketio = require("socket.io"),
 	http = require('http'),
 	createMinionMaster = require("../lib/minionMaster.js"),
+	createControlServer = require("../lib/controlServer/server.js"),
+	createRemoteMinionMaster = require("../lib/remote/minionMaster.js"),
 	createStaticServer = require("../lib/staticServer.js").create;
 
 var port = 80,
@@ -11,23 +13,30 @@ var port = 80,
 	httpServer = createStaticServer({port: port, hostname: hostname}),
 	socketServer = socketio.listen(httpServer, {log: false}),
 	socket = socketServer.of(browserCapturePath),
-	minionMaster = createMinionMaster(socket, {logger:logger.info.bind(logger)});
+	minionMaster = createMinionMaster(socket, {logger:logger.info.bind(logger)}),
+	controlServer = createControlServer(minionMaster),
+	remoteMinionMaster,
+	onReady;
 
-minionMaster.on('workerProvider', function(){
-	for(var i = 0; i < 100; i++){
+onReady = function(minionMaster){
+	minionMaster.on('workerProvider', function(){
 		var workforce = minionMaster({
 			scripts: ['http://localhost/ping.js'],
-			timeout: 1000 * 6,
-			handler: function(worker){
-				worker.on('message', function(){
-					console.log('ping');
-					worker('pong');
-					console.log('pong');
-				});
-			},
+			timeout: 1000 * 10,
+			handler: pingPong,
 			done: function(){
 				console.log('done!');
 			}
 		});
-	}
-});
+	});
+};
+
+createRemoteMinionMaster(onReady);
+
+var pingPong = function(worker){
+	worker.on('message', function(message){
+		console.log(message);
+		worker('pong');
+		console.log('pong');
+	});
+}

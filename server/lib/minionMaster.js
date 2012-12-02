@@ -3,7 +3,7 @@ var EventEmitter = require('events').EventEmitter,
 	precondition = require('precondition')
 	generateId = require('node-uuid').v4;
 
-var utils = require('../utils.js'),
+var utils = require('./utils.js'),
 	createWorkerProvider  = require('./browserWorkerProvider.js'),
 	createWorkforce = require('./workforce.js');
 	
@@ -21,7 +21,7 @@ var create = module.exports = function(socket, options){
 		log: options.logger || utils.noop
 	};
 
-	self.registerWorkerProvider = registerWorkerProvider.bind(self);
+	self.addWorkerProvider = addWorkerProvider.bind(self);
 	self.getWorkerProviders = getWorkerProviders.bind(self);
 
 	socket.on('connection', connectionHandler.bind(self));
@@ -30,11 +30,20 @@ var create = module.exports = function(socket, options){
 };
 
 var getApi = function(){
-	var api = getWorkforce.bind(this);
+	var self = this,
+		api = getWorkforce.bind(this);
 
 	api.on = this.emitter.on.bind(this.emitter);
 	api.removeListener = this.emitter.removeListener.bind(this.emitter);
 	api.kill = _.once(kill.bind(this));
+	api.getWorkerProvider = getWorkerProvider.bind(self);
+
+	Object.defineProperty(api, 'workerProviders', {
+		enumerable: true,
+		get: function(){
+			return _.values(self.workerProviders);
+		}
+	});
 
 	return api;
 };
@@ -50,6 +59,12 @@ var kill = function(){
 	
 	this.emitter.emit('dead');
 	this.emitter.removeAllListeners();
+	this.log("Dead");
+	this.log = void 0;
+};
+
+var getWorkerProvider = function(id){
+	return this.workerProviders[id];
 };
 
 var connectionHandler = function(connection){
@@ -59,29 +74,30 @@ var connectionHandler = function(connection){
 	this.log('New connection');
 	this.emitter.emit('connection', connection);
 
+	var workerProvider = createWorkerProvider(connection, {logger: this.log});
+
 	timer = setTimeout(function(){
 		self.log('Connection timeout');
 		self.emitter.emit('timeout', connection);
 		connection.disconnect();
 	}, this.registerationTimeout);
 	
-	connection.on("register", function(attributes){
+	workerProvider.on('register', function(){
 		clearTimeout(timer);
-		self.registerWorkerProvider(connection, attributes)
+		self.addWorkerProvider(workerProvider);
 	});
 };
 
-var registerWorkerProvider = function(connection, attributes){
-	var	self = this, 
-		workerProviderId = generateId(),
-		workerProvider = createWorkerProvider(connection, {attributes: attributes, logger: this.log});
-	
-	this.workerProviders[workerProviderId] = workerProvider;		
+var addWorkerProvider = function(workerProvider){
+	var	self = this;
+		
+	this.workerProviders[workerProvider.id] = workerProvider;		
 	workerProvider.on('dead', function(){
-		delete self.workerProviders[workerProviderId];
+		self.log('Worker provider dead: ' + workerProvider.attributes.name);
+		delete self.workerProviders[workerProvider.id];
 	});
 
-	this.log('New worker provider: ' + workerProviderId);
+	this.log('New worker provider: ' + workerProvider.attributes.name);
 	this.emitter.emit('workerProvider', workerProvider);
 };
 
@@ -101,14 +117,15 @@ var getWorkerProviders = function(filters){
 	return results;
 };
 
-var getWorkforce = function(workerConfig, workerHandler){
+var getWorkforce = function(workerConfig){
 	var self = this,
 		workerProviders = this.getWorkerProviders(workerConfig.hostFilters),
 		workerforceId = generateId(),
-		workforce = createWorkforce(workerProviders, workerConfig, {workerHandler: workerHandler});
+		workforce = createWorkforce(workerProviders, workerConfig);
 
 	this.workforces[workerforceId] = workforce;
 	workforce.on('dead', function(){
+		self.log('Workforce dead');
 		delete self.workforces[workerforceId];
 	});
 
