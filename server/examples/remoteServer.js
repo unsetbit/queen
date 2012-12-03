@@ -8,9 +8,8 @@ var winston = require("winston"),
 	createStaticServer = require("../lib/staticServer.js").create;
 
 var port = 80,
-	hostname = "localhost",
 	browserCapturePath = "/capture",
-	httpServer = createStaticServer({port: port, hostname: hostname}),
+	httpServer = createStaticServer({port: 80}),
 	socketServer = socketio.listen(httpServer, {log: false}),
 	socket = socketServer.of(browserCapturePath),
 	minionMaster = createMinionMaster(socket, {logger: logger.info.bind(logger)}),

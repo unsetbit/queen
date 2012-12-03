@@ -3143,11 +3143,11 @@ var swfobject=function(){var D="undefined",r="object",S="Shockwave Flash",W="Sho
     this.socket.setBuffer(true);
 
     function stateChange () {
-      if (this.readyState == 4) {
-        this.onreadystatechange = empty;
+      if (self.sendXHR.readyState == 4) {
+        self.sendXHR.onreadystatechange = empty;
         self.posting = false;
 
-        if (this.status == 200){
+        if (self.sendXHR.status == 200){
           self.socket.setBuffer(false);
         } else {
           self.onClose();

@@ -4,6 +4,10 @@ MinionMaster = (function(){
  * Oliver Caldwell
  * MIT license
  */(function(e){"use strict";function t(){}function i(e,t){if(r)return t.indexOf(e);var n=t.length;while(n--)if(t[n]===e)return n;return-1}var n=t.prototype,r=Array.prototype.indexOf?!0:!1;n.getListeners=function(e){var t=this._events||(this._events={});return t[e]||(t[e]=[])},n.addListener=function(e,t){var n=this.getListeners(e);return i(t,n)===-1&&n.push(t),this},n.on=n.addListener,n.removeListener=function(e,t){var n=this.getListeners(e),r=i(t,n);return r!==-1&&(n.splice(r,1),n.length===0&&(this._events[e]=null)),this},n.off=n.removeListener,n.addListeners=function(e,t){return this.manipulateListeners(!1,e,t)},n.removeListeners=function(e,t){return this.manipulateListeners(!0,e,t)},n.manipulateListeners=function(e,t,n){var r,i,s=e?this.removeListener:this.addListener,o=e?this.removeListeners:this.addListeners;if(typeof t=="object")for(r in t)t.hasOwnProperty(r)&&(i=t[r])&&(typeof i=="function"?s.call(this,r,i):o.call(this,r,i));else{r=n.length;while(r--)s.call(this,t,n[r])}return this},n.removeEvent=function(e){return e?this._events[e]=null:this._events=null,this},n.emitEvent=function(e,t){var n=this.getListeners(e),r=n.length,i;while(r--)i=t?n[r].apply(null,t):n[r](),i===!0&&this.removeListener(e,n[r]);return this},n.trigger=n.emitEvent,typeof define=="function"&&define.amd?define(function(){return t}):e.EventEmitter=t})(this);
+
+ EventEmitter.prototype.emit = function(event, data){
+ 	EventEmitter.prototype.trigger.call(this, event, [data]);
+ };
 /*
     json2.js
     2012-10-08
@@ -1728,6 +1732,7 @@ var IframeWorker = function(id){
 	this.id = id;
 
 	this.iframe = document.createElement("IFRAME");
+	this.iframe.className = "minion-master-worker";
 	this.pendingMessages = [];
 
 	document.body.appendChild(this.iframe);
@@ -1807,7 +1812,7 @@ IframeWorker.prototype.start = function(config){
 	} else if(config.url !== void 0){
 		this.loadUrl(config.url);
 	} else { // config.script !== void 0
-		this.runScript(config.script);
+		this.runScripts([config.scriptPath]);
 	}
 };
 
@@ -1872,6 +1877,9 @@ return module.exports || exports;
 var __module4 = (function(){
 var module = {};
 var exports = module.exports = {};
+// This works, but needs to be ironed out and properly integrated
+// Need to figure out to gracefully handle same-origin policy...
+
 var _ = __module1,
 	utils = __module2;
 
@@ -5071,11 +5079,11 @@ var swfobject=function(){var D="undefined",r="object",S="Shockwave Flash",W="Sho
     this.socket.setBuffer(true);
 
     function stateChange () {
-      if (this.readyState == 4) {
-        this.onreadystatechange = empty;
+      if (self.sendXHR.readyState == 4) {
+        self.sendXHR.onreadystatechange = empty;
         self.posting = false;
 
-        if (this.status == 200){
+        if (self.sendXHR.status == 200){
           self.socket.setBuffer(false);
         } else {
           self.onClose();
@@ -5802,10 +5810,9 @@ return module.exports || exports;
 var __module5 = (function(){
 var module = {};
 var exports = module.exports = {};
-var createWebWorker = __module4.create,
-	createIframeWorker = __module0.create,
-	io = __module3,
+var createWorker = __module0.create,
 	_ = __module1,
+	io = __module3,
 	utils = __module2;
 
 exports.create = function(options){
@@ -5813,7 +5820,8 @@ exports.create = function(options){
 		env = options.env || window,
 		socketPath = options.socketPath || "//" + window.location.host + "/capture",
 		socket = options.socket || io.connect(socketPath, {
-			'max reconnection attempts': Infinity
+			'max reconnection attempts': Infinity,
+			'reconnection limit': 60 * 1000 // At least check every minute
 		});
 
 	var workerProvider = new WorkerProvider(socket);
@@ -5824,10 +5832,22 @@ exports.create = function(options){
 	return workerProvider.api;
 };
 
+var getApi = function(){
+	var api = {};
+	api.on = _.bind(this.emitter.on, this.emitter);
+	api.removeListener = _.bind(this.emitter.removeListener, this.emitter);
+	api.kill = this.kill;
+
+	return api;
+};
+
 var WorkerProvider = function(socket){
+	this.emitter = new EventEmitter();
 	this.socket = socket;
 	this.workers = {};
 	this.kill = _.once(_.bind(this.kill, this));
+	this.api = getApi.call(this);
+	this.workerCount = 0;
 
 	socket.on("connect", _.bind(this.connectionHandler, this));
 	socket.on("message", _.bind(this.messageHandler, this));
@@ -5854,6 +5874,7 @@ WorkerProvider.prototype.sendToSocket = function(message){
 
 WorkerProvider.prototype.connectionHandler = function(){
 	this.log('Connected');
+	this.emitter.emit('connect');
 	if(this.isReconnecting){
 		window.location.reload(true); // Reload on reconnect
 	} else {
@@ -5897,15 +5918,16 @@ WorkerProvider.prototype.spawnWorkerHandler = function(message){
 		worker,
 		workerTimeout;
 
-	if(this.workerCount > this.maxWorkerCount){
+	if(this.workerCount >= this.maxWorkerCount){
 		return;
 	}
 	
 	this.workerCount += 1;
-	if(this.workerCount === this.maxWorkerCount){
-		return;
+	if(this.workerCount === (this.maxWorkerCount - 1)){
+		this.emitter.emit('unavailable');
 	}
 
+	self.emitter.emit('newWorkerCount', self.workerCount);
 	worker = createWorker(workerId, {
 		onDead: function(){
 			if(workerConfig.timeout){
@@ -5915,6 +5937,11 @@ WorkerProvider.prototype.spawnWorkerHandler = function(message){
 			delete self.workers[workerId];
 
 			self.workerCount -= 1;
+			if(self.workerCount === (self.maxWorkerCount - 2)){
+				self.emitter.emit('available');
+			}
+
+			self.emitter.emit('newWorkerCount', self.workerCount);
 			self.sendToSocket({
 				type: "workerDead",
 				id: workerId
@@ -5951,6 +5978,7 @@ WorkerProvider.prototype.killWorkerHandler = function(message){
 
 WorkerProvider.prototype.disconnectionHandler = function(){
 	this.log('Disconnected');
+	this.emitter.emit('disconnect');
 	this.destroyWorkers();
 	this.isReconnecting = true;
 };

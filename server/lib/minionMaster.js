@@ -55,7 +55,7 @@ var getApi = function(){
 };
 
 MinionMaster.prototype.log = utils.noop;
-MinionMaster.prototype.registerationTimeout = 2000;
+MinionMaster.prototype.registerationTimeout = 60 * 1000;
 
 MinionMaster.prototype.kill = function(){
 	_.each(this.workforces, function(workforce){

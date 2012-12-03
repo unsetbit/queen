@@ -14,6 +14,7 @@ var IframeWorker = function(id){
 	this.id = id;
 
 	this.iframe = document.createElement("IFRAME");
+	this.iframe.className = "minion-master-worker";
 	this.pendingMessages = [];
 
 	document.body.appendChild(this.iframe);
@@ -93,7 +94,7 @@ IframeWorker.prototype.start = function(config){
 	} else if(config.url !== void 0){
 		this.loadUrl(config.url);
 	} else { // config.script !== void 0
-		this.runScript(config.script);
+		this.runScripts([config.scriptPath]);
 	}
 };
 

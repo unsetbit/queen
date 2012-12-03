@@ -1,13 +1,18 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <title></title>
+  <link href="http://fonts.googleapis.com/css?family=Sanchez" rel="stylesheet" type="text/css">
   <link rel="stylesheet" href="/minion-master.css" type="text/css">
 </head>
 <body>
-	<script src="./minion-master.js"></script>
-	<script>
+  <h1>
+    <span id="Title">Minion Master</span><span id="StatusIndicator" class="disconnected">&nbsp;</span><span id="Status">Disconnected</span>
+  </h1>
+	<script src="minion-master.js"></script>
+  <script>
+    WEB_SOCKET_SWF_LOCATION = "./WebSocketMainInsecure.swf";
     var minionConfig = {
       socketPath: "//" + window.location.host + "/capture"
     };
@@ -19,6 +24,32 @@
     }
 		
     var minion = MinionMaster.WorkerProvider.create(minionConfig);
+
+    // UI
+    var statusElement = document.getElementById('Status');
+    var statusIndicatorElement = document.getElementById('StatusIndicator');
+    minion.on('connect', function(){
+      statusElement.innerText = "Connected";
+      statusIndicatorElement.className = "connected";
+    });
+    minion.on('disconnect', function(){
+      statusElement.innerText = "Disconnected";
+      statusIndicatorElement.className = "disconnected";
+    });
+
+    minion.on('available', function(){
+      statusElement.innerText = "Connected";
+    });
+
+    minion.on('unavailable', function(){
+      statusElement.innerText = "Connected, at maximum capacity";
+    });
+
+
+
+    minion.on('newWorkerCount', function(count){
+      document.title = "(" + count + ") Minion Master";
+    });
 	</script>
 </body>
 </html>

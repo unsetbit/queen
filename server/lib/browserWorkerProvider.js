@@ -33,6 +33,7 @@ var BrowserWorkerProvider = function(socket){
 		value: Object.freeze(getApi.call(this)),
 		enumerable: true 
 	});
+	this.sendToSocket('hi');
 };
 
 var getApi = function(){
@@ -71,6 +72,7 @@ BrowserWorkerProvider.prototype.sendToSocket = function(message){
 
 BrowserWorkerProvider.prototype.messageHandler = function(message){
 	message = JSON.parse(message);
+
 	switch(message.type){
 		case "workerMessage":
 			this.workerMessageHandler(message);

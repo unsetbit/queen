@@ -18,7 +18,7 @@ var create = module.exports = function(callback, options){
 	if(options.logger) minionMaster.log = options.logger;
 	if(options.trackWorkerProviders) minionMaster.trackWorkerProviders = options.trackWorkerProviders === true;
 	if(options.port) minionMaster.port = options.port;
-	if(options.hostname) minionMaster.hostname = options.hostname;
+	if(options.host) minionMaster.host = options.host;
 
 	minionMaster.onReady = callback;
 
@@ -63,7 +63,7 @@ var getApi = function(){
 };
 
 MinionMaster.prototype.port = 8099;
-MinionMaster.prototype.hostname = "localhost";
+MinionMaster.prototype.host = "localhost";
 MinionMaster.prototype.trackWorkerProviders = false;
 
 MinionMaster.prototype.log = utils.noop;
@@ -74,7 +74,7 @@ MinionMaster.prototype.sendToSocket = function(message){
 };
 
 MinionMaster.prototype.connect = function(){
-	this.socket.connect(this.port, this.hostname, this.connectionHandler.bind(this));
+	this.socket.connect(this.port, this.host, this.connectionHandler.bind(this));
 };
 
 MinionMaster.prototype.connectionHandler = function(){

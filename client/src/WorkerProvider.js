@@ -1,7 +1,6 @@
-var createWebWorker = require('./WebWorker.js').create,
-	createIframeWorker = require('./IframeWorker.js').create,
-	io = require('./lib/socket.io.js'),
+var createWorker = require('./IframeWorker.js').create,
 	_ = require('./lib/underscore.js'),
+	io = require('./lib/socket.io.js'),
 	utils = require('./utils.js');
 
 exports.create = function(options){
@@ -9,7 +8,8 @@ exports.create = function(options){
 		env = options.env || window,
 		socketPath = options.socketPath || "//" + window.location.host + "/capture",
 		socket = options.socket || io.connect(socketPath, {
-			'max reconnection attempts': Infinity
+			'max reconnection attempts': Infinity,
+			'reconnection limit': 60 * 1000 // At least check every minute
 		});
 
 	var workerProvider = new WorkerProvider(socket);
@@ -20,10 +20,22 @@ exports.create = function(options){
 	return workerProvider.api;
 };
 
+var getApi = function(){
+	var api = {};
+	api.on = _.bind(this.emitter.on, this.emitter);
+	api.removeListener = _.bind(this.emitter.removeListener, this.emitter);
+	api.kill = this.kill;
+
+	return api;
+};
+
 var WorkerProvider = function(socket){
+	this.emitter = new EventEmitter();
 	this.socket = socket;
 	this.workers = {};
 	this.kill = _.once(_.bind(this.kill, this));
+	this.api = getApi.call(this);
+	this.workerCount = 0;
 
 	socket.on("connect", _.bind(this.connectionHandler, this));
 	socket.on("message", _.bind(this.messageHandler, this));
@@ -50,6 +62,7 @@ WorkerProvider.prototype.sendToSocket = function(message){
 
 WorkerProvider.prototype.connectionHandler = function(){
 	this.log('Connected');
+	this.emitter.emit('connect');
 	if(this.isReconnecting){
 		window.location.reload(true); // Reload on reconnect
 	} else {
@@ -93,15 +106,16 @@ WorkerProvider.prototype.spawnWorkerHandler = function(message){
 		worker,
 		workerTimeout;
 
-	if(this.workerCount > this.maxWorkerCount){
+	if(this.workerCount >= this.maxWorkerCount){
 		return;
 	}
 	
 	this.workerCount += 1;
-	if(this.workerCount === this.maxWorkerCount){
-		return;
+	if(this.workerCount === (this.maxWorkerCount - 1)){
+		this.emitter.emit('unavailable');
 	}
 
+	self.emitter.emit('newWorkerCount', self.workerCount);
 	worker = createWorker(workerId, {
 		onDead: function(){
 			if(workerConfig.timeout){
@@ -111,6 +125,11 @@ WorkerProvider.prototype.spawnWorkerHandler = function(message){
 			delete self.workers[workerId];
 
 			self.workerCount -= 1;
+			if(self.workerCount === (self.maxWorkerCount - 2)){
+				self.emitter.emit('available');
+			}
+
+			self.emitter.emit('newWorkerCount', self.workerCount);
 			self.sendToSocket({
 				type: "workerDead",
 				id: workerId
@@ -147,6 +166,7 @@ WorkerProvider.prototype.killWorkerHandler = function(message){
 
 WorkerProvider.prototype.disconnectionHandler = function(){
 	this.log('Disconnected');
+	this.emitter.emit('disconnect');
 	this.destroyWorkers();
 	this.isReconnecting = true;
 };

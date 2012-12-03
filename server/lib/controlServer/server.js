@@ -8,7 +8,7 @@ var create = module.exports = function(minionMaster, options){
 	precondition.checkDefined(minionMaster, "ControlServer requires a minion master instance");
 
 	options = options || {};
-	var netServer = options.server || jot.createServer().listen(options.port || 8099, options.hostname || "localhost"),
+	var netServer = options.server || jot.createServer().listen(options.port || 8099, options.host || "localhost"),
 	server = new Server(minionMaster, netServer);
 
 	if(options.logger) server.log = options.logger;

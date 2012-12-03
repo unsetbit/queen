@@ -1,3 +1,6 @@
+// This works, but needs to be ironed out and properly integrated
+// Need to figure out to gracefully handle same-origin policy...
+
 var _ = require('./lib/underscore.js'),
 	utils = require('./utils.js');
 
