@@ -21,15 +21,15 @@ var runChanceExample = function(minionMaster){
 
 	var startTime = (new Date()).getTime();
 	var workforces = [];
-	for(var i = 0; i < 1000; i++){
+	for(var i = 0; i < 10; i++){
 		var workforce = minionMaster({
-			scripts: ['http://localhost/chance.js'],
+			scriptPath: 'http://localhost/chance.js',
 			done: function(){
 			}
 		});
 
 		var numberToFind = 42;
-		var maxNumber = 100000;
+		var maxNumber = 100;
 
 		workforce.on('message', function(number, worker){
 			if(number === 42){

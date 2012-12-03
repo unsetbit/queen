@@ -1,47 +1,54 @@
 var	generateId = require('node-uuid').v4,
+	_ = require('underscore'),
 	precondition = require('precondition'),
 	utils = require('./utils.js');
 	
 var create = module.exports = function(id, provider, emitter, onSendToSocket){
 	precondition.checkDefined(emitter, "An emitter is required for workers");
 
-	var self = {
-		id: id,
-		provider: provider,
-		emitter: emitter,
-		sendToSocket: onSendToSocket
-	}
+	var worker = new Worker(id, provider, emitter, onSendToSocket);
 
-	self.kill = kill.bind(self);
+	return worker.api;
+};
 
-	// When the worker is dead disable the kill function
+var Worker = function(id, provider, emitter, onSendToSocket){
+	var self = this;
+
+	this.id = id;
+	this.provider = provider;
+	this.emitter = emitter;
+	this.sendToSocket = onSendToSocket;
+	this.kill = _.once(this.kill.bind(this));
+
 	emitter.on('dead', function(){
 		self.kill = utils.noop;
-		emitter.removeAllListeners();
+		self.emitter.removeAllListeners();
 	});
 
-	return getApi.call(self);
+	Object.defineProperty(this, "api", { 
+		value: Object.freeze(getApi.call(this)),
+		enumerable: true 
+	});
 };
 
 var getApi = function(){
-	var api = this.sendToSocket;
+	var self = this,
+		api = this.sendToSocket.bind(this);
+
 	api.on = this.emitter.on.bind(this.emitter);
 	api.removeListener = this.emitter.removeListener.bind(this.emitter);
 	api.kill = this.kill;
-
-	Object.defineProperty(api, "id", { 
-		value: this.id,
-		enumerable: true 
-	});
+	this.id = this.id;
+	this.provider = this.provider;
 
 	Object.defineProperty(api, "provider", {
-		value: this.provider,
+		get: function(){ return self.provider},
 		enumerable: true
 	});
 
 	return api;
 };
 
-var kill = function(){
+Worker.prototype.kill = function(){
 	this.emitter.emit('dead');
 };

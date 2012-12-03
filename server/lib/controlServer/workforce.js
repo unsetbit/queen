@@ -5,29 +5,37 @@ var _ = require("underscore"),
 
 var utils = require('../utils.js');
 
-var create = module.exports = function(minionMaster, workforceConfig, onSendToSocket){
+var create = module.exports = function(minionMaster, workerConfig, onSendToSocket){
 	precondition.checkDefined(minionMaster, "ControlServerWorkforce requires a minion master");
-	precondition.checkDefined(workforceConfig, "ControlServerWorkforce requires a workforce config");
+	precondition.checkDefined(workerConfig, "ControlServerWorkforce requires a worker config");
 	precondition.checkType(typeof onSendToSocket === "function", "ControlServerWorkforce requires an on send to socket function");
 
-	var self = {
-		sendToSocket : onSendToSocket,
-		emitter: new EventEmitter(),
-		workers: {}
-	};
-	
-	self.kill = _.once(kill.bind(self));
-	workforceConfig.handler = workerHandler.bind(self);
-	workforceConfig.done = doneHandler.bind(self);
+	var workforce = new Workforce(minionMaster, workerConfig, onSendToSocket);
 
-	self.workerMessageHandler = workerMessageHandler.bind(self);
-	self.workforce =  minionMaster(workforceConfig);
-	
-	return getApi.call(self);
+	return workforce.api;
 };
 
+var Workforce = function(minionMaster, workerConfig, onSendToSocket){
+	this.sendToSocket = onSendToSocket;
+
+	workerConfig.handler = this.workerHandler.bind(this);
+	workerConfig.done = this.doneHandler.bind(this);
+	this.workers = {};
+	this.emitter = new EventEmitter();
+	this.workforce = minionMaster(workerConfig);
+
+	this.kill = _.once(this.kill.bind(this));
+
+	Object.defineProperty(this, "api", { 
+		value: Object.freeze(getApi.call(this)),
+		enumerable: true 
+	});
+};
+
+Workforce.prototype.log = utils.noop;
+
 var getApi = function(){
-	var api = messageHandler.bind(this);
+	var api = this.messageHandler.bind(this);
 	api.on = this.emitter.on.bind(this.emitter);
 	api.removeListener = this.emitter.removeListener.bind(this.emitter);
 	api.kill = this.kill;
@@ -35,11 +43,11 @@ var getApi = function(){
 	return api;
 }
 
-var doneHandler = function(){
+Workforce.prototype.doneHandler = function(){
 	this.sendToSocket({type: "done"});
 };
 
-var workerHandler = function(worker){
+Workforce.prototype.workerHandler = function(worker){
 	var self = this;
 	
 	this.workers[worker.id] = worker;
@@ -59,21 +67,21 @@ var workerHandler = function(worker){
 	});
 };
 
-var kill = function(){
+Workforce.prototype.kill = function(){
 	this.sendToSocket = utils.noop;
 	this.workforce.kill();
 	this.emitter.emit('dead');
 	this.emitter.removeAllListeners();	
 };
 
-var workerMessageHandler = function(message){
+Workforce.prototype.workerMessageHandler = function(message){
 	var worker = this.workers[message.id];
 	if(worker !== void 0){
 		worker(message.message);
 	}
 }
 
-var messageHandler = function(message){
+Workforce.prototype.messageHandler = function(message){
 	if(message.type === "workerMessage"){
 		this.workerMessageHandler(message);
 	} else if(message.type === "broadcast"){

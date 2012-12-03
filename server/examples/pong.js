@@ -14,20 +14,18 @@ var port = 80,
 	minionMaster = createMinionMaster(socket, {logger:logger.info.bind(logger)});
 
 minionMaster.on('workerProvider', function(){
-	for(var i = 0; i < 100; i++){
-		var workforce = minionMaster({
-			scripts: ['http://localhost/ping.js'],
-			timeout: 1000 * 6,
-			handler: function(worker){
-				worker.on('message', function(){
-					console.log('ping');
-					worker('pong');
-					console.log('pong');
-				});
-			},
-			done: function(){
-				console.log('done!');
-			}
-		});
-	}
+	var workforce = minionMaster({
+		scripts: ['http://localhost/ping.js'],
+		timeout: 1000 * 6,
+		handler: function(worker){
+			worker.on('message', function(message){
+				console.log(message);
+				worker('pong');
+				console.log('pong');
+			});
+		},
+		done: function(){
+			console.log('done!');
+		}
+	});
 });

@@ -3,31 +3,21 @@ var EventEmitter = require('events').EventEmitter,
 	utils = require('./utils.js'),
 	precondition = require('precondition');
 
-var create = module.exports = function(workerProviders, workerConfig){
-	precondition.checkDefined(workerProviders, "Worker provider list required");
+var Workforce = exports.Workforce = function(){
+	this.emitter = new EventEmitter();
+	this.workers = [];
+	this.workerCount = 0;
 
-	var self = {
-		emitter: new EventEmitter(),
-		workerConfig: workerConfig,
-		workerHandler: workerConfig.handler || utils.noop,
-		doneHandler: workerConfig.done || utils.done,
-		workers: [],
-		workerCount: 0
-	};
+	this.kill = _.once(this.kill.bind(this));
 
-	self.kill = _.once(kill.bind(self));
-
-	workerProviders.forEach(addWorker.bind(self));
-	
-	if(self.workers.length === 0){
-		self.doneHandler();
-	}
-
-	return getApi.call(self);
+	Object.defineProperty(this, "api", { 
+		value: Object.freeze(getApi.call(this)),
+		enumerable: true 
+	});
 };
 
 var getApi = function(){
-	var api = broadcast.bind(this);
+	var api = this.broadcast.bind(this);
 	api.on = this.emitter.on.bind(this.emitter);
 	api.removeListener = this.emitter.removeListener.bind(this.emitter);
 	api.kill = this.kill;
@@ -35,26 +25,28 @@ var getApi = function(){
 	return api;
 };
 
-var kill = function(){
+Workforce.prototype.workerHandler = utils.noop;
+Workforce.prototype.doneHandler = utils.noop;
+
+Workforce.prototype.kill = function(){
 	this.workers.forEach(function(worker){
 		worker.kill();
 	});
 	
-	this.workers = void 0;
+	this.workers = [];
 	this.emitter.emit('dead');
 	this.emitter.removeAllListeners();
 };
 
-var broadcast = function(message){
+Workforce.prototype.broadcast = function(message){
 	this.workers.forEach(function(worker){
 		worker(message);
 	});
 };
 
-var addWorker = function(workerProvider){
-	var self = this,
-		worker = workerProvider(this.workerConfig);
-	if(worker === void 0) return; // worker provider unavailable
+Workforce.prototype.addWorker = function(worker){
+	var self = this;
+
 	this.workers.push(worker);
 	self.workerCount++;
 	worker.on('dead', function(){

@@ -1,10 +1,10 @@
-workerSocket.onmessage = function(maxNumber){
+onmessage = function(e){
 	var interval = setInterval(function(){
-		var guess = Math.floor(Math.random() * maxNumber);
-		workerSocket(guess);
+		var guess = Math.floor(Math.random() * e.data);
+		postMessage(guess);
 		if(guess === 42){
 			//console.log('I FOUND IT!');
 			clearInterval(interval);
 		}
-	}, 1);
+	}, 100);
 };

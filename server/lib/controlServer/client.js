@@ -11,28 +11,37 @@ var create = module.exports = function(socket, minionMaster, options){
 	precondition.checkDefined(socket, "Client requires a socket");
 	precondition.checkDefined(minionMaster, "Client requires a minion master instance");
 
-	var self = {
-		socket: socket,
-		minionMaster: minionMaster,
-		log: options.logger,
-		workforces: {}
-	};
+	var client = new Client(socket, minionMaster);
 
-	self.kill = _.once(kill.bind(self));
-	self.sendToSocket = sendToSocket.bind(self);
-	self.workerProviderHandler = workerProviderHandler.bind(self)
-	self.createWorkforce = createWorkforce.bind(self);
-	socket.on('data', messageHandler.bind(self));
-	socket.on('close', self.kill);
-	socket.on('end', self.kill);
-	socket.on('error', self.kill);
-	minionMaster.workerProviders.forEach(self.workerProviderHandler)
-	minionMaster.on('workerProvider', self.workerProviderHandler);
-	socket.write('ready');
-	
+	options = options || {};
+	if(options.logger) client.log = options.logger;
+
+	return client;
 };
 
-var kill = function(){
+var Client = function(socket, minionMaster){
+	this.socket = socket;
+	this.minionMaster = minionMaster;
+	this.workforces = {};
+
+	socket.on('data', this.messageHandler.bind(this));
+	
+	this.workerProviderHandler = this.workerProviderHandler.bind(this);
+	minionMaster.workerProviders.forEach(this.workerProviderHandler)
+	minionMaster.on('workerProvider', this.workerProviderHandler);
+
+	this.kill = this.kill.bind(this);
+	socket.on('close', this.kill);
+	socket.on('end', this.kill);
+	socket.on('error', this.kill);
+	
+	this.sendToSocket('ready');
+};
+
+Client.prototype.log = utils.noop;
+Client.prototype.isTrackingWorkerProviders = false;
+
+Client.prototype.kill = function(){
 	this.sendToSocket = utils.noop;
 	
 	_.each(this.workforces, function(workforce){
@@ -41,22 +50,24 @@ var kill = function(){
 	this.minionMaster.removeListener('workerProvider', this.workerProviderHandler);
 };
 
-var sendToSocket = function(message){
+Client.prototype.sendToSocket = function(message){
 	this.socket.write(message);		
 };
 
-var workerProviderHandler = function(workerProvider){
+Client.prototype.workerProviderHandler = function(workerProvider){
 	var self = this,
 		onSendToSocket;
 
 	onSendToSocket = function(message){
-		message.workerProviderId = workerProvider.id;
-		self.sendToSocket(message);
+		if(self.isTrackingWorkerProviders){
+			message.workerProviderId = workerProvider.id;
+			self.sendToSocket(message);
+		}
 	};
 
-	createWorkerProvider(onSendToSocket, workerProvider);
+	createWorkerProvider(workerProvider, onSendToSocket);
 
-	this.socket.write({
+	this.sendToSocket({
 		type: 'workerProvider',
 		id: workerProvider.id,
 		attributes: workerProvider.attributes,
@@ -65,7 +76,7 @@ var workerProviderHandler = function(workerProvider){
 	});
 };
 
-var messageHandler = function(message){
+Client.prototype.messageHandler = function(message){
 	if(message.workforceId !== void 0){
 		var workforce = this.workforces[message.workforceId];
 		if(workforce !== void 0){
@@ -75,12 +86,14 @@ var messageHandler = function(message){
 		}
 	} else if (message.type === "spawnWorkforce"){
 		this.createWorkforce(message.id, message.config);
+	} else if (message.type === "trackWorkerProviders"){
+		this.isTrackingWorkerProviders = message.value === true;
 	} else {
 		this.log("Unknown action: " + JSON.stringify(message));
 	}
 };
 
-var createWorkforce = function(remoteId, workforceConfig){
+Client.prototype.createWorkforce = function(remoteId, workforceConfig){
 	var self = this,
 		workforce,
 		onEmitToSocket;

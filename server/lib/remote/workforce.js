@@ -5,33 +5,28 @@ var EventEmitter = require('events').EventEmitter,
 
 var utils = require('../utils.js');
 
-var create = module.exports = function(getWorkerProvider, socket, onSendToSocket, workerConfig){
-	precondition.checkType(typeof getWorkerProvider === "function", "getWorkerProvider function required");
-	precondition.checkDefined(socket, "Socket required");
-	precondition.checkType(typeof onSendToSocket === "function", "Emit to socket function required");
-	precondition.checkDefined(workerConfig, "Worker config required");
-
-	var self = {
-		emitter: new EventEmitter(),
-		sendToSocket: onSendToSocket,
-		workerConfig: workerConfig,
-		workerHandler: workerConfig.handler || utils.noop,
-		doneHandler: workerConfig.done || utils.noop,
-		getWorkerProvider: getWorkerProvider,
-		workerEmitters: {}
-	};
-
-	self.kill = _.once(kill.bind(self));
-	self.addWorkerHandler = addWorkerHandler.bind(self);
-	self.workerMessageHandler = workerMessageHandler.bind(self);
-
-	socket.on('message', messageHandler.bind(self));
+var Workforce = exports.Workforce = function(getWorkerProvider, socket, onSendToSocket){
+	this.socket = socket;
+	this.getWorkerProvider = getWorkerProvider;
+	this.sendToSocket = onSendToSocket;
+	this.emitter = new EventEmitter();
+	this.workerEmitters = {};
 	
-	return getApi.call(self);
+	this.kill = _.once(this.kill.bind(this));
+
+	socket.on('message', this.messageHandler.bind(this));
+
+	Object.defineProperty(this, "api", { 
+		value: Object.freeze(getApi.call(this)),
+		enumerable: true 
+	});
 };
 
+Workforce.prototype.workerHandler = utils.noop;
+Workforce.prototype.doneHandler = utils.noop;
+
 var getApi = function(){
-	var api = broadcast.bind(this);
+	var api = this.broadcast.bind(this);
 	api.on = this.emitter.on.bind(this.emitter);
 	api.removeListener = this.emitter.removeListener.bind(this.emitter);
 	api.kill = this.kill;
@@ -39,7 +34,7 @@ var getApi = function(){
 	return api;
 };
 
-var messageHandler = function(message){
+Workforce.prototype.messageHandler = function(message){
 	switch(message.type){
 		case "workerMessage":
 			this.workerMessageHandler(message);
@@ -54,7 +49,7 @@ var messageHandler = function(message){
 	}
 };
 
-var kill = function(){
+Workforce.prototype.kill = function(){
 	this.sendToSocket({type:"kill"});
 
 	_.each(this.workerEmitters, function(workerEmitter){
@@ -66,14 +61,14 @@ var kill = function(){
 	this.emitter.removeAllListeners();
 };
 
-var broadcast = function(message){
+Workforce.prototype.broadcast = function(message){
 	this.sendToSocket({
 		type: "broadcast",
 		message: message
 	});
 };
 
-var addWorkerHandler = function(message){
+Workforce.prototype.addWorkerHandler = function(message){
 	var self = this,
 		workerId = message.id,
 		workerProvider = this.getWorkerProvider(message.providerId),
@@ -106,7 +101,7 @@ var addWorkerHandler = function(message){
 	this.workerHandler(worker);
 };
 
-var workerMessageHandler = function(message){
+Workforce.prototype.workerMessageHandler = function(message){
 	var workerEmitter = this.workerEmitters[message.id];
 	if(workerEmitter !== void 0){
 		workerEmitter.emit('message', message.message);

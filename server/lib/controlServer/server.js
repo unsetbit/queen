@@ -8,19 +8,27 @@ var create = module.exports = function(minionMaster, options){
 	precondition.checkDefined(minionMaster, "ControlServer requires a minion master instance");
 
 	options = options || {};
+	var netServer = options.server || jot.createServer().listen(options.port || 8099, options.hostname || "localhost"),
+	server = new Server(minionMaster, netServer);
 
-	var server = options.server || jot.createServer().listen(options.port || 8099, options.hostname || "localhost");
-	var self = {
-		minionMaster: minionMaster,
-		server: server,
-		log: options.logger || utils.noop
-	};
-
-	server.on("connection", connectionHandler.bind(self));
+	if(options.logger) server.log = options.logger;
 
 	return server;
 };
 
 var connectionHandler = function(connection){
+	createClient(connection, this.minionMaster, {logger: this.log});
+};
+
+var Server = function(minionMaster, netServer){
+	this.netServer = netServer;
+	this.minionMaster = minionMaster;
+
+	this.netServer.on('connection', this.connectionHandler.bind(this));
+};
+
+Server.prototype.log = utils.noop;
+
+Server.prototype.connectionHandler = function(connection){
 	createClient(connection, this.minionMaster, {logger: this.log});
 };

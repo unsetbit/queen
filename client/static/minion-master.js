@@ -498,6 +498,12 @@ if (typeof JSON !== 'object') {
 * Copyright 2012 Ozan Turgut; Licensed MIT */
 (function(e){if(typeof module=="undefined"||!module.exports)return window.precondition=e;module.exports=e})(function(){var e={};e.check=function(e,n){if(e===!1)throw n&&typeof n!="string"?n(arguments.length>3?r(arguments[2],t.call(arguments,3)):arguments[2]):new Error(arguments.length>2?r(n,t.call(arguments,2)):n);return e},e.checkType=function(e,n){if(e===!1)throw new TypeError(arguments.length>2?r(n,t.call(arguments,2)):n);return e},e.checkDefined=function(e,n){if(e===void 0)throw new ReferenceError(arguments.length>2?r(n,t.call(arguments,2)):n);return e},e.checkRange=function(e,n){if(e===!1)throw new RangeError(arguments.length>2?r(n,t.call(arguments,2)):n);return e};var t=Array.prototype.splice,n=/%s/,r=function(e,t){var r=[],i=e.split(n),s=0,o=i.length;for(;s<o;s++)r.push(i[s]),r.push(t[s]);return r.join("")};return e}());
 
+var __module2 = (function(){
+var module = {};
+var exports = module.exports = {};
+exports.noop = function(){};
+return module.exports || exports;
+}());
 var __module1 = (function(){
 var module = {};
 var exports = module.exports = {};
@@ -1706,52 +1712,96 @@ return module.exports || exports;
 var __module0 = (function(){
 var module = {};
 var exports = module.exports = {};
-var _ = __module1;
+var _ = __module1,
+	utils = __module2;
 
-exports.create = function(id, onSendToSocket, options){
-	var self = {
-		id: id,
-		sendToSocket: onSendToSocket,
-		iframe: document.createElement("IFRAME"),
-		runScripts: runScripts,
-		runScript: runScript,
-		loadUrl: loadUrl,
-		pendingMessages: [],
-		onDead: options.onDead || function(){}
-	};
+window.iframeSockets = {};
 
-	_.bindAll(self);
+exports.create = function(id, options){
+	var worker = new IframeWorker(id);
 
-	self.api = getApi.call(self);
+	if(options.onDead) worker.onDead = options.onDead;
+	return worker.api;
+};
 
-	document.body.appendChild(self.iframe);
+var IframeWorker = function(id){
+	this.id = id;
 
-	return self.api;
+	this.iframe = document.createElement("IFRAME");
+	this.pendingMessages = [];
+
+	document.body.appendChild(this.iframe);
+
+	this.kill = _.once(_.bind(this.kill, this));
+	this.start = _.once(_.bind(this.start, this));
+	this.ready = _.once(_.bind(this.ready, this));
+
+	this.socket = new Socket();
+	this.socket.onPostMessage = _.bind(this.postMessageFromWorker, this)
+
+	window.iframeSockets[this.id] = this.socket;
+
+	this.api = getApi.call(this);
 };
 
 var getApi = function(){
-	var api = this.sendToSocket;
-	api.id = this.id;
-	api.onmessage = _.bind(addToPendingMessages, this);
-	api.kill = _.once(_.bind(kill, this));
-	api.start = _.once(_.bind(start, this));
-	api.ready = _.once(_.bind(ready, this));
+	var api = {
+		id: this.id,
+		onmessage: utils.noop,
+		postMessage: this.socket.message,
+		kill: this.kill,
+		start: this.start
+	};
 
 	return api;
 };
 
-var addToPendingMessages = function(message){
+var Socket = function(){
+	this.pendingMessages = [];
+	this.message = this.message.bind(this);
+	this.postMessage = this.postMessage.bind(this);
+};
+Socket.prototype.onmessage = utils.noop;
+Socket.prototype.onPostMessage = utils.noop;
+Socket.prototype.isReady = false;
+Socket.prototype.postMessage = function(message){
+	this.onPostMessage(message);
+};
+Socket.prototype.ready = function(){
+	this.isReady = true;
+	_.each(this.pendingMessages, this.message);
+};
+Socket.prototype.message = function(message){
+	if(this.isReady){
+		this.onmessage({
+			data: message,
+			origin: window.location.origin,
+			source: this
+		});
+	} else {
+		this.pendingMessages.push(message);
+	}
+};
+
+IframeWorker.prototype.onDead = utils.noop;
+
+IframeWorker.prototype.addToPendingMessages = function(message){
 	this.pendingMessages.push(message);
 };
 
-var ready = function(){
+IframeWorker.prototype.ready = function(){
 	var self = this;
+
 	_.each(this.pendingMessages, function(message){
-		self.api.onmessage(message);
+		self.api.onmessageToWorker(message);
 	});
 };
 
-var start = function(config){
+IframeWorker.prototype.postMessageFromWorker = function(message){
+	this.api.onmessage(message);
+};
+
+IframeWorker.prototype.start = function(config){
 	if(config.scripts !== void 0){
 		this.runScripts(config.scripts);
 	} else if(config.url !== void 0){
@@ -1761,7 +1811,7 @@ var start = function(config){
 	}
 };
 
-var runScript = function(script){
+IframeWorker.prototype.runScript = function(script){
 		var iframe,
 		iframeDoc,
 		iframeContent;
@@ -1770,9 +1820,11 @@ var runScript = function(script){
 	iframeDoc = (iframe.contentDocument) ? iframe.contentDocument : iframe.contentWindow.document;
 	
 	iframeContent =  "<html><head><title></title></head><body>";
-	iframeContent += "<script>window.workerSocket = window.parent.GetWorkerSocket('" + this.id + "')</script>";
+	iframeContent += "<script>window.iframeSocket = window.parent.iframeSockets['" + this.id + "'];</script>";
+	iframeContent += "<script>postMessage = iframeSocket.postMessage</script>";
 	iframeContent += "<script>" + script + "</script>";
-	iframeContent += "<script>window.workerSocket.ready()</script>";
+	iframeContent += "<script>window.iframeSocket.onmessage = function(message){onmessage(message);}</script>";
+	iframeContent += "<script>window.iframeSocket.ready()</script>";
 	iframeContent += "</body></html>";
 
 	iframeDoc.open();
@@ -1780,7 +1832,7 @@ var runScript = function(script){
 	iframeDoc.close();
 };
 
-var runScripts = function(scripts){
+IframeWorker.prototype.runScripts = function(scripts){
 	var iframe,
 		iframeDoc,
 		iframeContent;
@@ -1789,11 +1841,13 @@ var runScripts = function(scripts){
 	iframeDoc = (iframe.contentDocument) ? iframe.contentDocument : iframe.contentWindow.document;
 	
 	iframeContent = "<html><head><title></title></head><body>";
-	iframeContent += "<script>window.workerSocket = window.parent.GetWorkerSocket('" + this.id + "')</script>";
+	iframeContent += "<script>window.iframeSocket = window.parent.iframeSockets['" + this.id + "'];</script>";
+	iframeContent += "<script>postMessage = iframeSocket.postMessage</script>";
 	_.each(scripts, function(script){
 		iframeContent += '<script src="' + script + '"><\/script>';
 	});
-	iframeContent += "<script>window.workerSocket.ready()</script>";
+	iframeContent += "<script>window.iframeSocket.onmessage = function(message){onmessage(message);}</script>";
+	iframeContent += "<script>window.iframeSocket.ready()</script>";
 	iframeContent += "</body></html>";
 
 	iframeDoc.open();
@@ -1801,12 +1855,13 @@ var runScripts = function(scripts){
 	iframeDoc.close();
 };
 
-var loadUrl = function(url){
+IframeWorker.prototype.loadUrl = function(url){
 	var iframe = this.iframe;
 	iframe.setAttribute("src", url + "?iframeWorkerId=" + this.id); 
 };
 
-var kill = function(){
+IframeWorker.prototype.kill = function(){
+	delete window.iframeSockets[this.id];
 	document.body.removeChild(this.iframe);	
 	this.iframe = void 0;
 	this.onDead();
@@ -1814,7 +1869,61 @@ var kill = function(){
 
 return module.exports || exports;
 }());
-var __module2 = (function(){
+var __module4 = (function(){
+var module = {};
+var exports = module.exports = {};
+var _ = __module1,
+	utils = __module2;
+
+exports.create = function(id, options){
+	var worker = new WebWorker(id);
+
+	if(options.onDead) worker.onDead = options.onDead;
+	return worker.api;
+};
+
+var WebWorker = function(id){
+	this.id = id;
+	this.pendingMessages = [];
+
+	this.kill = _.once(_.bind(this.kill, this));
+	this.start = _.once(_.bind(this.start, this));
+	this.api = getApi.call(this);
+};
+
+var getApi = function(){
+	var api = {};
+	api.id = this.id;
+	api.onmessage = utils.noop;
+	api.postMessage = _.bind(this.onmessage, this);
+	api.kill = this.kill;
+	api.start = this.start;
+
+	return api;
+};
+
+WebWorker.prototype.onDead = utils.noop;
+
+WebWorker.prototype.onmessage = function(message){
+	this.worker.postMessage(message);
+};
+
+WebWorker.prototype.postMessageFromWorker = function(message){
+	this.api.onmessage(message.data);
+};
+
+WebWorker.prototype.start = function(config){
+	this.worker = new Worker(config.scriptPath);
+	this.worker.onmessage = _.bind(this.postMessageFromWorker, this);
+};
+
+WebWorker.prototype.kill = function(){
+	this.onDead();
+};
+
+return module.exports || exports;
+}());
+var __module3 = (function(){
 var module = {};
 var exports = module.exports = {};
 /*! Socket.IO.js build:0.9.11, development. Copyright(c) 2011 LearnBoost <dev@learnboost.com> MIT Licensed */
@@ -5690,12 +5799,14 @@ if (typeof define === "function" && define.amd) {
 })();
 return module.exports || exports;
 }());
-var __module3 = (function(){
+var __module5 = (function(){
 var module = {};
 var exports = module.exports = {};
-var workerFactory = __module0.create;
-var io = __module2;
-var _ = __module1;
+var createWebWorker = __module4.create,
+	createIframeWorker = __module0.create,
+	io = __module3,
+	_ = __module1,
+	utils = __module2;
 
 exports.create = function(options){
 	var options = options || {},
@@ -5705,46 +5816,29 @@ exports.create = function(options){
 			'max reconnection attempts': Infinity
 		});
 
+	var workerProvider = new WorkerProvider(socket);
 
-	var self = {
-		log: options.logger,
-		socket: socket,
-		sendToSocket: sendToSocket,
-		workerFactory: workerFactory,
-		connectionHandler: connectionHandler,
-		disconnectionHandler: disconnectionHandler,
-		destroyWorkers: destroyWorkers,
-		register: register,
-		workers: {},
-		workerMessageHandler: workerMessageHandler,
-		spawnWorkerHandler: spawnWorkerHandler,
-		messageHandler: messageHandler,
-		killWorkerHandler: killWorkerHandler,
-		kill: kill,
-		workerCount: 0,
-		maxWorkerCount: 1000,
-		maxTimeout: 1000 * 60
-	};
-	window.minionSelf = self;
-	_.bindAll(self);
+	if(options.maxTimeout) workerProvider.maxTimeout = options.maxTimeout;
+	if(options.maxWorkerCount) workerProvider.maxWorkerCount = options.maxWorkerCount;
 
-	socket.on("connect", self.connectionHandler);
-	socket.on("message", self.messageHandler);
-	socket.on("disconnect", self.disconnectionHandler);
-
-	return getApi.call(self);
+	return workerProvider.api;
 };
 
-var getApi = function(){
-	var api = {};
+var WorkerProvider = function(socket){
+	this.socket = socket;
+	this.workers = {};
+	this.kill = _.once(_.bind(this.kill, this));
 
-	api.getWorkerSocket = getWorkerSocket.bind(this);
-	window.GetWorkerSocket = api.getWorkerSocket;
-
-	return api;
+	socket.on("connect", _.bind(this.connectionHandler, this));
+	socket.on("message", _.bind(this.messageHandler, this));
+	socket.on("disconnect", _.bind(this.disconnectionHandler, this));
 };
 
-var kill = function(){
+WorkerProvider.prototype.maxWorkerCount = 1000;
+WorkerProvider.prototype.maxTimeout = 1000 * 60;
+WorkerProvider.prototype.log = utils.noop;
+
+WorkerProvider.prototype.kill = function(){
 	this.destroyWorkers();
 
 	this.socket.removeListener("connect", this.connectionHandler);
@@ -5754,16 +5848,11 @@ var kill = function(){
 	this.socket = void 0;
 };
 
-var sendToSocket = function(message){
+WorkerProvider.prototype.sendToSocket = function(message){
 	this.socket.send(JSON.stringify(message));
 };
 
-var getWorkerSocket = function(workerId){
-	var worker = this.workers[workerId];
-	return worker;
-};
-
-var connectionHandler = function(){
+WorkerProvider.prototype.connectionHandler = function(){
 	this.log('Connected');
 	if(this.isReconnecting){
 		window.location.reload(true); // Reload on reconnect
@@ -5772,7 +5861,7 @@ var connectionHandler = function(){
 	}
 };
 
-var messageHandler = function(message){
+WorkerProvider.prototype.messageHandler = function(message){
 	message = JSON.parse(message);
 	switch(message.type){
 		case "workerMessage":
@@ -5786,7 +5875,7 @@ var messageHandler = function(message){
 	}
 };
 
-var workerMessageHandler = function(message){
+WorkerProvider.prototype.workerMessageHandler = function(message){
 	var workerId = message.id,
 		message = message.message;
 
@@ -5795,10 +5884,10 @@ var workerMessageHandler = function(message){
 		return;
 	};
 
-	worker.onmessage(message);
+	worker.postMessage(message);
 };
 
-var spawnWorkerHandler = function(message){
+WorkerProvider.prototype.spawnWorkerHandler = function(message){
 	this.log('Spawning Worker');
 
 	var self = this,
@@ -5817,15 +5906,7 @@ var spawnWorkerHandler = function(message){
 		return;
 	}
 
-	var onSendToSocket = function(message){
-		self.sendToSocket({
-			type: "workerMessage",
-			id: workerId,
-			message: message
-		});
-	};
-
-	worker = this.workerFactory(workerId, onSendToSocket, {
+	worker = createWorker(workerId, {
 		onDead: function(){
 			if(workerConfig.timeout){
 				clearTimeout(workerTimeout);
@@ -5841,6 +5922,14 @@ var spawnWorkerHandler = function(message){
 		}
 	});
 
+	worker.onmessage = function(message){
+		self.sendToSocket({
+			type: "workerMessage",
+			id: workerId,
+			message: message
+		});	
+	};
+
 	if(workerConfig.timeout){
 		workerTimeout = setTimeout(function(){
 			worker.kill();
@@ -5854,19 +5943,19 @@ var spawnWorkerHandler = function(message){
 	return worker;
 };
 
-var killWorkerHandler = function(message){
+WorkerProvider.prototype.killWorkerHandler = function(message){
 	var worker = this.workers[message.id];
 	if(worker === void 0) return;
 	worker.kill();
 };
 
-var disconnectionHandler = function(){
+WorkerProvider.prototype.disconnectionHandler = function(){
 	this.log('Disconnected');
 	this.destroyWorkers();
 	this.isReconnecting = true;
 };
 
-var destroyWorkers = function(){
+WorkerProvider.prototype.destroyWorkers = function(){
 	_.each(this.workers, function(worker){
 		worker.kill();
 	});
@@ -5875,7 +5964,7 @@ var destroyWorkers = function(){
 	this.workerCount = 0;
 };
 
-var register = function(){
+WorkerProvider.prototype.register = function(){
 	var attributes = {},
 		capabilities = {};
 
@@ -5897,5 +5986,5 @@ var register = function(){
 return module.exports || exports;
 }());
 
-return {"IframeWorker":__module0,"lib":{"socket.io":__module2,"underscore":__module1},"WorkerProvider":__module3};
+return {"IframeWorker":__module0,"lib":{"socket.io":__module3,"underscore":__module1},"utils":__module2,"WebWorker":__module4,"WorkerProvider":__module5};
 }());

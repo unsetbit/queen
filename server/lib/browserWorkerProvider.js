@@ -10,44 +10,38 @@ var createWorker = require('./worker.js'),
 var create = module.exports = function(socket, options){
 	precondition.checkDefined(socket, "BrowserWorkerProvider requires a socket.");
 
+	var workerProvider = new BrowserWorkerProvider(socket);
+
 	options = options || {};
+	if(options.logger) workerProvider.log = options.logger;
+	if(options.maxWorkers) workerProvider.maxWorkers = options.maxWorkers;
 
-	var self = {
-		id: generateId(),
-		socket: socket,
-		emitter: new EventEmitter(),
-		workerEmitters: {},
-		workerCount: 0,
-		maxWorkers: options.maxWorkers || 1000,
-		log: options.logger || utils.noop
-	};
+	return  workerProvider.api;
+};
 
-	self.kill = kill.bind(self);
-	self.sendToSocket = sendToSocket.bind(self);
-	self.messageHandler = messageHandler.bind(self);
-	self.registerHandler = registerHandler.bind(self);
-	self.workerMessageHandler = workerMessageHandler.bind(self);
-	self.workerDeadHandler = workerDeadHandler.bind(self);
-	self.removeWorker = removeWorker.bind(self);
-	self.api = getApi.call(self);
-	
-	socket.on('disconnect', self.kill);
-	socket.on('message', self.messageHandler);
-	
-	return  self.api;
+var BrowserWorkerProvider = function(socket){
+	this.socket = socket;
+	this.id = generateId();
+	this.emitter = new EventEmitter();
+	this.workerEmitters = {};
+	this.workerCount = 0;
+
+	socket.on('disconnect', this.kill.bind(this));
+	socket.on('message', this.messageHandler.bind(this));
+
+	Object.defineProperty(this, "api", { 
+		value: Object.freeze(getApi.call(this)),
+		enumerable: true 
+	});
 };
 
 var getApi = function(){
 	var self = this,
-		api = getWorker.bind(this);
+		api = this.getWorker.bind(this);
 	
 	api.on = this.emitter.on.bind(this.emitter);
 	api.removeListener = this.emitter.removeListener.bind(this.emitter);
-	
-	Object.defineProperty(api, "id", { 
-		value: this.id,
-		enumerable: true 
-	});
+	api.id = this.id;
 
 	Object.defineProperty(api, "attributes", { 
 		get: function(){ return self.attributes; },
@@ -67,12 +61,15 @@ var getApi = function(){
 	return api;
 };
 
-var sendToSocket = function(message){
+BrowserWorkerProvider.prototype.log = utils.noop;
+BrowserWorkerProvider.prototype.maxWorkers = 1000;
+
+BrowserWorkerProvider.prototype.sendToSocket = function(message){
 	message = JSON.stringify(message);
 	this.socket.send(message);
 };
 
-var messageHandler = function(message){
+BrowserWorkerProvider.prototype.messageHandler = function(message){
 	message = JSON.parse(message);
 	switch(message.type){
 		case "workerMessage":
@@ -87,13 +84,13 @@ var messageHandler = function(message){
 	}
 };
 
-var workerDeadHandler = function(message){
+BrowserWorkerProvider.prototype.workerDeadHandler = function(message){
 	var workerEmitter = this.workerEmitters[message.id];
 	if(workerEmitter === void 0) return;
 	workerEmitter.emit('dead');
 };
 
-var registerHandler = function(message){
+BrowserWorkerProvider.prototype.registerHandler = function(message){
 	var attributes = message.attributes || {},
 		ua;
 
@@ -116,7 +113,7 @@ var registerHandler = function(message){
 	this.emitter.emit('register', attributes);
 };
 
-var kill = function(){
+BrowserWorkerProvider.prototype.kill = function(){
 	var self = this;
 	_.each(this.workerEmitters, function(workerEmitter, workerId){
 		self.socket.emit('killWorker', workerId);
@@ -127,15 +124,15 @@ var kill = function(){
 	this.emitter.removeAllListeners();
 };
 
-var workerMessageHandler = function(message){
+BrowserWorkerProvider.prototype.workerMessageHandler = function(message){
 	var workerEmitter = this.workerEmitters[message.id];
 	if(workerEmitter === void 0) return;
 	workerEmitter.emit("message", message.message);
 };
 
-var getWorker = function(workerConfig){
+BrowserWorkerProvider.prototype.getWorker = function(workerConfig){
 	var self = this;
-
+	
 	if(workerConfig === void 0) return;
 
 	if(this.workerCount >= this.maxWorkers){
@@ -186,7 +183,7 @@ var getWorker = function(workerConfig){
 	return worker;
 };
 
-var removeWorker = function(workerId){
+BrowserWorkerProvider.prototype.removeWorker = function(workerId){
 	delete this.workerEmitters[workerId];
 
 	if(this.workerCount-- === this.maxWorkers){

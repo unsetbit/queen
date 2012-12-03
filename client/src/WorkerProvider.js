@@ -1,6 +1,8 @@
-var workerFactory = require('./IframeWorker.js').create;
-var io = require('./lib/socket.io.js');
-var _ = require('./lib/underscore.js');
+var createWebWorker = require('./WebWorker.js').create,
+	createIframeWorker = require('./IframeWorker.js').create,
+	io = require('./lib/socket.io.js'),
+	_ = require('./lib/underscore.js'),
+	utils = require('./utils.js');
 
 exports.create = function(options){
 	var options = options || {},
@@ -10,46 +12,29 @@ exports.create = function(options){
 			'max reconnection attempts': Infinity
 		});
 
+	var workerProvider = new WorkerProvider(socket);
 
-	var self = {
-		log: options.logger,
-		socket: socket,
-		sendToSocket: sendToSocket,
-		workerFactory: workerFactory,
-		connectionHandler: connectionHandler,
-		disconnectionHandler: disconnectionHandler,
-		destroyWorkers: destroyWorkers,
-		register: register,
-		workers: {},
-		workerMessageHandler: workerMessageHandler,
-		spawnWorkerHandler: spawnWorkerHandler,
-		messageHandler: messageHandler,
-		killWorkerHandler: killWorkerHandler,
-		kill: kill,
-		workerCount: 0,
-		maxWorkerCount: 1000,
-		maxTimeout: 1000 * 60
-	};
-	window.minionSelf = self;
-	_.bindAll(self);
+	if(options.maxTimeout) workerProvider.maxTimeout = options.maxTimeout;
+	if(options.maxWorkerCount) workerProvider.maxWorkerCount = options.maxWorkerCount;
 
-	socket.on("connect", self.connectionHandler);
-	socket.on("message", self.messageHandler);
-	socket.on("disconnect", self.disconnectionHandler);
-
-	return getApi.call(self);
+	return workerProvider.api;
 };
 
-var getApi = function(){
-	var api = {};
+var WorkerProvider = function(socket){
+	this.socket = socket;
+	this.workers = {};
+	this.kill = _.once(_.bind(this.kill, this));
 
-	api.getWorkerSocket = getWorkerSocket.bind(this);
-	window.GetWorkerSocket = api.getWorkerSocket;
-
-	return api;
+	socket.on("connect", _.bind(this.connectionHandler, this));
+	socket.on("message", _.bind(this.messageHandler, this));
+	socket.on("disconnect", _.bind(this.disconnectionHandler, this));
 };
 
-var kill = function(){
+WorkerProvider.prototype.maxWorkerCount = 1000;
+WorkerProvider.prototype.maxTimeout = 1000 * 60;
+WorkerProvider.prototype.log = utils.noop;
+
+WorkerProvider.prototype.kill = function(){
 	this.destroyWorkers();
 
 	this.socket.removeListener("connect", this.connectionHandler);
@@ -59,16 +44,11 @@ var kill = function(){
 	this.socket = void 0;
 };
 
-var sendToSocket = function(message){
+WorkerProvider.prototype.sendToSocket = function(message){
 	this.socket.send(JSON.stringify(message));
 };
 
-var getWorkerSocket = function(workerId){
-	var worker = this.workers[workerId];
-	return worker;
-};
-
-var connectionHandler = function(){
+WorkerProvider.prototype.connectionHandler = function(){
 	this.log('Connected');
 	if(this.isReconnecting){
 		window.location.reload(true); // Reload on reconnect
@@ -77,7 +57,7 @@ var connectionHandler = function(){
 	}
 };
 
-var messageHandler = function(message){
+WorkerProvider.prototype.messageHandler = function(message){
 	message = JSON.parse(message);
 	switch(message.type){
 		case "workerMessage":
@@ -91,7 +71,7 @@ var messageHandler = function(message){
 	}
 };
 
-var workerMessageHandler = function(message){
+WorkerProvider.prototype.workerMessageHandler = function(message){
 	var workerId = message.id,
 		message = message.message;
 
@@ -100,10 +80,10 @@ var workerMessageHandler = function(message){
 		return;
 	};
 
-	worker.onmessage(message);
+	worker.postMessage(message);
 };
 
-var spawnWorkerHandler = function(message){
+WorkerProvider.prototype.spawnWorkerHandler = function(message){
 	this.log('Spawning Worker');
 
 	var self = this,
@@ -122,15 +102,7 @@ var spawnWorkerHandler = function(message){
 		return;
 	}
 
-	var onSendToSocket = function(message){
-		self.sendToSocket({
-			type: "workerMessage",
-			id: workerId,
-			message: message
-		});
-	};
-
-	worker = this.workerFactory(workerId, onSendToSocket, {
+	worker = createWorker(workerId, {
 		onDead: function(){
 			if(workerConfig.timeout){
 				clearTimeout(workerTimeout);
@@ -146,6 +118,14 @@ var spawnWorkerHandler = function(message){
 		}
 	});
 
+	worker.onmessage = function(message){
+		self.sendToSocket({
+			type: "workerMessage",
+			id: workerId,
+			message: message
+		});	
+	};
+
 	if(workerConfig.timeout){
 		workerTimeout = setTimeout(function(){
 			worker.kill();
@@ -159,19 +139,19 @@ var spawnWorkerHandler = function(message){
 	return worker;
 };
 
-var killWorkerHandler = function(message){
+WorkerProvider.prototype.killWorkerHandler = function(message){
 	var worker = this.workers[message.id];
 	if(worker === void 0) return;
 	worker.kill();
 };
 
-var disconnectionHandler = function(){
+WorkerProvider.prototype.disconnectionHandler = function(){
 	this.log('Disconnected');
 	this.destroyWorkers();
 	this.isReconnecting = true;
 };
 
-var destroyWorkers = function(){
+WorkerProvider.prototype.destroyWorkers = function(){
 	_.each(this.workers, function(worker){
 		worker.kill();
 	});
@@ -180,7 +160,7 @@ var destroyWorkers = function(){
 	this.workerCount = 0;
 };
 
-var register = function(){
+WorkerProvider.prototype.register = function(){
 	var attributes = {},
 		capabilities = {};
 

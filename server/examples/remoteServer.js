@@ -13,5 +13,5 @@ var port = 80,
 	httpServer = createStaticServer({port: port, hostname: hostname}),
 	socketServer = socketio.listen(httpServer, {log: false}),
 	socket = socketServer.of(browserCapturePath),
-	minionMaster = createMinionMaster(socket),
+	minionMaster = createMinionMaster(socket, {logger: logger.info.bind(logger)}),
 	controlServer = createControlServer(minionMaster);

@@ -1,16 +1,25 @@
-var create = module.exports = function(onSendToSocket, workerProvider){
+var utils = require('../utils.js');
 
-	var self = {
-		sendToSocket: onSendToSocket
-	};
+var create = module.exports = function(workerProvider, onSendToSocket, options){
+	var workerProvider = new WorkerProvider(workerProvider, onSendToSocket);
 
-	workerProvider.on('workerCountUpdated', newWorkerCountHandler.bind(self));
+	options = options || {};
+	if(options.logger) workerProvider.log = options.logger;
+
+	return workerProvider;
 };
 
-var newWorkerCountHandler = function(count){
-	var self = this;
+var WorkerProvider = function(workerProvider, onSendToSocket){
+	this.workerProvider = workerProvider;
+	this.onSendToSocket = onSendToSocket;
 
-	self.sendToSocket({
+	workerProvider.on('workerCountUpdated', this.newWorkerCountHandler.bind(this));
+};
+
+WorkerProvider.prototype.log = utils.noop;
+
+WorkerProvider.prototype.newWorkerCountHandler = function(count){
+	this.sendToSocket({
 		type: "workerCount", 
 		workerCount: count
 	});

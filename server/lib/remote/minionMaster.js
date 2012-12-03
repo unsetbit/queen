@@ -5,41 +5,52 @@ var _ = require("underscore"),
 	generateId = require('node-uuid').v4,
 	precondition = require('precondition');
 
-var createWorkforce = require('./workforce.js'),
+var Workforce = require('./workforce.js').Workforce,
 	createWorkerProvider = require('./workerProvider.js'),
 	utils = require('../utils.js');
 	
 var create = module.exports = function(callback, options){
+	
 	options = options || {};
+	var socket = options.socket || new jot.Socket(),
+		minionMaster = new MinionMaster(socket);
 
-	var self = {
-		socket: options.socket || new jot.Socket(),
-		log: options.logger || utils.noop,
-		emitter: new EventEmitter(),
-		isTrackingWorkerProviders: options.trackWorkerProviders === true,
-		workforceEmitters: {},
-		workerProviders: {},
-		workerProviderEmitters: {}
-	};
+	if(options.logger) minionMaster.log = options.logger;
+	if(options.trackWorkerProviders) minionMaster.trackWorkerProviders = options.trackWorkerProviders === true;
+	if(options.port) minionMaster.port = options.port;
+	if(options.hostname) minionMaster.hostname = options.hostname;
 
-	self.getWorkerProvider = getWorkerProvider.bind(self);
-	self.workerProviderHandler = workerProviderHandler.bind(self);
+	minionMaster.onReady = callback;
 
-	self.onReady = function(){
-		callback(getApi.call(self));
-	};
+	minionMaster.connect();
+};
 
-	self.socket.on('data', messageHandler.bind(self));
-	self.socket.connect(options.port || 8099, options.hostname || "localhost");
+var MinionMaster = function(socket){
+	this.socket = socket;
+	this.emitter = new EventEmitter();
+	this.workforceEmitters = {};
+	this.workerProviders = {};
+	this.workerProviderEmitters = {};
+	
+	this.kill = _.once(this.kill.bind(this));
+
+	this.getWorkerProvider = this.getWorkerProvider.bind(this); // used by workforces
+
+	socket.on('data', this.messageHandler.bind(this));
+
+	Object.defineProperty(this, "api", { 
+		value: Object.freeze(getApi.call(this)),
+		enumerable: true 
+	});
 };
 
 var getApi = function(){
 	var self = this,
-		api = getWorkforce.bind(this);
+		api = this.getWorkforce.bind(this);
 
 	api.on = this.emitter.on.bind(this.emitter);
 	api.removeListener = this.emitter.removeListener.bind(this.emitter);
-	api.kill = _.once(kill.bind(this));
+	api.kill = this.kill;
 	
 	Object.defineProperty(api, 'workerProviders', {
 		enumerable: true,
@@ -51,7 +62,31 @@ var getApi = function(){
 	return api;
 };
 
-var kill = function(){
+MinionMaster.prototype.port = 8099;
+MinionMaster.prototype.hostname = "localhost";
+MinionMaster.prototype.trackWorkerProviders = false;
+
+MinionMaster.prototype.log = utils.noop;
+MinionMaster.prototype.onReady = utils.noop;
+
+MinionMaster.prototype.sendToSocket = function(message){
+	this.socket.write(message);
+};
+
+MinionMaster.prototype.connect = function(){
+	this.socket.connect(this.port, this.hostname, this.connectionHandler.bind(this));
+};
+
+MinionMaster.prototype.connectionHandler = function(){
+	if(this.trackWorkerProviders){
+		this.sendToSocket({
+			type: "trackWorkerProviders",
+			value: trackWorkerProviders
+		});
+	}
+};
+
+MinionMaster.prototype.kill = function(){
 	_.each(this.workforces, function(workforce){
 		workforce.kill();
 	});
@@ -60,7 +95,7 @@ var kill = function(){
 	this.emitter.removeAllListeners();
 };
 
-var messageHandler = function(message){
+MinionMaster.prototype.messageHandler = function(message){
 	var workforceEmitter,
 		workerProviderEmitter;
 	
@@ -77,15 +112,15 @@ var messageHandler = function(message){
 		var workerProviderEmitter = this.workerProviderEmitters[message.workerProviderId];
 		workerProviderEmitter.emit("message", message);
 	} else if(message === "ready"){
-		this.onReady();
+		this.onReady(this.api);
 	};
 };
 
-var getWorkerProvider = function(id){
+MinionMaster.prototype.getWorkerProvider = function(id){
 	return this.workerProviders[id];
 };
 
-var workerProviderHandler = function(message){
+MinionMaster.prototype.workerProviderHandler = function(message){
 	var	self = this, 
 		id = message.id,
 		workerProviderEmitter = new EventEmitter(),
@@ -105,36 +140,39 @@ var workerProviderHandler = function(message){
 	this.emitter.emit('workerProvider', workerProvider);
 };
 
-var getWorkforce = function(workerConfig){
+MinionMaster.prototype.getWorkforce = function(workerConfig){
 	var self = this,
 		workforceId = generateId(),
 		workforceEmitter = new EventEmitter(),
 		workforce,
-		onEmitToSocket,
-		onDead;
-
+		workforceApi,
+		onSendToSocket;
+		
 	onSendToSocket = function(message){
 		message.workforceId = workforceId;
-		self.socket.write(message);
+		self.sendToSocket(message);
 	};
 
-	workforce = createWorkforce(self.getWorkerProvider, workforceEmitter, onSendToSocket, workerConfig);
+	workforce = new Workforce(this.getWorkerProvider, workforceEmitter, onSendToSocket);
+	
+	if(workerConfig.handler) workforce.workerHandler = workerConfig.handler;
+	if(workerConfig.done) workforce.doneHandler = workerConfig.done;
 
-	workforce.on('dead', function(){
+	workforce.api.on('dead', function(){
 		self.log('Workforce dead');
 		delete self.workforceEmitters[workforceId];
 	});
 
 	this.workforceEmitters[workforceId] = workforceEmitter;
 
-	this.socket.write({
+	this.sendToSocket({
 		type: 'spawnWorkforce', 
 		id: workforceId,
 		config: workerConfig
 	});
 
 	this.log('New workforce');
-	this.emitter.emit('workforce', workforce);
+	this.emitter.emit('workforce', workforce.api);
 
-	return workforce;
+	return workforce.api;
 };

@@ -1,15 +1,21 @@
-var create = module.exports = function(emitter, attributes, name, workerCount, maxWorkerCount){
-	var self = {
-		emitter: emitter,
-		attributes: Object.freeze(attributes),
-		maxWorkerCount: maxWorkerCount,
-		workerCount: workerCount,
-		name: name
-	}
+var create = module.exports = function(emitter, attributes, workerCount, maxWorkerCount){
+	var workerProvider = new WorkerProvider(emitter, attributes, workerCount, maxWorkerCount);
 
-	emitter.on('message', messageHandler.bind(self));
+	return workerProvider.api;
+};
 
-	return getApi.call(self);
+var WorkerProvider = function(emitter, attributes, workerCount,  maxWorkerCount){
+	this.emitter = emitter;
+	this.attributes = Object.freeze(attributes);
+	this.workerCount = workerCount;
+	this.maxWorkerCount = maxWorkerCount;
+
+	this.emitter.on('message', this.messageHandler.bind(this));
+
+	Object.defineProperty(this, "api", { 
+		value: Object.freeze(getApi.call(this)),
+		enumerable: true 
+	});
 };
 
 var getApi = function(){
@@ -36,7 +42,7 @@ var getApi = function(){
 	return api;
 };
 
-var messageHandler = function(message){
+WorkerProvider.prototype.messageHandler = function(message){
 	if(message.type === "workerCount"){
 		this.workerCount = message.workerCount
 	}
