@@ -1724,7 +1724,6 @@ window.iframeSockets = {};
 exports.create = function(id, options){
 	var worker = new IframeWorker(id);
 
-	if(options.onDead) worker.onDead = options.onDead;
 	return worker.api;
 };
 
@@ -1739,12 +1738,10 @@ var IframeWorker = function(id){
 
 	this.kill = _.once(_.bind(this.kill, this));
 	this.start = _.once(_.bind(this.start, this));
-	this.ready = _.once(_.bind(this.ready, this));
 
 	this.socket = new Socket();
 	this.socket.onPostMessage = _.bind(this.postMessageFromWorker, this)
-
-	window.iframeSockets[this.id] = this.socket;
+	window.iframeSockets[this.id] = this.socket.api;
 
 	this.api = getApi.call(this);
 };
@@ -1753,6 +1750,7 @@ var getApi = function(){
 	var api = {
 		id: this.id,
 		onmessage: utils.noop,
+		onDead: utils.noop,
 		postMessage: this.socket.message,
 		kill: this.kill,
 		start: this.start
@@ -1764,21 +1762,24 @@ var getApi = function(){
 var Socket = function(){
 	this.pendingMessages = [];
 	this.message = this.message.bind(this);
-	this.postMessage = this.postMessage.bind(this);
+	this.api = this.postMessage.bind(this);
+	this.api.onmessage = utils.noop;
+	this.ready = _.once(this.ready.bind(this));
 };
-Socket.prototype.onmessage = utils.noop;
 Socket.prototype.onPostMessage = utils.noop;
 Socket.prototype.isReady = false;
 Socket.prototype.postMessage = function(message){
 	this.onPostMessage(message);
 };
+
 Socket.prototype.ready = function(){
 	this.isReady = true;
 	_.each(this.pendingMessages, this.message);
 };
+
 Socket.prototype.message = function(message){
 	if(this.isReady){
-		this.onmessage({
+		this.api.onmessage({
 			data: message,
 			origin: window.location.origin,
 			source: this
@@ -1786,20 +1787,6 @@ Socket.prototype.message = function(message){
 	} else {
 		this.pendingMessages.push(message);
 	}
-};
-
-IframeWorker.prototype.onDead = utils.noop;
-
-IframeWorker.prototype.addToPendingMessages = function(message){
-	this.pendingMessages.push(message);
-};
-
-IframeWorker.prototype.ready = function(){
-	var self = this;
-
-	_.each(this.pendingMessages, function(message){
-		self.api.onmessageToWorker(message);
-	});
 };
 
 IframeWorker.prototype.postMessageFromWorker = function(message){
@@ -1816,60 +1803,52 @@ IframeWorker.prototype.start = function(config){
 	}
 };
 
-IframeWorker.prototype.runScript = function(script){
-		var iframe,
-		iframeDoc,
-		iframeContent;
-
-	iframe = this.iframe;
-	iframeDoc = (iframe.contentDocument) ? iframe.contentDocument : iframe.contentWindow.document;
-	
-	iframeContent =  "<html><head><title></title></head><body>";
-	iframeContent += "<script>window.iframeSocket = window.parent.iframeSockets['" + this.id + "'];</script>";
-	iframeContent += "<script>postMessage = iframeSocket.postMessage</script>";
-	iframeContent += "<script>" + script + "</script>";
-	iframeContent += "<script>window.iframeSocket.onmessage = function(message){onmessage(message);}</script>";
-	iframeContent += "<script>window.iframeSocket.ready()</script>";
-	iframeContent += "</body></html>";
-
-	iframeDoc.open();
-	iframeDoc.write(iframeContent);
-	iframeDoc.close();
-};
-
 IframeWorker.prototype.runScripts = function(scripts){
-	var iframe,
+	var self = this,
+		iframe,
 		iframeDoc,
 		iframeContent;
 
 	iframe = this.iframe;
+
+
 	iframeDoc = (iframe.contentDocument) ? iframe.contentDocument : iframe.contentWindow.document;
 	
 	iframeContent = "<html><head><title></title></head><body>";
-	iframeContent += "<script>window.iframeSocket = window.parent.iframeSockets['" + this.id + "'];</script>";
-	iframeContent += "<script>postMessage = iframeSocket.postMessage</script>";
+	iframeContent += "<script>window.socket = window.parent.iframeSockets['" + this.id + "'];</script>";
 	_.each(scripts, function(script){
-		iframeContent += '<script src="' + script + '"><\/script>';
+		iframeContent += '<script type="text/javascript" src="' + script + '"></script>';
 	});
-	iframeContent += "<script>window.iframeSocket.onmessage = function(message){onmessage(message);}</script>";
-	iframeContent += "<script>window.iframeSocket.ready()</script>";
+	iframeContent += "<script></script>";
 	iframeContent += "</body></html>";
+
+    if (iframe.attachEvent) {
+      iframe.onreadystatechange = function () {
+        if (self.iframe.readyState == 'complete') {
+          self.socket.ready();
+        }
+      };
+    } else {
+      this.iframe.onload = this.socket.ready;
+    }
 
 	iframeDoc.open();
 	iframeDoc.write(iframeContent);
 	iframeDoc.close();
+
+
 };
 
 IframeWorker.prototype.loadUrl = function(url){
 	var iframe = this.iframe;
-	iframe.setAttribute("src", url + "?iframeWorkerId=" + this.id); 
+	iframe.setAttribute("src", url + "?iframeSocketId=" + this.id); 
 };
 
 IframeWorker.prototype.kill = function(){
 	delete window.iframeSockets[this.id];
 	document.body.removeChild(this.iframe);	
 	this.iframe = void 0;
-	this.onDead();
+	this.api.onDead();
 };
 
 return module.exports || exports;
@@ -5919,54 +5898,70 @@ WorkerProvider.prototype.spawnWorkerHandler = function(message){
 		workerTimeout;
 
 	if(this.workerCount >= this.maxWorkerCount){
+		this.log('Max worker count reached, can\'t spawn additional workers');
 		return;
 	}
-	
-	this.workerCount += 1;
-	if(this.workerCount === (this.maxWorkerCount - 1)){
-		this.emitter.emit('unavailable');
-	}
 
-	self.emitter.emit('newWorkerCount', self.workerCount);
-	worker = createWorker(workerId, {
-		onDead: function(){
-			if(workerConfig.timeout){
-				clearTimeout(workerTimeout);
-			}
-
-			delete self.workers[workerId];
-
-			self.workerCount -= 1;
-			if(self.workerCount === (self.maxWorkerCount - 2)){
-				self.emitter.emit('available');
-			}
-
-			self.emitter.emit('newWorkerCount', self.workerCount);
-			self.sendToSocket({
-				type: "workerDead",
-				id: workerId
-			})
-		}
-	});
-
-	worker.onmessage = function(message){
-		self.sendToSocket({
-			type: "workerMessage",
-			id: workerId,
-			message: message
-		});	
-	};
+	worker = this.createWorker(workerId);
+	this.workers[workerId] = worker;
 
 	if(workerConfig.timeout){
 		workerTimeout = setTimeout(function(){
 			worker.kill();
 		}, workerConfig.timeout);
 	}
+
+	worker.onDead = function(){
+		if(workerConfig.timeout){
+			clearTimeout(workerTimeout);
+		}
+
+		delete self.workers[workerId];
+
+		self.workerCount--;
+		if(self.workerCount === (self.maxWorkerCount - 2)){
+			self.sendToSocket({
+				type: 'available'
+			});
+			self.emitter.emit('available');
+		}
+
+		self.emitter.emit('newWorkerCount', self.workerCount);
+		self.sendToSocket({
+			type: "workerDead",
+			id: workerId
+		})
+	};
+
+	this.workerCount++;
+	if(this.workerCount === (this.maxWorkerCount - 1)){
+		self.sendToSocket({
+			type: 'unvailable'
+		});
+		this.emitter.emit('unavailable');
+	}
+	self.emitter.emit('newWorkerCount', self.workerCount);
 	
-	this.workers[workerId] = worker;
-	
+	this.sendToSocket({
+		type:"spawnedWorker",
+		id: workerId
+	});
+
 	worker.start(workerConfig);
-	
+};
+
+WorkerProvider.prototype.createWorker = function(id){
+	var self = this,
+		worker = createWorker(id);
+
+	worker.onmessage = function(message){
+		self.sendToSocket({
+			type: "workerMessage",
+			id: id,
+			message: message
+		});	
+	};
+
 	return worker;
 };
 

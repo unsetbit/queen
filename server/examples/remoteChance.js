@@ -14,24 +14,21 @@ var onReady = function(minionMaster){
 	});
 };
 
-createRemoteMinionMaster(onReady);
-
 var runChanceExample = function(minionMaster){
 	console.log('Starting the random number finder...');
 
 	var startTime = (new Date()).getTime();
 	var workforces = [];
-	for(var i = 0; i < 10; i++){
+	for(var i = 0; i < 1; i++){
 		var workforce = minionMaster({
-			scriptPath: 'http://localhost/chance.js',
-			done: function(){
-			}
+			scriptPath: 'http://192.168.0.105/chance.js'
 		});
 
 		var numberToFind = 42;
 		var maxNumber = 100;
 
 		workforce.on('message', function(number, worker){
+			console.log(number + " (" + worker.provider.attributes.name + ")");
 			if(number === 42){
 				workforces.forEach(function(workforce){
 					workforce.kill();	
@@ -43,7 +40,10 @@ var runChanceExample = function(minionMaster){
 		});
 		workforces.push(workforce);
 	}
+	
 	workforces.forEach(function(workforce){
 		workforce(maxNumber);
 	});
 }
+
+createRemoteMinionMaster(onReady);

@@ -76,6 +76,8 @@ Workforce.prototype.addWorkerHandler = function(message){
 		worker,
 		onEmitToSocket;
 
+	console.log("Worker: " + workerId + " " + workerProvider.attributes.name);
+	
 	onSendToSocket = function(message){
 		self.sendToSocket({
 			type: 'workerMessage',

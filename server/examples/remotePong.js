@@ -10,7 +10,7 @@ var onReady = function(minionMaster){
 	}
 
 	minionMaster.on('workerProvider', function(){
-		for(var i = 0; i < 100; i++){
+		for(var i = 0; i < 1; i++){
 			runPongExample(minionMaster);		
 		}
 	});
@@ -18,7 +18,7 @@ var onReady = function(minionMaster){
 
 var runPongExample = function(minionMaster){
 	var workforce = minionMaster({
-		scriptPath: 'https://raw.github.com/ozanturgut/minion-master/master/client/static/ping.js',
+		scriptPath: 'http://192.168.0.105/ping.js',
 		timeout: 1000 * 3,
 		handler: pingPong,
 		done: function(){

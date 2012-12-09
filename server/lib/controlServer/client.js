@@ -23,6 +23,7 @@ var Client = function(socket, minionMaster){
 	this.socket = socket;
 	this.minionMaster = minionMaster;
 	this.workforces = {};
+	this.workerProviders = {};
 
 	socket.on('data', this.messageHandler.bind(this));
 	
@@ -34,7 +35,6 @@ var Client = function(socket, minionMaster){
 	socket.on('close', this.kill);
 	socket.on('end', this.kill);
 	socket.on('error', this.kill);
-	
 	this.sendToSocket('ready');
 };
 
@@ -43,10 +43,14 @@ Client.prototype.isTrackingWorkerProviders = false;
 
 Client.prototype.kill = function(){
 	this.sendToSocket = utils.noop;
-	
 	_.each(this.workforces, function(workforce){
 		workforce.kill();
 	});
+
+	_.each(this.workerProviders, function(workerProvider){
+		workerProvider.kill();
+	});
+
 	this.minionMaster.removeListener('workerProvider', this.workerProviderHandler);
 };
 
@@ -65,14 +69,17 @@ Client.prototype.workerProviderHandler = function(workerProvider){
 		}
 	};
 
-	createWorkerProvider(workerProvider, onSendToSocket);
+	var clientWorkerProvider = createWorkerProvider(workerProvider, onSendToSocket);
+	this.workerProviders[workerProvider.id] = clientWorkerProvider;
+	clientWorkerProvider.on('dead', function(){
+		self.workerProviders[workerProvider.id].kill();
+		delete self.workerProviders[workerProvider.id];
+	});
 
 	this.sendToSocket({
 		type: 'workerProvider',
 		id: workerProvider.id,
-		attributes: workerProvider.attributes,
-		maxWorkerCount: workerProvider.maxWorkerCount,
-		workerCount: workerProvider.workerCount
+		attributes: workerProvider.attributes
 	});
 };
 

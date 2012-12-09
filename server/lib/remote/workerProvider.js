@@ -1,14 +1,12 @@
-var create = module.exports = function(emitter, attributes, workerCount, maxWorkerCount){
-	var workerProvider = new WorkerProvider(emitter, attributes, workerCount, maxWorkerCount);
+var create = module.exports = function(emitter, attributes){
+	var workerProvider = new WorkerProvider(emitter, attributes);
 
 	return workerProvider.api;
 };
 
-var WorkerProvider = function(emitter, attributes, workerCount,  maxWorkerCount){
+var WorkerProvider = function(emitter, attributes){
 	this.emitter = emitter;
 	this.attributes = Object.freeze(attributes);
-	this.workerCount = workerCount;
-	this.maxWorkerCount = maxWorkerCount;
 
 	this.emitter.on('message', this.messageHandler.bind(this));
 
@@ -25,25 +23,42 @@ var getApi = function(){
 	api.removeListener = this.emitter.removeListener.bind(this.emitter);
 	api.attributes = this.attributes;
 
-	Object.defineProperty(api, "activeWorkerCount", {
-		get: function(){
-			return self.workerCount;
-		},
-		enumerable: true
-	});
-	
-	Object.defineProperty(api, "maxWorkerCount", {
-		get: function(){
-			return self.maxWorkerCount;
-		},
-		enumerable: true
-	});
-
 	return api;
 };
 
+WorkerProvider.prototype.unavailableHandler = function(){
+	this.available = false;
+	this.emitter.emit('unavailable');
+};
+
+WorkerProvider.prototype.availableHandler = function(){
+	this.available = true;
+	this.emitter.emit('available');
+};
+
+WorkerProvider.prototype.workerHandler = function(message){
+	this.emitter.emit('worker', {
+		id: message.id
+	});
+};
+
+WorkerProvider.prototype.workerDeadHandler = function(message){
+	this.emitter.emit('workerDead', message.id);
+};
+
 WorkerProvider.prototype.messageHandler = function(message){
-	if(message.type === "workerCount"){
-		this.workerCount = message.workerCount
+	switch(message.type){
+		case "available":
+			this.availableHandler();
+			break;
+		case "unavailable":
+			this.unavailableHandler();
+			break;
+		case "worker":
+			this.workerHandler(message);
+			break;
+		case "workerDead":
+			this.workerDeadHandler(message);
+			break;
 	}
 };

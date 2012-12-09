@@ -3,17 +3,27 @@ var EventEmitter = require('events').EventEmitter,
 	utils = require('./utils.js'),
 	precondition = require('precondition');
 
-var Workforce = exports.Workforce = function(){
+exports.create = function(workerConfig, workerProviders, options){
+	var workforce = new Workforce(workerConfig);
+
+	workforce.populate(workerProviders);
+
+	if(options.doneHandler) workforce.doneHandler = options.doneHandler;
+	if(options.workerHandler) workforce.workerHandler = options.workerHandler;
+
+	return Object.freeze(getApi.call(workforce));
+};
+
+var Workforce = exports.Workforce = function(workerConfig){
+	var self = this;
 	this.emitter = new EventEmitter();
 	this.workers = [];
 	this.workerCount = 0;
+	this.workerConfig = workerConfig;
+	this.pendingWorkers = 0;
+	this.pendingMessages = [];
 
 	this.kill = _.once(this.kill.bind(this));
-
-	Object.defineProperty(this, "api", { 
-		value: Object.freeze(getApi.call(this)),
-		enumerable: true 
-	});
 };
 
 var getApi = function(){
@@ -27,6 +37,27 @@ var getApi = function(){
 
 Workforce.prototype.workerHandler = utils.noop;
 Workforce.prototype.doneHandler = utils.noop;
+
+Workforce.prototype.populate = function(workerProviders){
+	var self = this;
+	self.pendingWorkers += workerProviders.length;
+	workerProviders.forEach(function(workerProvider){
+		workerProvider(self.workerConfig, function(worker){
+			self.pendingWorkers--;
+			if(worker !== void 0){
+				self.addWorker(worker);
+			}
+
+			if(self.pendingWorkers === 0){
+				this.pendingMessages = [];
+				if(self.workerCount === 0){
+					self.doneHandler();
+					self.kill();
+				}
+			}
+		});
+	});
+};
 
 Workforce.prototype.kill = function(){
 	this.workers.forEach(function(worker){
@@ -42,22 +73,35 @@ Workforce.prototype.broadcast = function(message){
 	this.workers.forEach(function(worker){
 		worker(message);
 	});
+
+	if(this.pendingWorkers > 0){
+		this.pendingMessages.push(message);
+	}
 };
 
 Workforce.prototype.addWorker = function(worker){
 	var self = this;
 
 	this.workers.push(worker);
-	self.workerCount++;
+	this.workerCount++;
 	worker.on('dead', function(){
 		self.workerCount--;
-		if(self.workerCount === 0){
+
+		if(self.pendingWorkers === 0 && self.workerCount === 0){
 			self.doneHandler();
 			self.kill();
 		}
 	});
+
 	worker.on('message', function(message){
 		self.emitter.emit('message', message, worker);
 	});
+
+	if(this.pendingMessages > 0){
+		this.pendingMessages.forEach(function(message){
+			worker(message);
+		});
+	}
+	
 	this.workerHandler(worker);
-}
+};

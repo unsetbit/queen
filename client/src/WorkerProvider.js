@@ -107,54 +107,70 @@ WorkerProvider.prototype.spawnWorkerHandler = function(message){
 		workerTimeout;
 
 	if(this.workerCount >= this.maxWorkerCount){
+		this.log('Max worker count reached, can\'t spawn additional workers');
 		return;
 	}
-	
-	this.workerCount += 1;
-	if(this.workerCount === (this.maxWorkerCount - 1)){
-		this.emitter.emit('unavailable');
-	}
 
-	self.emitter.emit('newWorkerCount', self.workerCount);
-	worker = createWorker(workerId, {
-		onDead: function(){
-			if(workerConfig.timeout){
-				clearTimeout(workerTimeout);
-			}
-
-			delete self.workers[workerId];
-
-			self.workerCount -= 1;
-			if(self.workerCount === (self.maxWorkerCount - 2)){
-				self.emitter.emit('available');
-			}
-
-			self.emitter.emit('newWorkerCount', self.workerCount);
-			self.sendToSocket({
-				type: "workerDead",
-				id: workerId
-			})
-		}
-	});
-
-	worker.onmessage = function(message){
-		self.sendToSocket({
-			type: "workerMessage",
-			id: workerId,
-			message: message
-		});	
-	};
+	worker = this.createWorker(workerId);
+	this.workers[workerId] = worker;
 
 	if(workerConfig.timeout){
 		workerTimeout = setTimeout(function(){
 			worker.kill();
 		}, workerConfig.timeout);
 	}
+
+	worker.onDead = function(){
+		if(workerConfig.timeout){
+			clearTimeout(workerTimeout);
+		}
+
+		delete self.workers[workerId];
+
+		self.workerCount--;
+		if(self.workerCount === (self.maxWorkerCount - 2)){
+			self.sendToSocket({
+				type: 'available'
+			});
+			self.emitter.emit('available');
+		}
+
+		self.emitter.emit('newWorkerCount', self.workerCount);
+		self.sendToSocket({
+			type: "workerDead",
+			id: workerId
+		})
+	};
+
+	this.workerCount++;
+	if(this.workerCount === (this.maxWorkerCount - 1)){
+		self.sendToSocket({
+			type: 'unvailable'
+		});
+		this.emitter.emit('unavailable');
+	}
+	self.emitter.emit('newWorkerCount', self.workerCount);
 	
-	this.workers[workerId] = worker;
-	
+	this.sendToSocket({
+		type:"spawnedWorker",
+		id: workerId
+	});
+
 	worker.start(workerConfig);
-	
+};
+
+WorkerProvider.prototype.createWorker = function(id){
+	var self = this,
+		worker = createWorker(id);
+
+	worker.onmessage = function(message){
+		self.sendToSocket({
+			type: "workerMessage",
+			id: id,
+			message: message
+		});	
+	};
+
 	return worker;
 };
 

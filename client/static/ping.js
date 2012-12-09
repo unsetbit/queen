@@ -1,7 +1,7 @@
-onmessage = function(e){
+window.socket.onmessage = function(e){
 	setTimeout(function(){
-		postMessage('ping');
+		socket('ping');
 	}, 1000);
 };
 
-postMessage('ping');
+socket('ping');

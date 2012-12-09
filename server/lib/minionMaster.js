@@ -5,7 +5,7 @@ var EventEmitter = require('events').EventEmitter,
 
 var utils = require('./utils.js'),
 	createWorkerProvider  = require('./browserWorkerProvider.js'),
-	Workforce = require('./workforce.js').Workforce;
+	createWorkforce = require('./workforce.js').create;
 	
 var create = module.exports = function(socket, options){
 	precondition.checkDefined(socket, "MinionMaster requires a socket");
@@ -88,7 +88,6 @@ MinionMaster.prototype.getWorkerProvider = function(id){
 	return this.workerProviders[id];
 };
 
-
 MinionMaster.prototype.getWorkerProviders = function(filters){
 	var results;
 	
@@ -130,25 +129,19 @@ MinionMaster.prototype.getWorkforce = function(workerConfig){
 	var self = this,
 		workerProviders = this.getWorkerProviders(workerConfig.hostFilters),
 		workforceId = generateId(),
-		workforce = new Workforce();
-
-	if(workerConfig.handler) workforce.workerHandler = workerConfig.handler;
-	if(workerConfig.done) workforce.doneHandler = workerConfig.done;
+		workforce = createWorkforce(workerConfig, workerProviders, {
+			workerHandler: workerConfig.handler,
+			doneHandler: workerConfig.done
+		});
 
 	this.workforces[workforceId] = workforce;
-	workforce.api.on('dead', function(){
+	workforce.on('dead', function(){
 		self.log('Workforce dead');
 		delete self.workforces[workforceId];
 	});
 
 	this.log('New workforce');
-	this.emitter.emit('workforce', workforce.api);
+	this.emitter.emit('workforce', workforce);
 
-	workerProviders.forEach(function(workerProvider){
-		var worker = workerProvider(workerConfig);
-		if(worker === void 0) return;
-		workforce.addWorker(worker);
-	});
-
-	return workforce.api;
+	return workforce;
 };

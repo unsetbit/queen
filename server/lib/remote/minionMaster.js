@@ -133,9 +133,12 @@ MinionMaster.prototype.workerProviderHandler = function(message){
 	this.workerProviders[id] = workerProvider;
 
 	workerProvider.on('dead', function(){
+		self.log('Worker provider dead: ' + workerProvider.attributes.name);
 		delete self.workerProviderEmitters[id];
 		delete self.workerProviders[id];
 	});
+
+	this.log('New worker provider: ' + workerProvider.attributes.name);
 
 	this.emitter.emit('workerProvider', workerProvider);
 };

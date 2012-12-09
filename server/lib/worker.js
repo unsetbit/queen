@@ -38,8 +38,7 @@ var getApi = function(){
 	api.on = this.emitter.on.bind(this.emitter);
 	api.removeListener = this.emitter.removeListener.bind(this.emitter);
 	api.kill = this.kill;
-	this.id = this.id;
-	this.provider = this.provider;
+	api.id = this.id;
 
 	Object.defineProperty(api, "provider", {
 		get: function(){ return self.provider},

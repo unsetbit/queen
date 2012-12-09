@@ -1,7 +1,7 @@
-onmessage = function(e){
+socket.onmessage = function(e){
 	var interval = setInterval(function(){
 		var guess = Math.floor(Math.random() * e.data);
-		postMessage(guess);
+		socket(guess);
 		if(guess === 42){
 			//console.log('I FOUND IT!');
 			clearInterval(interval);

@@ -49,7 +49,6 @@ Workforce.prototype.doneHandler = function(){
 
 Workforce.prototype.workerHandler = function(worker){
 	var self = this;
-	
 	this.workers[worker.id] = worker;
 
 	self.sendToSocket({
