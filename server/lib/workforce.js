@@ -42,6 +42,8 @@ Workforce.prototype.populate = function(workerProviders){
 
 	self.pendingWorkers += workerProviders.length;
 	workerProviders.forEach(function(workerProvider){
+		if(!_.isFunction(workerProvider)) return;
+		
 		workerProvider(self.workerConfig, function(worker){
 			self.pendingWorkers--;
 			if(worker !== void 0){
