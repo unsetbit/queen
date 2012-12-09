@@ -5,24 +5,24 @@ var _ = require("underscore"),
 
 var utils = require('../utils.js');
 
-var create = module.exports = function(minionMaster, workerConfig, onSendToSocket){
-	precondition.checkDefined(minionMaster, "ControlServerWorkforce requires a minion master");
+var create = module.exports = function(queen, workerConfig, onSendToSocket){
+	precondition.checkDefined(queen, "ControlServerWorkforce requires a queen");
 	precondition.checkDefined(workerConfig, "ControlServerWorkforce requires a worker config");
 	precondition.checkType(typeof onSendToSocket === "function", "ControlServerWorkforce requires an on send to socket function");
 
-	var workforce = new Workforce(minionMaster, workerConfig, onSendToSocket);
+	var workforce = new Workforce(queen, workerConfig, onSendToSocket);
 
 	return workforce.api;
 };
 
-var Workforce = function(minionMaster, workerConfig, onSendToSocket){
+var Workforce = function(queen, workerConfig, onSendToSocket){
 	this.sendToSocket = onSendToSocket;
 
 	workerConfig.handler = this.workerHandler.bind(this);
 	workerConfig.done = this.doneHandler.bind(this);
 	this.workers = {};
 	this.emitter = new EventEmitter();
-	this.workforce = minionMaster(workerConfig);
+	this.workforce = queen(workerConfig);
 
 	this.kill = _.once(this.kill.bind(this));
 

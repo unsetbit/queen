@@ -1,6 +1,6 @@
 {
-  "name": "minion-master",
-  "version": "0.0.5",
+  "name": "queen",
+  "version": "0.1.1",
   "description": "Rule browsers remotely",
   "main": "index.js",
   "dependencies": {
@@ -20,20 +20,23 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ozanturgut/minion-master.git"
+    "url": "https://github.com/ozanturgut/queen.git"
   },
   "keywords": [
     "browser",
     "runner",
-    "node",
+    "distributed",
     "js",
     "javascript",
-    "minion-master",
+    "queen",
     "controller",
     "remote-execution",
     "remote",
     "test-runner",
-    "test"
+    "test",
+    "remote",
+    "parallel",
+    "browser"
   ],
   "author": {
     "name": "Ozan Turgut",

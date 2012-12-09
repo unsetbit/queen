@@ -1,26 +1,26 @@
 var winston = require("winston"),
 	logger = new (winston.Logger)({transports: [new (winston.transports.Console)({level: 'info'}) ]}),
-	createRemoteMinionMaster = require("../lib/remote/minionMaster.js");
+	createRemoteQueen = require("../lib/remote/queen.js");
 
-var onReady = function(minionMaster){
-	if(minionMaster.workerProviders.length > 0){
-		runChanceExample(minionMaster);
+var onReady = function(queen){
+	if(queen.workerProviders.length > 0){
+		runChanceExample(queen);
 	} else {
 		console.log('Waiting for a worker provider to connect...');
 	}
 
-	minionMaster.on('workerProvider', function(){
-		runChanceExample(minionMaster);		
+	queen.on('workerProvider', function(){
+		runChanceExample(queen);		
 	});
 };
 
-var runChanceExample = function(minionMaster){
+var runChanceExample = function(queen){
 	console.log('Starting the random number finder...');
 
 	var startTime = (new Date()).getTime();
 	var workforces = [];
 	for(var i = 0; i < 1; i++){
-		var workforce = minionMaster({
+		var workforce = queen({
 			scriptPath: 'http://localhost/chance.js',
 			filter: function(attributes){
 				return attributes.name.indexOf("IE") >= 0;
@@ -52,4 +52,4 @@ var runChanceExample = function(minionMaster){
 	});
 }
 
-createRemoteMinionMaster(onReady);
+createRemoteQueen(onReady);

@@ -13,19 +13,19 @@ var create = module.exports = function(callback, options){
 	
 	options = options || {};
 	var socket = options.socket || new jot.Socket(),
-		minionMaster = new MinionMaster(socket);
+		queen = new Queen(socket);
 
-	if(options.logger) minionMaster.log = options.logger;
-	if(options.trackWorkerProviders) minionMaster.trackWorkerProviders = options.trackWorkerProviders === true;
-	if(options.port) minionMaster.port = options.port;
-	if(options.host) minionMaster.host = options.host;
+	if(options.logger) queen.log = options.logger;
+	if(options.trackWorkerProviders) queen.trackWorkerProviders = options.trackWorkerProviders === true;
+	if(options.port) queen.port = options.port;
+	if(options.host) queen.host = options.host;
 
-	minionMaster.onReady = callback;
+	queen.onReady = callback;
 
-	minionMaster.connect();
+	queen.connect();
 };
 
-var MinionMaster = function(socket){
+var Queen = function(socket){
 	this.socket = socket;
 	this.emitter = new EventEmitter();
 	this.workforceEmitters = {};
@@ -62,22 +62,22 @@ var getApi = function(){
 	return api;
 };
 
-MinionMaster.prototype.port = 8099;
-MinionMaster.prototype.host = "localhost";
-MinionMaster.prototype.trackWorkerProviders = false;
+Queen.prototype.port = 8099;
+Queen.prototype.host = "localhost";
+Queen.prototype.trackWorkerProviders = false;
 
-MinionMaster.prototype.log = utils.noop;
-MinionMaster.prototype.onReady = utils.noop;
+Queen.prototype.log = utils.noop;
+Queen.prototype.onReady = utils.noop;
 
-MinionMaster.prototype.sendToSocket = function(message){
+Queen.prototype.sendToSocket = function(message){
 	this.socket.write(message);
 };
 
-MinionMaster.prototype.connect = function(){
+Queen.prototype.connect = function(){
 	this.socket.connect(this.port, this.host, this.connectionHandler.bind(this));
 };
 
-MinionMaster.prototype.connectionHandler = function(){
+Queen.prototype.connectionHandler = function(){
 	if(this.trackWorkerProviders){
 		this.sendToSocket({
 			type: "trackWorkerProviders",
@@ -86,7 +86,7 @@ MinionMaster.prototype.connectionHandler = function(){
 	}
 };
 
-MinionMaster.prototype.kill = function(){
+Queen.prototype.kill = function(){
 	_.each(this.workforces, function(workforce){
 		workforce.kill();
 	});
@@ -95,7 +95,7 @@ MinionMaster.prototype.kill = function(){
 	this.emitter.removeAllListeners();
 };
 
-MinionMaster.prototype.messageHandler = function(message){
+Queen.prototype.messageHandler = function(message){
 	var workforceEmitter,
 		workerProviderEmitter;
 	
@@ -116,11 +116,11 @@ MinionMaster.prototype.messageHandler = function(message){
 	};
 };
 
-MinionMaster.prototype.getWorkerProvider = function(id){
+Queen.prototype.getWorkerProvider = function(id){
 	return this.workerProviders[id];
 };
 
-MinionMaster.prototype.getWorkerProviders = function(filter){
+Queen.prototype.getWorkerProviders = function(filter){
 	if(!filter) return _.values(this.workerProviders);
 	
 	return _.filter(this.workerProviders, function(workerProvider){
@@ -128,7 +128,7 @@ MinionMaster.prototype.getWorkerProviders = function(filter){
 	});
 };
 
-MinionMaster.prototype.workerProviderHandler = function(message){
+Queen.prototype.workerProviderHandler = function(message){
 	var	self = this, 
 		id = message.id,
 		workerProviderEmitter = new EventEmitter(),
@@ -149,7 +149,7 @@ MinionMaster.prototype.workerProviderHandler = function(message){
 	this.emitter.emit('workerProvider', workerProvider);
 };
 
-MinionMaster.prototype.getWorkforce = function(workerConfig){
+Queen.prototype.getWorkforce = function(workerConfig){
 	var self = this,
 		workforceId = generateId(),
 		workforceEmitter = new EventEmitter(),

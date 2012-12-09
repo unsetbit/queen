@@ -2,7 +2,7 @@ var winston = require("winston"),
 	logger = new (winston.Logger)({transports: [new (winston.transports.Console)({level: 'info'}) ]}),
 	socketio = require("socket.io"),
 	http = require('http'),
-	createMinionMaster = require("../lib/minionMaster.js"),
+	createQueen = require("../lib/queen.js"),
 	createStaticServer = require("../lib/staticServer.js").create;
 
 var port = 80,
@@ -11,13 +11,13 @@ var port = 80,
 	httpServer = createStaticServer({port: port, hostname: hostname}),
 	socketServer = socketio.listen(httpServer, {log: false}),
 	socket = socketServer.of(browserCapturePath),
-	minionMaster = createMinionMaster(socket, {logger:logger.info.bind(logger)});
+	queen = createQueen(socket, {logger:logger.info.bind(logger)});
 
-minionMaster.on('workerProvider', function(){
+queen.on('workerProvider', function(){
 	var startTime = (new Date()).getTime();
 	var workforces = [];
 	for(var i = 0; i < 100; i++){
-		var workforce = minionMaster({
+		var workforce = queen({
 			scripts: ['http://localhost/chance.js'],
 			done: function(){
 			}
@@ -42,4 +42,3 @@ minionMaster.on('workerProvider', function(){
 		workforce(maxNumber);
 	});
 });
-

@@ -1,4 +1,4 @@
-MinionMaster = (function(){
+Queen = (function(){
 /**
  * EventEmitter v4.0.3 - git.io/ee
  * Oliver Caldwell

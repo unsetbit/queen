@@ -41,7 +41,7 @@ module.exports = function(grunt) {
         header: '<config:files.client.lib>',
         src: '<config:files.client.src>',
         dest: 'client/static/<%= pkg.name %>.js',
-        exportsVariable: 'MinionMaster'
+        exportsVariable: 'Queen'
       }
     },
     min: {
@@ -97,5 +97,5 @@ module.exports = function(grunt) {
 
   grunt.loadNpmTasks('grunt-contrib-hug');
 
-  grunt.registerTask('default', 'hug');
+  grunt.registerTask('default', 'hug concat');
 };

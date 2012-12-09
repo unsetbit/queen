@@ -8,18 +8,18 @@ var utils = require('./utils.js'),
 	createWorkforce = require('./workforce.js').create;
 	
 var create = module.exports = function(socket, options){
-	precondition.checkDefined(socket, "MinionMaster requires a socket");
+	precondition.checkDefined(socket, "Queen requires a socket");
 
 	options = options || {};
-	var minionMaster = new MinionMaster(socket);
+	var queen = new Queen(socket);
 
-	if(options.logger) minionMaster.log = options.logger;
-	if(options.registerationTimeout) minionMaster.registerationTimeout = options.registerationTimeout;
+	if(options.logger) queen.log = options.logger;
+	if(options.registerationTimeout) queen.registerationTimeout = options.registerationTimeout;
 
-	return minionMaster.api;
+	return queen.api;
 };
 
-var MinionMaster = function(socket){
+var Queen = function(socket){
 	this.emitter = new EventEmitter();
 	this.workforces = {};
 	this.workerProviders = {};
@@ -54,10 +54,10 @@ var getApi = function(){
 	return api;
 };
 
-MinionMaster.prototype.log = utils.noop;
-MinionMaster.prototype.registerationTimeout = 60 * 1000;
+Queen.prototype.log = utils.noop;
+Queen.prototype.registerationTimeout = 60 * 1000;
 
-MinionMaster.prototype.kill = function(){
+Queen.prototype.kill = function(){
 	_.each(this.workforces, function(workforce){
 		workforce.kill();
 	});
@@ -71,7 +71,7 @@ MinionMaster.prototype.kill = function(){
 	this.log("Dead");
 };
 
-MinionMaster.prototype.addWorkerProvider = function(workerProvider){
+Queen.prototype.addWorkerProvider = function(workerProvider){
 	var	self = this;
 		
 	this.workerProviders[workerProvider.id] = workerProvider;		
@@ -84,11 +84,11 @@ MinionMaster.prototype.addWorkerProvider = function(workerProvider){
 	this.emitter.emit('workerProvider', workerProvider);
 };
 
-MinionMaster.prototype.getWorkerProvider = function(id){
+Queen.prototype.getWorkerProvider = function(id){
 	return this.workerProviders[id];
 };
 
-MinionMaster.prototype.getWorkerProviders = function(filter){
+Queen.prototype.getWorkerProviders = function(filter){
 	if(!filter) return _.values(this.workerProviders);
 	
 	return _.filter(this.workerProviders, function(workerProvider){
@@ -96,7 +96,7 @@ MinionMaster.prototype.getWorkerProviders = function(filter){
 	});
 };
 
-MinionMaster.prototype.connectionHandler = function(connection){
+Queen.prototype.connectionHandler = function(connection){
 	var self = this,
 		timer;
 	
@@ -117,7 +117,7 @@ MinionMaster.prototype.connectionHandler = function(connection){
 	});
 };
 
-MinionMaster.prototype.getWorkforce = function(workerConfig){
+Queen.prototype.getWorkforce = function(workerConfig){
 	var self = this,
 		workerProviders,
 		workforceId = generateId(),

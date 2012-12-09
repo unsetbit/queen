@@ -4,12 +4,12 @@ var jot = require('json-over-tcp'),
 var createClient = require('./client.js'),
 	utils = require('../utils.js');
 
-var create = module.exports = function(minionMaster, options){
-	precondition.checkDefined(minionMaster, "ControlServer requires a minion master instance");
+var create = module.exports = function(queen, options){
+	precondition.checkDefined(queen, "ControlServer requires a queen instance");
 
 	options = options || {};
 	var netServer = options.server || jot.createServer().listen(options.port || 8099, options.host || "localhost"),
-	server = new Server(minionMaster, netServer);
+	server = new Server(queen, netServer);
 
 	if(options.logger) server.log = options.logger;
 
@@ -17,12 +17,12 @@ var create = module.exports = function(minionMaster, options){
 };
 
 var connectionHandler = function(connection){
-	createClient(connection, this.minionMaster, {logger: this.log});
+	createClient(connection, this.queen, {logger: this.log});
 };
 
-var Server = function(minionMaster, netServer){
+var Server = function(queen, netServer){
 	this.netServer = netServer;
-	this.minionMaster = minionMaster;
+	this.queen = queen;
 
 	this.netServer.on('connection', this.connectionHandler.bind(this));
 };
@@ -30,5 +30,5 @@ var Server = function(minionMaster, netServer){
 Server.prototype.log = utils.noop;
 
 Server.prototype.connectionHandler = function(connection){
-	createClient(connection, this.minionMaster, {logger: this.log});
+	createClient(connection, this.queen, {logger: this.log});
 };

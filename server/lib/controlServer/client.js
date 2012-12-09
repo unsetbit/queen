@@ -7,11 +7,11 @@ var utils = require('../utils'),
 	createClientWorkforce = require('./workforce.js'),
 	createWorkerProvider = require('./workerProvider.js');
 
-var create = module.exports = function(socket, minionMaster, options){
+var create = module.exports = function(socket, queen, options){
 	precondition.checkDefined(socket, "Client requires a socket");
-	precondition.checkDefined(minionMaster, "Client requires a minion master instance");
+	precondition.checkDefined(queen, "Client requires a queen instance");
 
-	var client = new Client(socket, minionMaster);
+	var client = new Client(socket, queen);
 
 	options = options || {};
 	if(options.logger) client.log = options.logger;
@@ -19,17 +19,17 @@ var create = module.exports = function(socket, minionMaster, options){
 	return client;
 };
 
-var Client = function(socket, minionMaster){
+var Client = function(socket, queen){
 	this.socket = socket;
-	this.minionMaster = minionMaster;
+	this.queen = queen;
 	this.workforces = {};
 	this.workerProviders = {};
 
 	socket.on('data', this.messageHandler.bind(this));
 	
 	this.workerProviderHandler = this.workerProviderHandler.bind(this);
-	minionMaster.workerProviders.forEach(this.workerProviderHandler)
-	minionMaster.on('workerProvider', this.workerProviderHandler);
+	queen.workerProviders.forEach(this.workerProviderHandler)
+	queen.on('workerProvider', this.workerProviderHandler);
 
 	this.kill = this.kill.bind(this);
 	socket.on('close', this.kill);
@@ -51,7 +51,7 @@ Client.prototype.kill = function(){
 		workerProvider.kill();
 	});
 
-	this.minionMaster.removeListener('workerProvider', this.workerProviderHandler);
+	this.queen.removeListener('workerProvider', this.workerProviderHandler);
 };
 
 Client.prototype.sendToSocket = function(message){
@@ -110,7 +110,7 @@ Client.prototype.createWorkforce = function(remoteId, workforceConfig){
 		self.sendToSocket(message);
 	};
 
-	workforce = createClientWorkforce(this.minionMaster, workforceConfig, onSendToSocket);
+	workforce = createClientWorkforce(this.queen, workforceConfig, onSendToSocket);
 
 	this.workforces[remoteId] = workforce;
 	workforce.on('dead', function(){
