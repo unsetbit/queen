@@ -88,20 +88,12 @@ MinionMaster.prototype.getWorkerProvider = function(id){
 	return this.workerProviders[id];
 };
 
-MinionMaster.prototype.getWorkerProviders = function(filters){
-	var results;
+MinionMaster.prototype.getWorkerProviders = function(filter){
+	if(!filter) return _.values(this.workerProviders);
 	
-	if(!filters) return _.values(this.workerProviders);
-	
-	if(!_.isArray(filters))	filters = [filters];
-
-	results = _.filter(this.workerProviders, function(workerProvider){
-		return _.any(filters, function(filter){
-			return utils.isSimilar(filter, workerProvider.attributes);
-		});
+	return _.filter(this.workerProviders, function(workerProvider){
+		return filter(workerProvider.attributes);
 	});
-
-	return results;
 };
 
 MinionMaster.prototype.connectionHandler = function(connection){
@@ -127,21 +119,33 @@ MinionMaster.prototype.connectionHandler = function(connection){
 
 MinionMaster.prototype.getWorkforce = function(workerConfig){
 	var self = this,
-		workerProviders = this.getWorkerProviders(workerConfig.hostFilters),
+		workerProviders,
 		workforceId = generateId(),
-		workforce = createWorkforce(workerConfig, workerProviders, {
-			workerHandler: workerConfig.handler,
-			doneHandler: workerConfig.done
-		});
+		workforce;
 
-	this.workforces[workforceId] = workforce;
-	workforce.on('dead', function(){
+	if(workerConfig.providerIds){
+		workerProviders = workerConfig.providerIds.map(function(id){
+			return self.getWorkerProvider(id);
+		});
+	} else {
+		workerProviders = this.getWorkerProviders(workerConfig.filter)
+	}
+
+	workforce = createWorkforce(workerConfig, {
+		workerHandler: workerConfig.handler,
+		doneHandler: workerConfig.done
+	});
+
+	this.workforces[workforceId] = workforce.api;
+	workforce.api.on('dead', function(){
 		self.log('Workforce dead');
 		delete self.workforces[workforceId];
 	});
 
 	this.log('New workforce');
-	this.emitter.emit('workforce', workforce);
+	this.emitter.emit('workforce', workforce.api);
 
-	return workforce;
+	workforce.populate(workerProviders);
+
+	return workforce.api;
 };

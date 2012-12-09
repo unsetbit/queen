@@ -1,27 +1,22 @@
-var create = module.exports = function(emitter, attributes){
-	var workerProvider = new WorkerProvider(emitter, attributes);
+var create = module.exports = function(id, emitter, attributes){
+	var workerProvider = new WorkerProvider(id, emitter, attributes);
 
-	return workerProvider.api;
+	return Object.freeze(getApi.call(workerProvider));
 };
 
-var WorkerProvider = function(emitter, attributes){
+var WorkerProvider = function(id, emitter, attributes){
+	this.id = id;
 	this.emitter = emitter;
 	this.attributes = Object.freeze(attributes);
-
 	this.emitter.on('message', this.messageHandler.bind(this));
-
-	Object.defineProperty(this, "api", { 
-		value: Object.freeze(getApi.call(this)),
-		enumerable: true 
-	});
 };
 
 var getApi = function(){
-	var self = this,
-		api = {};
+	var api = {};
 	api.on = this.emitter.on.bind(this.emitter);
 	api.removeListener = this.emitter.removeListener.bind(this.emitter);
 	api.attributes = this.attributes;
+	api.id = this.id;
 
 	return api;
 };

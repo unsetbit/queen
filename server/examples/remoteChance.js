@@ -21,7 +21,13 @@ var runChanceExample = function(minionMaster){
 	var workforces = [];
 	for(var i = 0; i < 1; i++){
 		var workforce = minionMaster({
-			scriptPath: 'http://192.168.0.105/chance.js'
+			scriptPath: 'http://localhost/chance.js',
+			filter: function(attributes){
+				return attributes.name.indexOf("IE") >= 0;
+			},
+			done: function(){
+				console.log('done!');
+			}
 		});
 
 		var numberToFind = 42;

@@ -120,14 +120,20 @@ MinionMaster.prototype.getWorkerProvider = function(id){
 	return this.workerProviders[id];
 };
 
+MinionMaster.prototype.getWorkerProviders = function(filter){
+	if(!filter) return _.values(this.workerProviders);
+	
+	return _.filter(this.workerProviders, function(workerProvider){
+		return filter(workerProvider.attributes);
+	});
+};
+
 MinionMaster.prototype.workerProviderHandler = function(message){
 	var	self = this, 
 		id = message.id,
 		workerProviderEmitter = new EventEmitter(),
 		attributes = message.attributes,
-		maxWorkerCount = message.maxWorkerCount,
-		workerCount= message.workerCount,
-		workerProvider = createWorkerProvider(workerProviderEmitter, attributes, maxWorkerCount, workerCount);
+		workerProvider = createWorkerProvider(id, workerProviderEmitter, attributes);
 
 	this.workerProviderEmitters[id] = workerProviderEmitter;
 	this.workerProviders[id] = workerProvider;
@@ -167,6 +173,11 @@ MinionMaster.prototype.getWorkforce = function(workerConfig){
 	});
 
 	this.workforceEmitters[workforceId] = workforceEmitter;
+
+
+	if(workerConfig.filter){
+		workerConfig.providerIds = _.pluck(this.getWorkerProviders(workerConfig.filter), "id");
+	}
 
 	this.sendToSocket({
 		type: 'spawnWorkforce', 

@@ -3,15 +3,13 @@ var EventEmitter = require('events').EventEmitter,
 	utils = require('./utils.js'),
 	precondition = require('precondition');
 
-exports.create = function(workerConfig, workerProviders, options){
+exports.create = function(workerConfig, options){
 	var workforce = new Workforce(workerConfig);
-
-	workforce.populate(workerProviders);
 
 	if(options.doneHandler) workforce.doneHandler = options.doneHandler;
 	if(options.workerHandler) workforce.workerHandler = options.workerHandler;
 
-	return Object.freeze(getApi.call(workforce));
+	return workforce;
 };
 
 var Workforce = exports.Workforce = function(workerConfig){
@@ -24,6 +22,7 @@ var Workforce = exports.Workforce = function(workerConfig){
 	this.pendingMessages = [];
 
 	this.kill = _.once(this.kill.bind(this));
+	this.api = Object.freeze(getApi.call(this));
 };
 
 var getApi = function(){
@@ -40,6 +39,7 @@ Workforce.prototype.doneHandler = utils.noop;
 
 Workforce.prototype.populate = function(workerProviders){
 	var self = this;
+
 	self.pendingWorkers += workerProviders.length;
 	workerProviders.forEach(function(workerProvider){
 		workerProvider(self.workerConfig, function(worker){
@@ -57,6 +57,11 @@ Workforce.prototype.populate = function(workerProviders){
 			}
 		});
 	});
+
+	if(this.pendingWorkers === 0 && this.workerCount === 0){
+		this.doneHandler();
+		this.kill();
+	}
 };
 
 Workforce.prototype.kill = function(){
