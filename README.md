@@ -22,16 +22,16 @@ Lets say I'm running a simple Queen server on localhost with a script like this 
 // server.js
 // code initializing Queen omitted
 queen({
-  scripts: ['http://localhost/ping.js'],
-  populate: "continuous",
-  killOnStop: false
+  scripts: ['http://localhost/ping.js'], // The script to execute
+  populate: "continuous", // Browsers connecting after the request was made should still execute it
+  killOnStop: false // Keep the request active even when all connected browsers have executed the script
 });
 ```
 
 And here is what ping.js looks like
 ``` javascript
 console.log('ping');
-socket.kill();
+socket.kill(); // Signal to the server that we're done
 ```
 
 Now, whenever a browser navigates to http://localhost/capture, it will output "ping" in its console 
