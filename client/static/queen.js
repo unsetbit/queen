@@ -6584,6 +6584,7 @@ var IframeWorker = function(id){
 
 	this.socket = new Socket();
 	this.socket.onPostMessage = _.bind(this.postMessageFromWorker, this)
+	this.socket.api.kill = this.kill;
 	window.iframeSockets[this.id] = this.socket.api;
 	this.postMessage = this.socket.message;
 	this.api = getApi.call(this);

@@ -24,7 +24,8 @@ var Queen = function(socket){
 	this.workforces = {};
 	this.workerProviders = {};
 	this.socket = socket;
-
+	this.continuousWorkforces = {};
+	
 	socket.on('connection', this.connectionHandler.bind(this));
 
 	this.kill = _.once(this.kill.bind(this));

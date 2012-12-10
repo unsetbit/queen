@@ -46,6 +46,7 @@ Workforce.prototype.populate = function(workerProviders){
 	var self = this;
 
 	if(!_.isArray(workerProviders)) workerProviders = [workerProviders];
+	if(workerProviders.length === 0) return;
 
 	workerProviders = workerProviders.filter(this.providerFilter);
 

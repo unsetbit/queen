@@ -13,19 +13,8 @@ var port = 80,
 	socket = socketServer.of(browserCapturePath),
 	queen = createQueen(socket, {logger:logger.info.bind(logger)});
 
-queen.on('workerProvider', function(){
-	var workforce = queen({
-		scripts: ['http://localhost/example/ping.js'],
-		timeout: 1000 * 6,
-		handler: function(worker){
-			worker.on('message', function(message){
-				console.log(message);
-				worker('pong');
-				console.log('pong');
-			});
-		},
-		done: function(){
-			console.log('done!');
-		}
-	});
+queen({
+	scripts: ['http://localhost/example/ping.js'],
+	populate: "continuous",
+	killOnStop: false
 });
