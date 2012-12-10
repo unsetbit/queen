@@ -1,18 +1,3 @@
-/*! queen - v0.1.1 - 2012-12-10
-* Copyright (c) 2012 Ozan Turgut; Licensed  */
-
-(function (exports) {
-  if (typeof module !== "undefined" && module.exports) {
-    module.exports = exports; // CommonJS
-  } else if (typeof define === "function") {
-    define(exports); // AMD
-  } else {
-	Queen = exports; // <script>
-  }
-}((function () {
-	var exports = {},
-		WEB_SOCKET_SWF_LOCATION = "/WebSocketMainInsecure.swf";
-
 exports = (function(){
 
 var __module3 = (function(){
@@ -6889,6 +6874,3 @@ return module.exports || exports;
 
 return {"IframeWorker":__module0,"lib":{"eventEmitter":__module2,"json2":__module4,"modernizr":__module5,"socket.io":__module6,"underscore":__module1},"utils":__module3,"WorkerProvider":__module7};
 }());
-
-return exports.WorkerProvider;
-}())));

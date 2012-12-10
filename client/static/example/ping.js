@@ -1,4 +1,4 @@
-window.socket.onmessage = function(e){
+window.socket.onMessage = function(){
 	setTimeout(function(){
 		socket('ping');
 	}, 1000);

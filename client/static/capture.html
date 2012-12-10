@@ -13,20 +13,18 @@
   </h1>
 	<script src="queen.js"></script>
   <script>
-    WEB_SOCKET_SWF_LOCATION = "./WebSocketMainInsecure.swf";
-    var workerProviderConfig = {
-      socketPath: "//" + window.location.host + "/capture"
-    };
+    var config = {};
 
     if(typeof console !== "undefined"){
-      workerProviderConfig.logger = function(message){
+      config.logger = function(message){
         console.log(message);
       };
     }
 		
-    var workerProvider = Queen.WorkerProvider.create(workerProviderConfig);
+    var workerProvider = Queen("//" + window.location.host + "/capture", config);
 
     // UI
+    var workerCount = 0;
     var statusElement = document.getElementById('Status');
     var statusIndicatorElement = document.getElementById('StatusIndicator');
     workerProvider.on('connect', function(){
@@ -46,8 +44,15 @@
       statusElement.innerText = "Connected, at maximum capacity";
     });
 
-    workerProvider.on('newWorkerCount', function(count){
-      document.title = "(" + count + ") Queen";
+    workerProvider.on('worker', function(worker){
+      workerCount++;
+      document.title = "(" + workerCount + ") Queen";
+    });
+
+
+    workerProvider.on('workerDead', function(workerId){
+      workerCount--;
+      document.title = "(" + workerCount + ") Queen";
     });
 	</script>
 </body>

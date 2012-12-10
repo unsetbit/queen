@@ -164,7 +164,7 @@ BrowserWorkerProvider.prototype.registerHandler = function(message){
 		attributes.version = {
 			major: ua.major,
 			minor: ua.minor,
-			path: ua.patch
+			patch: ua.patch
 		};
 	}
 

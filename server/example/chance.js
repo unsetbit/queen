@@ -18,7 +18,7 @@ queen.on('workerProvider', function(){
 	var workforces = [];
 	for(var i = 0; i < 100; i++){
 		var workforce = queen({
-			scripts: ['http://localhost/chance.js'],
+			scripts: ['http://localhost/example/chance.js'],
 			done: function(){
 			}
 		});

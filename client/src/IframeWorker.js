@@ -1,51 +1,15 @@
 var _ = require('./lib/underscore.js'),
+	EventEmitter = require('./lib/eventEmitter.js').EventEmitter,
 	utils = require('./utils.js');
 
 window.iframeSockets = {};
 
-exports.create = function(id, options){
-	var worker = new IframeWorker(id);
-
-	return worker.api;
-};
-
-var IframeWorker = function(id){
-	this.id = id;
-
-	this.iframe = document.createElement("IFRAME");
-	this.iframe.className = "minion-master-worker";
-	this.pendingMessages = [];
-
-	document.body.appendChild(this.iframe);
-
-	this.kill = _.once(_.bind(this.kill, this));
-	this.start = _.once(_.bind(this.start, this));
-
-	this.socket = new Socket();
-	this.socket.onPostMessage = _.bind(this.postMessageFromWorker, this)
-	window.iframeSockets[this.id] = this.socket.api;
-
-	this.api = getApi.call(this);
-};
-
-var getApi = function(){
-	var api = {
-		id: this.id,
-		onmessage: utils.noop,
-		onDead: utils.noop,
-		postMessage: this.socket.message,
-		kill: this.kill,
-		start: this.start
-	};
-
-	return api;
-};
-
+// Socket interfaced used to interact with the iframed worker
 var Socket = function(){
 	this.pendingMessages = [];
 	this.message = this.message.bind(this);
 	this.api = this.postMessage.bind(this);
-	this.api.onmessage = utils.noop;
+	this.api.onMessage = utils.noop;
 	this.ready = _.once(this.ready.bind(this));
 };
 Socket.prototype.onPostMessage = utils.noop;
@@ -61,18 +25,50 @@ Socket.prototype.ready = function(){
 
 Socket.prototype.message = function(message){
 	if(this.isReady){
-		this.api.onmessage({
-			data: message,
-			origin: window.location.origin,
-			source: this
-		});
+		this.api.onMessage(message);
 	} else {
 		this.pendingMessages.push(message);
 	}
 };
 
+exports.create = function(id, options){
+	var worker = new IframeWorker(id);
+
+	return worker;
+};
+
+var IframeWorker = function(id){
+	this.id = id;
+
+	this.iframe = document.createElement("IFRAME");
+	this.iframe.className = "queen-worker";
+
+	document.body.appendChild(this.iframe);
+
+	this.kill = _.once(_.bind(this.kill, this));
+	this.start = _.once(_.bind(this.start, this));
+	this.emitter = new EventEmitter();
+
+	this.socket = new Socket();
+	this.socket.onPostMessage = _.bind(this.postMessageFromWorker, this)
+	window.iframeSockets[this.id] = this.socket.api;
+	this.postMessage = this.socket.message;
+	this.api = getApi.call(this);
+};
+
+var getApi = function(){
+	var api = {};
+
+	api.id = this.id;
+	api.on = _.bind(this.emitter.on, this.emitter);
+	api.removeListener = _.bind(this.emitter.removeListener, this.emitter);
+	kill = this.kill;
+
+	return api;
+};
+
 IframeWorker.prototype.postMessageFromWorker = function(message){
-	this.api.onmessage(message);
+	this.emitter.emit('message', message);
 };
 
 IframeWorker.prototype.start = function(config){
@@ -92,7 +88,6 @@ IframeWorker.prototype.runScripts = function(scripts){
 		iframeContent;
 
 	iframe = this.iframe;
-
 
 	iframeDoc = (iframe.contentDocument) ? iframe.contentDocument : iframe.contentWindow.document;
 	
@@ -117,8 +112,6 @@ IframeWorker.prototype.runScripts = function(scripts){
 	iframeDoc.open();
 	iframeDoc.write(iframeContent);
 	iframeDoc.close();
-
-
 };
 
 IframeWorker.prototype.loadUrl = function(url){
@@ -130,5 +123,5 @@ IframeWorker.prototype.kill = function(){
 	delete window.iframeSockets[this.id];
 	document.body.removeChild(this.iframe);	
 	this.iframe = void 0;
-	this.api.onDead();
+	this.emitter.emit('dead');
 };

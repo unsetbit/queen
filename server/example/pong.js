@@ -15,7 +15,7 @@ var port = 80,
 
 queen.on('workerProvider', function(){
 	var workforce = queen({
-		scripts: ['http://localhost/ping.js'],
+		scripts: ['http://localhost/example/ping.js'],
 		timeout: 1000 * 6,
 		handler: function(worker){
 			worker.on('message', function(message){

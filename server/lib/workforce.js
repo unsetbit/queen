@@ -6,11 +6,7 @@ var EventEmitter = require('events').EventEmitter,
 exports.create = function(workerConfig, options){
 	var workforce = new Workforce(workerConfig);
 
-	if(options.stopHandler){
-		workforce.stopHandler = options.stopHandler;
-		workforce.killOnStop = false;
-	} 
-	
+	if(options.stopHandler)	workforce.stopHandler = options.stopHandler;
 	if(options.workerHandler) workforce.workerHandler = options.workerHandler;
 	if(options.providerFilter) workforce.providerFilter = options.providerFilter;
 	if(options.killOnStop !== void 0) workforce.killOnStop = options.killOnStop;

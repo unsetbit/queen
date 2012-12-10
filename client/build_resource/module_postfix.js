@@ -1,2 +1,2 @@
-return exports;
+return exports.WorkerProvider;
 }())));

@@ -101,13 +101,11 @@ Queen.prototype.connectionHandler = function(connection){
 		timer;
 	
 	this.log('New connection');
-	this.emitter.emit('connection', connection);
 
 	var workerProvider = createWorkerProvider(connection, {logger: this.log});
 
 	timer = setTimeout(function(){
 		self.log('Connection timeout');
-		self.emitter.emit('timeout', connection);
 		connection.disconnect();
 	}, this.registerationTimeout);
 	

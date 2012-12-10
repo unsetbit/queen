@@ -1,4 +1,4 @@
-/*! queen - v0.1.1 - 2012-12-09
+/*! queen - v0.1.1 - 2012-12-10
 * Copyright (c) 2012 Ozan Turgut; Licensed  */
 
 /*
@@ -16,7 +16,7 @@ html{color:#000;background:#FFF}body,div,dl,dt,dd,ul,ol,li,h1,h2,h3,h4,h5,h6,pre
   src: local('Sanchez'), local('Sanchez-Regular'), url(http://themes.googleusercontent.com/static/fonts/sanchez/v1/mx466fsxfR1AA3OwUm3waQ.woff) format('woff');
 }
 
-.minion-master-worker{
+.queen-worker{
 	width:1px;
 	height:1px;
 	border:25px solid #EDC951;

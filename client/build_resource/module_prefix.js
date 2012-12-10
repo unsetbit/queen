@@ -4,8 +4,8 @@
   } else if (typeof define === "function") {
     define(exports); // AMD
   } else {
-    MinionMaster = exports; // <script>
+	Queen = exports; // <script>
   }
 }((function () {
 	var exports = {},
-		WEB_SOCKET_SWF_LOCATION = "/WebSocketMain.swf";
+		WEB_SOCKET_SWF_LOCATION = "/WebSocketMainInsecure.swf";

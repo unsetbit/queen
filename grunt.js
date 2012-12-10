@@ -18,7 +18,12 @@ module.exports = function(grunt) {
       client: {
         src: 'client/src',
         srcFiles: 'client/src/**/*',
-        lib: 'client/lib/**/*.js'
+        lib: 'client/lib/**/*.js',
+        scripts: [
+          'client/build_resource/module_prefix.js',
+          'client/build_resource/module_body.js',
+          'client/build_resource/module_postfix.js'
+        ]
       },
       styles: ['client/lib/*.css', 'client/styles/**/*.css'],
       grunt: ['grunt.js', 'tasks/*.js']
@@ -34,19 +39,23 @@ module.exports = function(grunt) {
       styles: {
         src: ['<banner:meta.banner>', '<config:files.styles>'],
         dest: 'client/static/<%= pkg.name %>.css'
+      },
+      scripts: {
+        src: ['<banner:meta.banner>', '<config:files.client.scripts>'],
+        dest: 'client/static/<%= pkg.name %>.js'
       }
     },
     hug: {
       dist: {
         header: '<config:files.client.lib>',
         src: '<config:files.client.src>',
-        dest: 'client/static/<%= pkg.name %>.js',
-        exportsVariable: 'Queen'
+        dest: 'client/build_resource/module_body.js',
+        exportsVariable: 'exports'
       }
     },
     min: {
       dist: {
-        src: ['<banner:meta.banner>', '<config:hug.dist.dest>'],
+        src: ['<banner:meta.banner>', '<config:concat.scripts.dest>'],
         dest: 'client/static/<%= pkg.name %>.min.js'
       }
     },
@@ -58,7 +67,7 @@ module.exports = function(grunt) {
     watch: {
         client: {
           files: '<config:files.client.srcFiles>',
-          tasks: 'hug'
+          tasks: 'hug concat:scripts'
         },
         styles: {
           files: '<config:files.styles>',
@@ -97,5 +106,5 @@ module.exports = function(grunt) {
 
   grunt.loadNpmTasks('grunt-contrib-hug');
 
-  grunt.registerTask('default', 'hug concat');
+  grunt.registerTask('default', 'hug concat min');
 };

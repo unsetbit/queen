@@ -1,21 +1,22 @@
 var createWorker = require('./IframeWorker.js').create,
 	_ = require('./lib/underscore.js'),
 	io = require('./lib/socket.io.js'),
+	EventEmitter = require('./lib/eventEmitter.js').EventEmitter,
 	utils = require('./utils.js');
 
-exports.create = function(options){
+module.exports = function(captureUrl, options){
 	var options = options || {},
 		env = options.env || window,
-		socketPath = options.socketPath || "//" + window.location.host + "/capture",
-		socket = options.socket || io.connect(socketPath, {
+		socket = io.connect(captureUrl, {
 			'max reconnection attempts': Infinity,
 			'reconnection limit': 60 * 1000 // At least check every minute
 		});
 
 	var workerProvider = new WorkerProvider(socket);
 
-	if(options.maxTimeout) workerProvider.maxTimeout = options.maxTimeout;
+	if(options.workerTimeout) workerProvider.workerTimeout = options.workerTimeout;
 	if(options.maxWorkerCount) workerProvider.maxWorkerCount = options.maxWorkerCount;
+	if(options.logger) workerProvider.log = options.logger;
 
 	return workerProvider.api;
 };
@@ -25,25 +26,41 @@ var getApi = function(){
 	api.on = _.bind(this.emitter.on, this.emitter);
 	api.removeListener = _.bind(this.emitter.removeListener, this.emitter);
 	api.kill = this.kill;
-
+	api.attributes = this.attributes;
+	
 	return api;
 };
 
 var WorkerProvider = function(socket){
+	var self = this;
+
 	this.emitter = new EventEmitter();
 	this.socket = socket;
 	this.workers = {};
 	this.kill = _.once(_.bind(this.kill, this));
-	this.api = getApi.call(this);
 	this.workerCount = 0;
 
 	socket.on("connect", _.bind(this.connectionHandler, this));
 	socket.on("message", _.bind(this.messageHandler, this));
 	socket.on("disconnect", _.bind(this.disconnectionHandler, this));
+
+	this.attributes = {
+		userAgent: navigator.userAgent,
+		capabilities: {}
+	};
+
+	// fill up capabilities
+	_.each(Modernizr, function(value, key){
+		if(!_.isFunction(value) && !_.isArray(value) && key !== "_version"){
+			self.attributes.capabilities[key] = value;
+		}
+	});
+
+	this.api = getApi.call(this);
 };
 
 WorkerProvider.prototype.maxWorkerCount = 1000;
-WorkerProvider.prototype.maxTimeout = 1000 * 60;
+WorkerProvider.prototype.workerTimeout = Infinity;
 WorkerProvider.prototype.log = utils.noop;
 
 WorkerProvider.prototype.kill = function(){
@@ -52,7 +69,7 @@ WorkerProvider.prototype.kill = function(){
 	this.socket.removeListener("connect", this.connectionHandler);
 	this.socket.removeListener("message", this.messageHandler);
 	this.socket.removeListener("disconnect", this.disconnectionHandler);
-	
+	this.emitter.emit('dead');
 	this.socket = void 0;
 };
 
@@ -61,11 +78,11 @@ WorkerProvider.prototype.sendToSocket = function(message){
 };
 
 WorkerProvider.prototype.connectionHandler = function(){
-	this.log('Connected');
-	this.emitter.emit('connect');
-	if(this.isReconnecting){
-		window.location.reload(true); // Reload on reconnect
+	if(this.isReconnecting){ // Reload on reconnect
+		window.location.reload(true);
 	} else {
+		this.log('Connected');
+		this.emitter.emit('connect');
 		this.register();
 	}
 };
@@ -111,20 +128,33 @@ WorkerProvider.prototype.spawnWorkerHandler = function(message){
 		return;
 	}
 
-	worker = this.createWorker(workerId);
+	worker = createWorker(workerId);
+
 	this.workers[workerId] = worker;
 
-	if(workerConfig.timeout){
+	if(workerConfig.timeout && this.workerTimeout < workerConfig.timeout){
 		workerTimeout = setTimeout(function(){
 			worker.kill();
 		}, workerConfig.timeout);
+	} else if(this.workerTimeout !== Infinity && this.workerTimeout !== void 0){
+		workerTimeout = setTimeout(function(){
+			worker.kill();
+		}, this.workerTimeout);
 	}
 
-	worker.onDead = function(){
-		if(workerConfig.timeout){
-			clearTimeout(workerTimeout);
-		}
+	worker.api.on('message', function(message){
+		self.sendToSocket({
+			type: "workerMessage",
+			id: workerId,
+			message: message
+		});	
+	});
 
+	worker.api.on('dead', function(){
+		if(workerTimeout !== void 0){
+			clearTimeout(workerTimeout);	
+		}
+				
 		delete self.workers[workerId];
 
 		self.workerCount--;
@@ -135,12 +165,12 @@ WorkerProvider.prototype.spawnWorkerHandler = function(message){
 			self.emitter.emit('available');
 		}
 
-		self.emitter.emit('newWorkerCount', self.workerCount);
+		self.emitter.emit('workerDead', workerId);
 		self.sendToSocket({
 			type: "workerDead",
 			id: workerId
 		})
-	};
+	});
 
 	this.workerCount++;
 	if(this.workerCount === (this.maxWorkerCount - 1)){
@@ -149,7 +179,6 @@ WorkerProvider.prototype.spawnWorkerHandler = function(message){
 		});
 		this.emitter.emit('unavailable');
 	}
-	self.emitter.emit('newWorkerCount', self.workerCount);
 	
 	this.sendToSocket({
 		type:"spawnedWorker",
@@ -157,21 +186,8 @@ WorkerProvider.prototype.spawnWorkerHandler = function(message){
 	});
 
 	worker.start(workerConfig);
-};
 
-WorkerProvider.prototype.createWorker = function(id){
-	var self = this,
-		worker = createWorker(id);
-
-	worker.onmessage = function(message){
-		self.sendToSocket({
-			type: "workerMessage",
-			id: id,
-			message: message
-		});	
-	};
-
-	return worker;
+	self.emitter.emit('worker', worker.api);
 };
 
 WorkerProvider.prototype.killWorkerHandler = function(message){
@@ -197,21 +213,8 @@ WorkerProvider.prototype.destroyWorkers = function(){
 };
 
 WorkerProvider.prototype.register = function(){
-	var attributes = {},
-		capabilities = {};
-
-	attributes.userAgent = navigator.userAgent;
-
-	// fill up capabilities
-	_.each(Modernizr, function(value, key){
-		if(!_.isFunction(value) && !_.isArray(value) && key !== "_version"){
-			capabilities[key] = value;
-		}
-	});
-
-	attributes.capabilities = capabilities;
 	this.sendToSocket({
 		type: "register",
-		attributes: attributes
+		attributes: this.attributes
 	});
 };
