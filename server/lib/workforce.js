@@ -6,20 +6,26 @@ var EventEmitter = require('events').EventEmitter,
 exports.create = function(workerConfig, options){
 	var workforce = new Workforce(workerConfig);
 
-	if(options.doneHandler) workforce.doneHandler = options.doneHandler;
+	if(options.stopHandler){
+		workforce.stopHandler = options.stopHandler;
+		workforce.killOnStop = false;
+	} 
+	
 	if(options.workerHandler) workforce.workerHandler = options.workerHandler;
-
+	if(options.providerFilter) workforce.providerFilter = options.providerFilter;
+	if(options.killOnStop !== void 0) workforce.killOnStop = options.killOnStop;
+	
 	return workforce;
 };
 
 var Workforce = exports.Workforce = function(workerConfig){
+	precondition.checkDefined(workerConfig, "Worker config object must be defined");
+
 	var self = this;
 	this.emitter = new EventEmitter();
 	this.workers = [];
-	this.workerCount = 0;
 	this.workerConfig = workerConfig;
 	this.pendingWorkers = 0;
-	this.pendingMessages = [];
 
 	this.kill = _.once(this.kill.bind(this));
 	this.api = Object.freeze(getApi.call(this));
@@ -30,48 +36,56 @@ var getApi = function(){
 	api.on = this.emitter.on.bind(this.emitter);
 	api.removeListener = this.emitter.removeListener.bind(this.emitter);
 	api.kill = this.kill;
+	api.populate = this.populate.bind(this);
 	
 	return api;
 };
 
 Workforce.prototype.workerHandler = utils.noop;
-Workforce.prototype.doneHandler = utils.noop;
+Workforce.prototype.stopHandler = utils.noop;
+Workforce.prototype.providerFilter = function(){return true;};
+Workforce.prototype.killOnStop = true;
 
 Workforce.prototype.populate = function(workerProviders){
 	var self = this;
 
+	if(!_.isArray(workerProviders)) workerProviders = [workerProviders];
+
+	workerProviders = workerProviders.filter(this.providerFilter);
+
 	self.pendingWorkers += workerProviders.length;
+
 	workerProviders.forEach(function(workerProvider){
-		if(!_.isFunction(workerProvider)) return;
-		
 		workerProvider(self.workerConfig, function(worker){
 			self.pendingWorkers--;
 			if(worker !== void 0){
 				self.addWorker(worker);
 			}
-
-			if(self.pendingWorkers === 0){
-				this.pendingMessages = [];
-				if(self.workerCount === 0){
-					self.doneHandler();
-					self.kill();
-				}
-			}
 		});
 	});
 
-	if(this.pendingWorkers === 0 && this.workerCount === 0){
-		this.doneHandler();
+	if(this.pendingWorkers === 0 && self.workers.length === 0){
+		this.stop();
+	}
+};
+
+Workforce.prototype.stop = function(){
+	this.workers.concat([]).forEach(function(worker){
+		worker.kill();
+	});
+
+	this.stopHandler();
+
+	if(this.killOnStop){
 		this.kill();
 	}
 };
 
 Workforce.prototype.kill = function(){
-	this.workers.forEach(function(worker){
+	this.workers.concat([]).forEach(function(worker){
 		worker.kill();
 	});
 	
-	this.workers = [];
 	this.emitter.emit('dead');
 	this.emitter.removeAllListeners();
 };
@@ -80,23 +94,17 @@ Workforce.prototype.broadcast = function(message){
 	this.workers.forEach(function(worker){
 		worker(message);
 	});
-
-	if(this.pendingWorkers > 0){
-		this.pendingMessages.push(message);
-	}
 };
 
 Workforce.prototype.addWorker = function(worker){
 	var self = this;
 
 	this.workers.push(worker);
-	this.workerCount++;
 	worker.on('dead', function(){
-		self.workerCount--;
+		self.workers.splice(self.workers.indexOf(worker), 1);
 
-		if(self.pendingWorkers === 0 && self.workerCount === 0){
-			self.doneHandler();
-			self.kill();
+		if(self.pendingWorkers === 0 && self.workers.length === 0){
+			self.stop();
 		}
 	});
 

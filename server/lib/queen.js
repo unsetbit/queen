@@ -55,7 +55,7 @@ var getApi = function(){
 };
 
 Queen.prototype.log = utils.noop;
-Queen.prototype.registerationTimeout = 60 * 1000;
+Queen.prototype.registerationTimeout = 10 * 1000; // 10 seconds
 
 Queen.prototype.kill = function(){
 	_.each(this.workforces, function(workforce){
@@ -82,18 +82,18 @@ Queen.prototype.addWorkerProvider = function(workerProvider){
 
 	this.log('New worker provider: ' + workerProvider.attributes.name);
 	this.emitter.emit('workerProvider', workerProvider);
+
+	_.each(this.continuousWorkforces, function(workforce){
+		workforce.populate(workerProvider);
+	});
 };
 
 Queen.prototype.getWorkerProvider = function(id){
 	return this.workerProviders[id];
 };
 
-Queen.prototype.getWorkerProviders = function(filter){
-	if(!filter) return _.values(this.workerProviders);
-	
-	return _.filter(this.workerProviders, function(workerProvider){
-		return filter(workerProvider.attributes);
-	});
+Queen.prototype.getWorkerProviders = function(){
+	return _.values(this.workerProviders);
 };
 
 Queen.prototype.connectionHandler = function(connection){
@@ -123,20 +123,15 @@ Queen.prototype.getWorkforce = function(workerConfig){
 		workforceId = generateId(),
 		workforce;
 
-	if(workerConfig.providerIds){
-		workerProviders = workerConfig.providerIds.map(function(id){
-			return self.getWorkerProvider(id);
-		});
-	} else {
-		workerProviders = this.getWorkerProviders(workerConfig.filter)
-	}
-
 	workforce = createWorkforce(workerConfig, {
 		workerHandler: workerConfig.handler,
-		doneHandler: workerConfig.done
+		stopHandler: workerConfig.stop,
+		providerFilter: workerConfig.filter,
+		killOnStop: workerConfig.killOnStop
 	});
 
 	this.workforces[workforceId] = workforce.api;
+	
 	workforce.api.on('dead', function(){
 		self.log('Workforce dead');
 		delete self.workforces[workforceId];
@@ -145,7 +140,21 @@ Queen.prototype.getWorkforce = function(workerConfig){
 	this.log('New workforce');
 	this.emitter.emit('workforce', workforce.api);
 
-	workforce.populate(workerProviders);
+	if(workerConfig.populate !== false){
+		workerProviders = this.getWorkerProviders()
+		
+		if(workerConfig.populate === void 0
+		   || workerConfig.populate === "once"){
+			workforce.populate(workerProviders);
+		} else if(workerConfig.populate === "continuous"){
+			this.continuousWorkforces[workforceId] = workforce;			
+			workforce.api.on('dead', function(){
+				delete self.continuousWorkforces[workforceId];
+			});
+
+			workforce.populate(workerProviders);
+		}
+	}
 
 	return workforce.api;
 };

@@ -19,9 +19,10 @@ var Workforce = function(queen, workerConfig, onSendToSocket){
 	this.sendToSocket = onSendToSocket;
 
 	workerConfig.handler = this.workerHandler.bind(this);
-	workerConfig.done = this.doneHandler.bind(this);
+	workerConfig.stop = this.stopHandler.bind(this);
 	this.workers = {};
 	this.emitter = new EventEmitter();
+	this.queen = queen;
 	this.workforce = queen(workerConfig);
 
 	this.kill = _.once(this.kill.bind(this));
@@ -43,8 +44,8 @@ var getApi = function(){
 	return api;
 }
 
-Workforce.prototype.doneHandler = function(){
-	this.sendToSocket({type: "done"});
+Workforce.prototype.stopHandler = function(){
+	this.sendToSocket({type: "stop"});
 };
 
 Workforce.prototype.workerHandler = function(worker){
@@ -78,14 +79,32 @@ Workforce.prototype.workerMessageHandler = function(message){
 	if(worker !== void 0){
 		worker(message.message);
 	}
-}
+};
+
+Workforce.prototype.populateHandler = function(message){
+	var self = this,
+		providers = message.providerIds.map(function(id){
+			return self.queen.getWorkerProvider(id);
+		}).filter(function(provider){
+			return provider !== void 0;
+		});
+
+	this.workforce.populate(providers);
+};
 
 Workforce.prototype.messageHandler = function(message){
-	if(message.type === "workerMessage"){
-		this.workerMessageHandler(message);
-	} else if(message.type === "broadcast"){
-		this.workforce(message.message);
-	} else if(message.type === "kill"){
-		this.kill();
+	switch(message.type){
+		case "workerMessage":
+			this.workerMessageHandler(message);
+			break;
+		case "broadcast":
+			this.workforce(message.message);
+			break;
+		case "kill":
+			this.kill();
+			break;
+		case "populate":
+			this.populateHandler(message);
+			break;
 	}
 };
