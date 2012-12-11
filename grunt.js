@@ -15,6 +15,9 @@ module.exports = function(grunt) {
     pkg: '<json:package.json>',
     files: {
       server: ['server/lib/*.js'],
+      test: {
+        server: ['server/test/**/*.js']
+      },
       client: {
         src: 'client/src',
         srcFiles: 'client/src/**/*',
@@ -73,6 +76,9 @@ module.exports = function(grunt) {
           files: '<config:files.styles>',
           tasks: 'concat:styles'
         }
+    },
+    test: {
+      lib: '<config:files.test.server>'
     },
     jshint: {
       server: {

@@ -3,9 +3,9 @@ var EventEmitter = require('events').EventEmitter,
 	utils = require('./utils.js'),
 	precondition = require('precondition');
 
-exports.create = function(workerConfig, options){
+var create = exports.create = function(workerConfig, options){
 	var workforce = new Workforce(workerConfig);
-
+	options = options || {};
 	if(options.stopHandler)	workforce.stopHandler = options.stopHandler;
 	if(options.workerHandler) workforce.workerHandler = options.workerHandler;
 	if(options.providerFilter) workforce.providerFilter = options.providerFilter;
@@ -50,8 +50,7 @@ Workforce.prototype.populate = function(workerProviders){
 
 	workerProviders = workerProviders.filter(this.providerFilter);
 
-	self.pendingWorkers += workerProviders.length;
-
+	this.pendingWorkers += workerProviders.length;
 	workerProviders.forEach(function(workerProvider){
 		workerProvider(self.workerConfig, function(worker){
 			self.pendingWorkers--;
@@ -62,7 +61,15 @@ Workforce.prototype.populate = function(workerProviders){
 	});
 
 	if(this.pendingWorkers === 0 && self.workers.length === 0){
-		this.stop();
+		this.signalStop();
+	}
+};
+
+Workforce.prototype.signalStop = function(){
+	this.stopHandler();
+
+	if(this.killOnStop){
+		this.kill();
 	}
 };
 
@@ -70,12 +77,6 @@ Workforce.prototype.stop = function(){
 	this.workers.concat([]).forEach(function(worker){
 		worker.kill();
 	});
-
-	this.stopHandler();
-
-	if(this.killOnStop){
-		this.kill();
-	}
 };
 
 Workforce.prototype.kill = function(){
@@ -94,6 +95,7 @@ Workforce.prototype.broadcast = function(message){
 };
 
 Workforce.prototype.addWorker = function(worker){
+	precondition.checkType(typeof worker == "function", "Worker expected to be a function");
 	var self = this;
 
 	this.workers.push(worker);
@@ -101,7 +103,7 @@ Workforce.prototype.addWorker = function(worker){
 		self.workers.splice(self.workers.indexOf(worker), 1);
 
 		if(self.pendingWorkers === 0 && self.workers.length === 0){
-			self.stop();
+			self.signalStop();
 		}
 	});
 
@@ -109,11 +111,5 @@ Workforce.prototype.addWorker = function(worker){
 		self.emitter.emit('message', message, worker);
 	});
 
-	if(this.pendingMessages > 0){
-		this.pendingMessages.forEach(function(message){
-			worker(message);
-		});
-	}
-	
 	this.workerHandler(worker);
 };

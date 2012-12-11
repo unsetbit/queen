@@ -4,14 +4,17 @@ var	generateId = require('node-uuid').v4,
 	utils = require('./utils.js');
 	
 var create = module.exports = function(id, provider, emitter, onSendToSocket){
-	precondition.checkDefined(emitter, "An emitter is required for workers");
-
 	var worker = new Worker(id, provider, emitter, onSendToSocket);
 
 	return worker.api;
 };
 
 var Worker = function(id, provider, emitter, onSendToSocket){
+	precondition.checkDefined(emitter, "An emitter is required");
+	precondition.checkDefined(provider, "A provider is required");
+	precondition.checkDefined(id, "An id is required");
+	precondition.checkType(typeof onSendToSocket === "function", "A send to socket callback is required");
+
 	var self = this;
 
 	this.id = id;
@@ -50,4 +53,5 @@ var getApi = function(){
 
 Worker.prototype.kill = function(){
 	this.emitter.emit('dead');
+	this.emitter.removeAllListeners();
 };

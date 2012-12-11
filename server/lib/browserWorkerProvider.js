@@ -8,8 +8,6 @@ var createWorker = require('./worker.js'),
 	utils = require('./utils.js');
 
 var create = module.exports = function(socket, options){
-	precondition.checkDefined(socket, "BrowserWorkerProvider requires a socket.");
-
 	var workerProvider = new BrowserWorkerProvider(socket);
 
 	options = options || {};
@@ -20,6 +18,8 @@ var create = module.exports = function(socket, options){
 };
 
 var BrowserWorkerProvider = function(socket){
+	precondition.checkDefined(socket, "BrowserWorkerProvider requires a socket.");
+
 	this.socket = socket;
 	this.id = generateId();
 	this.emitter = new EventEmitter();
@@ -63,7 +63,6 @@ BrowserWorkerProvider.prototype.sendToSocket = function(message){
 
 BrowserWorkerProvider.prototype.messageHandler = function(message){
 	message = JSON.parse(message);
-
 	switch(message.type){
 		case "workerMessage":
 			this.workerMessageHandler(message);
@@ -241,6 +240,8 @@ BrowserWorkerProvider.prototype.getWorker = function(workerConfig, callback){
 };
 
 BrowserWorkerProvider.prototype.removeWorker = function(workerId){
+	if(this.workerEmitters[workerId] === void 0) return;
+	
 	delete this.workerEmitters[workerId];
 	this.emitter.emit("workerDead", workerId);
 };

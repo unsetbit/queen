@@ -20,6 +20,8 @@ var create = module.exports = function(socket, options){
 };
 
 var Queen = function(socket){
+	precondition.checkDefined(socket, "Queen requires a socket");
+
 	this.emitter = new EventEmitter();
 	this.workforces = {};
 	this.workerProviders = {};
@@ -78,6 +80,7 @@ Queen.prototype.addWorkerProvider = function(workerProvider){
 	this.workerProviders[workerProvider.id] = workerProvider;		
 	workerProvider.on('dead', function(){
 		self.log('Worker provider dead: ' + workerProvider.attributes.name);
+		self.emitter.emit('workerProviderDead', workerProvider.id);
 		delete self.workerProviders[workerProvider.id];
 	});
 
@@ -117,6 +120,8 @@ Queen.prototype.connectionHandler = function(connection){
 };
 
 Queen.prototype.getWorkforce = function(workerConfig){
+	precondition.checkDefined(workerConfig, "Worker config must be defined");
+
 	var self = this,
 		workerProviders,
 		workforceId = generateId(),
@@ -133,6 +138,7 @@ Queen.prototype.getWorkforce = function(workerConfig){
 	
 	workforce.api.on('dead', function(){
 		self.log('Workforce dead');
+		self.emitter.emit('workforceDead', workforce.api.id);
 		delete self.workforces[workforceId];
 	});
 
