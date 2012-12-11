@@ -1,3 +1,5 @@
+# Queen [![Build Status](https://secure.travis-ci.org/ozanturgut/queen.png?branch=master)](http://travis-ci.org/ozanturgut/queen)
+
 **Queen is distributed execution of scripts on browsers.**
 
 It's a web server which runs scripts on browsers connected to it.

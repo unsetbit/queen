@@ -1,6 +1,6 @@
 {
   "name": "queen",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Rule browsers remotely",
   "main": "index.js",
   "dependencies": {
@@ -11,12 +11,15 @@
     "useragent": "~1.1.0",
     "precondition": "~1.0.0",
     "json-over-tcp": "~0.2.0"
-  },
-  "optionalDependencies": {
-    "winston": "~0.6.2"
+  },   
+  "devDependencies": {
+    "grunt": "~0.3.15",
+    "winston": "~0.6.2",
+    "mocks": "~0.0.10",
+    "sinon": "~1.5.2"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "grunt test"
   },
   "repository": {
     "type": "git",
