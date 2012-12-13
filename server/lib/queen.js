@@ -79,12 +79,12 @@ Queen.prototype.addWorkerProvider = function(workerProvider){
 		
 	this.workerProviders[workerProvider.id] = workerProvider;		
 	workerProvider.on('dead', function(){
-		self.log('Worker provider dead: ' + workerProvider.attributes.name);
-		self.emitter.emit('workerProviderDead', workerProvider.id);
+		self.log('Worker provider dead' + workerProvider);
+		self.emitter.emit('workerProviderDead: ', workerProvider.id);
 		delete self.workerProviders[workerProvider.id];
 	});
 
-	this.log('New worker provider: ' + workerProvider.attributes.name);
+	this.log('New worker provider: ' + workerProvider.toString());
 	this.emitter.emit('workerProvider', workerProvider);
 
 	_.each(this.continuousWorkforces, function(workforce){

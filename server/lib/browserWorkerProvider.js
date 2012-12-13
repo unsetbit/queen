@@ -44,6 +44,7 @@ var getApi = function(){
 	api.on = this.emitter.on.bind(this.emitter);
 	api.removeListener = this.emitter.removeListener.bind(this.emitter);
 	api.id = this.id;
+	api.toString = this.toString.bind(this);
 
 	Object.defineProperty(api, "attributes", { 
 		get: function(){ return self.attributes; },
@@ -55,6 +56,10 @@ var getApi = function(){
 
 BrowserWorkerProvider.prototype.log = utils.noop;
 BrowserWorkerProvider.prototype.spawnWorkerTimeout = 1000;
+
+BrowserWorkerProvider.prototype.toString = function(){
+	return this.attributes && this.attributes.name || "BrowserWorkerProvider";
+};
 
 BrowserWorkerProvider.prototype.sendToSocket = function(message){
 	message = JSON.stringify(message);

@@ -1,17 +1,24 @@
 var winston = require("winston"),
 	logger = new (winston.Logger)({transports: [new (winston.transports.Console)({level: 'info'}) ]}),
-	socketio = require("socket.io"),
-	http = require('http'),
-	createQueen = require("../lib/queen.js"),
-	createStaticServer = require("../lib/staticServer.js").create;
+	createQueen = require("../../");
+	
+// init http server
+var path = require('path'),
+	express = require('express'),
+	expressServer = express(),
+	webRoot = path.resolve(path.dirname(module.filename), '../../client/static'),
+	httpServer = require('http').createServer()
+								.listen(80, "localhost")
+								.on('request', expressServer);
 
-var port = 80,
-	hostname = "localhost",
-	browserCapturePath = "/capture",
-	httpServer = createStaticServer({port: port, hostname: hostname}),
-	socketServer = socketio.listen(httpServer, {log: false}),
-	socket = socketServer.of(browserCapturePath),
-	queen = createQueen(socket, {logger:logger.info.bind(logger)});
+expressServer.use('', express.static(webRoot));
+
+// init socket.io
+var socketServer = require("socket.io").listen(httpServer, {log: false}),
+	socket = socketServer.of("/capture");
+
+// the example
+var	queen = createQueen(socket, {logger:logger.info.bind(logger)});
 
 queen({
 	scripts: ['http://localhost/example/ping.js'],

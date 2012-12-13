@@ -1,44 +1,44 @@
 var winston = require("winston"),
 	logger = new (winston.Logger)({transports: [new (winston.transports.Console)({level: 'info'}) ]}),
-	socketio = require("socket.io"),
-	http = require('http'),
-	createQueen = require("../lib/queen.js"),
-	createStaticServer = require("../lib/staticServer.js").create;
+	createQueen = require("../../");
 
-var port = 80,
-	hostname = "localhost",
-	browserCapturePath = "/capture",
-	httpServer = createStaticServer({port: port, hostname: hostname}),
-	socketServer = socketio.listen(httpServer, {log: false}),
-	socket = socketServer.of(browserCapturePath),
-	queen = createQueen(socket, {logger:logger.info.bind(logger)});
+// init http server
+var path = require('path'),
+	express = require('express'),
+	expressServer = express(),
+	webRoot = path.resolve(path.dirname(module.filename), '../../client/static'),
+	httpServer = require('http').createServer()
+								.listen(80, "localhost")
+								.on('request', expressServer);
+
+expressServer.use('', express.static(webRoot));
+
+// init socket.io
+var socketServer = require("socket.io").listen(httpServer, {log: false}),
+	socket = socketServer.of("/capture");
+
+// the example
+var	queen = createQueen(socket, {logger:logger.info.bind(logger)});
 
 queen.on('workerProvider', function(){
 	var startTime = (new Date()).getTime();
-	var workforces = [];
-	for(var i = 0; i < 100; i++){
-		var workforce = queen({
-			scripts: ['http://localhost/example/chance.js'],
-			done: function(){
-			}
-		});
+	var numberToFind = 42;
+	var maxNumber = 10000;
 
-		var numberToFind = 42;
-		var maxNumber = 10000;
+	var workforce = queen({
+		scripts: ['http://localhost/example/chance.js'],
+		handler: function(worker){
+			worker(maxNumber);
+		}
+	});
 
-		workforce.on('message', function(number, worker){
-			if(number === 42){
-				workforces.forEach(function(workforce){
-					workforce.kill();	
-				});
-				var endTime = (new Date()).getTime();
-				var secondsToComplete = (endTime - startTime) / 1000;
-				console.log('Done! That took ' + secondsToComplete + " seconds. The winner was " + worker.provider.attributes.name);
-			}
-		});
-		workforces.push(workforce);
-	}
-	workforces.forEach(function(workforce){
-		workforce(maxNumber);
+	workforce.on('message', function(number, worker){
+		console.log(number);
+		if(number === 42){
+			workforce.kill();	
+			var endTime = (new Date()).getTime();
+			var secondsToComplete = (endTime - startTime) / 1000;
+			console.log('Done! That took ' + secondsToComplete + " seconds. The winner was " + worker.provider.attributes.name);
+		}
 	});
 });
