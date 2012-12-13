@@ -79,8 +79,8 @@ Queen.prototype.addWorkerProvider = function(workerProvider){
 		
 	this.workerProviders[workerProvider.id] = workerProvider;		
 	workerProvider.on('dead', function(){
-		self.log('Worker provider dead' + workerProvider);
-		self.emitter.emit('workerProviderDead: ', workerProvider.id);
+		self.log('Worker provider dead :' + workerProvider);
+		self.emitter.emit('workerProviderDead', workerProvider.id);
 		delete self.workerProviders[workerProvider.id];
 	});
 
