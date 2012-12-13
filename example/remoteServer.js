@@ -5,7 +5,7 @@ var winston = require("winston"),
 var path = require('path'),
 	express = require('express'),
 	expressServer = express(),
-	webRoot = path.resolve(path.dirname(module.filename), '../../client/static'),
+	webRoot = path.resolve(path.dirname(module.filename), '../build/dev'),
 	httpServer = require('http').createServer()
 								.listen(80, "localhost")
 								.on('request', expressServer);
@@ -17,9 +17,9 @@ var socketServer = require("socket.io").listen(httpServer, {log: false}),
 	socket = socketServer.of("/capture");
 
 // init queen
-var	createQueen = require("../../"),
+var	createQueen = require("../"),
 	queen = createQueen(socket, {logger:logger.info.bind(logger)});
 
 // init remote server
-var createRemoteServer = require('../../../queen-remote').server,
+var createRemoteServer = require('../../queen-remote').server,
 	controlServer = createRemoteServer(queen);

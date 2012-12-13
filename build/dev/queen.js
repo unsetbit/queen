@@ -1,27 +1,28 @@
-/*! queen - v0.1.1 - 2012-12-10
-* Copyright (c) 2012 Ozan Turgut; Licensed  */
+(function(){
 
-(function (exports) {
-  if (typeof module !== "undefined" && module.exports) {
-    module.exports = exports; // CommonJS
-  } else if (typeof define === "function") {
-    define(exports); // AMD
-  } else {
-	Queen = exports; // <script>
-  }
-}((function () {
-	var exports = {},
-		WEB_SOCKET_SWF_LOCATION = "/WebSocketMainInsecure.swf";
-
-exports = (function(){
-
-var __module3 = (function(){
+var __module8 = (function(){
 var module = {};
 var exports = module.exports = {};
 exports.noop = function(){};
 return module.exports || exports;
-})();
-var __module1 = (function(){
+}());
+var __module9 = (function(){
+var module = {};
+var exports = module.exports = {};
+exports.WORKER_PROVIDER_MESSAGE_TYPE = {
+	"register": 1,
+	"worker message": 2,
+	"worker spawned": 3,
+	"worker dead": 4,
+	"available": 5,
+	"unavailable": 6,
+	"kill worker": 7,
+	"spawn worker": 8
+};
+
+return module.exports || exports;
+}());
+var __module6 = (function(){
 var module = {};
 var exports = module.exports = {};
 //     Underscore.js 1.4.2
@@ -1225,8 +1226,8 @@ var exports = module.exports = {};
 
 }).call(this);
 return module.exports || exports;
-})();
-var __module6 = (function(){
+}());
+var __module5 = (function(){
 var module = {};
 var exports = module.exports = {};
 /*! Socket.IO.js build:0.9.11, development. Copyright(c) 2011 LearnBoost <dev@learnboost.com> MIT Licensed */
@@ -5101,8 +5102,8 @@ if (typeof define === "function" && define.amd) {
 }
 })();
 return module.exports || exports;
-})();
-var __module5 = (function(){
+}());
+var __module4 = (function(){
 var module = {};
 var exports = module.exports = {};
 /* Modernizr 2.6.2 (Custom Build) | MIT & BSD
@@ -5737,8 +5738,8 @@ window.Modernizr = (function( window, document, undefined ) {
 
 })(this, this.document);
 return module.exports || exports;
-})();
-var __module4 = (function(){
+}());
+var __module3 = (function(){
 var module = {};
 var exports = module.exports = {};
 /*
@@ -6228,7 +6229,7 @@ if (typeof JSON !== 'object') {
     }
 }());
 return module.exports || exports;
-})();
+}());
 var __module2 = (function(){
 var module = {};
 var exports = module.exports = {};
@@ -6527,13 +6528,13 @@ exports.EventEmitter.prototype.emit = function(event, data){
  	exports.EventEmitter.prototype.trigger.call(this, event, [data]);
 };
 return module.exports || exports;
-})();
-var __module0 = (function(){
+}());
+var __module7 = (function(){
 var module = {};
 var exports = module.exports = {};
-var _ = __module1,
+var _ = __module6,
 	EventEmitter = __module2.EventEmitter,
-	utils = __module3;
+	utils = __module8;
 
 window.iframeSockets = {};
 
@@ -6661,15 +6662,16 @@ IframeWorker.prototype.kill = function(){
 };
 
 return module.exports || exports;
-})();
-var __module7 = (function(){
+}());
+var __module1 = (function(){
 var module = {};
 var exports = module.exports = {};
-var createWorker = __module0.create,
-	_ = __module1,
-	io = __module6,
+var createWorker = __module7.create,
+	_ = __module6,
+	io = __module5,
 	EventEmitter = __module2.EventEmitter,
-	utils = __module3;
+	utils = __module8,
+	MESSAGE_TYPE = __module9.WORKER_PROVIDER_MESSAGE_TYPE;
 
 module.exports = function(captureUrl, options){
 	var options = options || {},
@@ -6756,36 +6758,30 @@ WorkerProvider.prototype.connectionHandler = function(){
 
 WorkerProvider.prototype.messageHandler = function(message){
 	message = JSON.parse(message);
-	switch(message.type){
-		case "workerMessage":
-			this.workerMessageHandler(message);
+	switch(message[0]){
+		case MESSAGE_TYPE['worker message']:
+			this.workerMessageHandler(message[1], message[2]);
 			break;
-		case "spawnWorker":
-			this.spawnWorkerHandler(message);
+		case MESSAGE_TYPE['spawn worker']:
+			this.spawnWorkerHandler(message[1], message[2]);
 			break;
-		case "killWorker":
-			this.killWorkerHandler(message);
+		case MESSAGE_TYPE['kill worker']:
+			this.killWorkerHandler(message[1]);
 	}
 };
 
-WorkerProvider.prototype.workerMessageHandler = function(message){
-	var workerId = message.id,
-		message = message.message;
-
+WorkerProvider.prototype.workerMessageHandler = function(workerId, workerMessage){
 	var worker = this.workers[workerId];
-	if(worker === void 0){ // No longer listening to this worker
-		return;
-	};
+	
+	if(worker === void 0) return;
 
-	worker.postMessage(message);
+	worker.postMessage(workerMessage);
 };
 
-WorkerProvider.prototype.spawnWorkerHandler = function(message){
+WorkerProvider.prototype.spawnWorkerHandler = function(workerId, workerConfig){
 	this.log('Spawning Worker');
 
 	var self = this,
-		workerId = message.id,
-		workerConfig = message.config,
 		timeout = workerConfig.timeout,
 		worker,
 		workerTimeout;
@@ -6810,11 +6806,11 @@ WorkerProvider.prototype.spawnWorkerHandler = function(message){
 	}
 
 	worker.api.on('message', function(message){
-		self.sendToSocket({
-			type: "workerMessage",
-			id: workerId,
-			message: message
-		});	
+		self.sendToSocket([
+			MESSAGE_TYPE['worker message'],
+			workerId,
+			message
+		]);
 	});
 
 	worker.api.on('dead', function(){
@@ -6826,39 +6822,35 @@ WorkerProvider.prototype.spawnWorkerHandler = function(message){
 
 		self.workerCount--;
 		if(self.workerCount === (self.maxWorkerCount - 2)){
-			self.sendToSocket({
-				type: 'available'
-			});
+			self.sendToSocket([MESSAGE_TYPE['available']]);
 			self.emitter.emit('available');
 		}
 
 		self.emitter.emit('workerDead', workerId);
-		self.sendToSocket({
-			type: "workerDead",
-			id: workerId
-		})
+		self.sendToSocket([
+			MESSAGE_TYPE['worker dead'],
+			workerId
+		]);
 	});
 
 	this.workerCount++;
 	if(this.workerCount === (this.maxWorkerCount - 1)){
-		self.sendToSocket({
-			type: 'unvailable'
-		});
+		self.sendToSocket([MESSAGE_TYPE['unavailable']]);
 		this.emitter.emit('unavailable');
 	}
 	
-	this.sendToSocket({
-		type:"spawnedWorker",
-		id: workerId
-	});
+	this.sendToSocket([
+		MESSAGE_TYPE['worker spawned'],
+		workerId
+	]);
 
 	worker.start(workerConfig);
 
 	self.emitter.emit('worker', worker.api);
 };
 
-WorkerProvider.prototype.killWorkerHandler = function(message){
-	var worker = this.workers[message.id];
+WorkerProvider.prototype.killWorkerHandler = function(workerId){
+	var worker = this.workers[workerId];
 	if(worker === void 0) return;
 	worker.kill();
 };
@@ -6880,16 +6872,19 @@ WorkerProvider.prototype.destroyWorkers = function(){
 };
 
 WorkerProvider.prototype.register = function(){
-	this.sendToSocket({
-		type: "register",
-		attributes: this.attributes
-	});
+	this.sendToSocket([
+		MESSAGE_TYPE['register'],
+		this.attributes
+	]);
 };
 return module.exports || exports;
-})();
-
-return {"IframeWorker":__module0,"lib":{"eventEmitter":__module2,"json2":__module4,"modernizr":__module5,"socket.io":__module6,"underscore":__module1},"utils":__module3,"WorkerProvider":__module7};
+}());
+var __module0 = (function(){
+var module = {};
+var exports = module.exports = {};
+window.Queen = __module1;
+return module.exports || exports;
 }());
 
-return exports.WorkerProvider;
-}())));
+return {"API":__module0,"external":{"eventEmitter":__module2,"json2":__module3,"modernizr":__module4,"socket.io":__module5,"underscore":__module6},"IframeWorker":__module7,"protocol":__module9,"utils":__module8,"WorkerProvider":__module1};
+}());

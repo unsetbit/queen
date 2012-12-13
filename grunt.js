@@ -19,17 +19,10 @@ module.exports = function(grunt) {
         server: ['server/test/**/*.js']
       },
       client: {
-        src: 'client/src',
-        srcFiles: 'client/src/**/*',
-        lib: 'client/lib/**/*.js',
-        scripts: [
-          'client/build_resource/module_prefix.js',
-          'client/build_resource/module_body.js',
-          'client/build_resource/module_postfix.js'
-        ]
+        src: 'lib/client',
+        srcFiles: 'lib/client/**/*'
       },
-      styles: ['client/lib/*.css', 'client/styles/**/*.css'],
-      grunt: ['grunt.js', 'tasks/*.js']
+      styles: ['lib/client/styles/external/**/*.css', 'lib/client/styles/**/*.css']
     },
     meta: {
       banner: '/*! <%= pkg.title || pkg.name %> - v<%= pkg.version %> - ' +
@@ -41,41 +34,62 @@ module.exports = function(grunt) {
     concat: {
       styles: {
         src: ['<banner:meta.banner>', '<config:files.styles>'],
-        dest: 'client/static/<%= pkg.name %>.css'
-      },
-      scripts: {
-        src: ['<banner:meta.banner>', '<config:files.client.scripts>'],
-        dest: 'client/static/<%= pkg.name %>.js'
+        dest: 'build/<%= pkg.name %>.css'
       }
     },
     hug: {
       dist: {
         header: '<config:files.client.lib>',
         src: '<config:files.client.src>',
-        dest: 'client/build_resource/module_body.js',
-        exportsVariable: 'exports'
+        dest: 'build/<%= pkg.name %>.js'
       }
     },
     min: {
       dist: {
-        src: ['<banner:meta.banner>', '<config:concat.scripts.dest>'],
-        dest: 'client/static/<%= pkg.name %>.min.js'
+        src: ['<banner:meta.banner>', '<config:hug.dist.dest>'],
+        dest: 'build/<%= pkg.name %>.min.js'
+      }
+    },
+    copy: {
+      devStatic: {
+        files:{
+          "build/dev/": "static/**"
+        }
+      },
+      devScripts:{
+        files: {
+          "build/dev/queen.js": "build/queen.js"
+        }
+      },
+      devStyles:{
+        files: {
+          "build/dev/queen.css": "build/queen.css"
+        }
+      },
+      release: {
+        files: {
+          "build/release/": "static/**",
+          "build/release/queen.js": "build/queen.min.js",
+          "build/release/queen.css": "build/queen.css",
+        }
       }
     },
     lint: {
       server: '<config:files.server>',
-      client: '<config:files.client>',
-      grunt: '<config:files.grunt>'
+      client: '<config:files.client.srcFiles>'
     },
     watch: {
         client: {
           files: '<config:files.client.srcFiles>',
-          tasks: 'hug concat:scripts'
+          tasks: 'hug copy:devScripts'
         },
         styles: {
           files: '<config:files.styles>',
-          tasks: 'concat:styles'
+          tasks: 'concat:styles copy:devStyles'
         }
+    },
+    clean: {
+      build: ['./build/']
     },
     test: {
       lib: '<config:files.test.server>'
@@ -111,6 +125,15 @@ module.exports = function(grunt) {
   });
 
   grunt.loadNpmTasks('grunt-contrib-hug');
+  grunt.loadNpmTasks('grunt-contrib-copy');
+  grunt.loadNpmTasks('grunt-contrib-clean');
+  
+  grunt.registerTask('build-js', 'hug');
+  grunt.registerTask('build-css', 'concat:styles');
+  grunt.registerTask('build', 'build-js build-css');
 
-  grunt.registerTask('default', 'hug concat min');
+  grunt.registerTask('build-dev', 'build copy:devStatic copy:devScripts copy:devStyles');
+  grunt.registerTask('build-release', 'build min copy:release');
+
+  grunt.registerTask('default', 'clean:build build-release');
 };

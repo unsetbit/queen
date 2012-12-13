@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title></title>
+  <link href="http://fonts.googleapis.com/css?family=Sanchez" rel="stylesheet" type="text/css">
+  <link rel="shortcut icon" href="favicon.png" />
+  <link rel="stylesheet" href="/queen.css" type="text/css">
+</head>
+<body>
+  <h1>
+    <span id="Title">Queen</span><span id="StatusIndicator" class="disconnected">&nbsp;</span><span id="Status">Disconnected</span>
+  </h1>
+	<script src="queen.js"></script>
+  <script>
+    var config = {};
+
+    if(typeof console !== "undefined"){
+      config.logger = function(message){
+        console.log(message);
+      };
+    }
+		
+    var workerProvider = Queen("//" + window.location.host + "/capture", config);
+
+    // UI
+    var workerCount = 0;
+    var statusElement = document.getElementById('Status');
+    var statusIndicatorElement = document.getElementById('StatusIndicator');
+    workerProvider.on('connect', function(){
+      statusElement.innerText = "Connected";
+      statusIndicatorElement.className = "connected";
+    });
+    workerProvider.on('disconnect', function(){
+      statusElement.innerText = "Disconnected";
+      statusIndicatorElement.className = "disconnected";
+    });
+
+    workerProvider.on('available', function(){
+      statusElement.innerText = "Connected";
+    });
+
+    workerProvider.on('unavailable', function(){
+      statusElement.innerText = "Connected, at maximum capacity";
+    });
+
+    workerProvider.on('worker', function(worker){
+      workerCount++;
+      document.title = "(" + workerCount + ") Queen";
+    });
+
+
+    workerProvider.on('workerDead', function(workerId){
+      workerCount--;
+      document.title = "(" + workerCount + ") Queen";
+    });
+	</script>
+</body>
+</html>

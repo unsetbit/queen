@@ -1,0 +1,70 @@
+/*! queen - v0.1.2 - 2012-12-13
+* Copyright (c) 2012 Ozan Turgut; Licensed  */
+
+/*
+/*
+YUI 3.7.3 (build 5687)
+Copyright 2012 Yahoo! Inc. All rights reserved.
+Licensed under the BSD License.
+http://yuilibrary.com/license/
+*/
+html{color:#000;background:#FFF}body,div,dl,dt,dd,ul,ol,li,h1,h2,h3,h4,h5,h6,pre,code,form,fieldset,legend,input,textarea,p,blockquote,th,td{margin:0;padding:0}table{border-collapse:collapse;border-spacing:0}fieldset,img{border:0}address,caption,cite,code,dfn,em,strong,th,var{font-style:normal;font-weight:normal}ol,ul{list-style:none}caption,th{text-align:left}h1,h2,h3,h4,h5,h6{font-size:100%;font-weight:normal}q:before,q:after{content:''}abbr,acronym{border:0;font-variant:normal}sup{vertical-align:text-top}sub{vertical-align:text-bottom}input,textarea,select{font-family:inherit;font-size:inherit;font-weight:inherit}input,textarea,select{*font-size:100%}legend{color:#000}#yui3-css-stamp.cssreset{display:none}
+@font-face {
+  font-family: 'Sanchez';
+  font-style: normal;
+  font-weight: 400;
+  src: local('Sanchez'), local('Sanchez-Regular'), url(http://themes.googleusercontent.com/static/fonts/sanchez/v1/mx466fsxfR1AA3OwUm3waQ.woff) format('woff');
+}
+
+.queen-worker{
+	width:1px;
+	height:1px;
+	border:25px solid #EDC951;
+	border-radius:26px;
+	margin:1px;
+}
+
+body, html{
+	background-color:#6A4A3C;
+}
+
+h1{
+	background-color:#CC333F;
+	font-family:'Sanchez', sans-serif;
+	font-size:24px;
+	white-space:nowrap;
+}
+
+#Title{
+	margin-left:20px;
+	padding:10px 30px;
+	font-weight:bold;
+	display:inline-block;
+	text-shadow: 0px 1px 0px #757575;
+	color:white;
+	background-color:#EB6841;
+}
+
+#Status{
+	padding:10px 0px;
+	margin-left:5px;
+	display:inline-block;
+	color:white;
+}
+
+#StatusIndicator{
+	margin:10px 0px;
+	margin-left:15px;
+	display:inline-block;
+	height:29px;
+	width:29px;
+	border-radius:30px;
+}
+
+#StatusIndicator.connected{
+	background-color:lime;
+}
+
+#StatusIndicator.disconnected{
+	background-color:#CCC;
+}

@@ -1,12 +1,12 @@
 var winston = require("winston"),
 	logger = new (winston.Logger)({transports: [new (winston.transports.Console)({level: 'info'}) ]}),
-	createQueen = require("../../");
+	createQueen = require("../");
 	
 // init http server
 var path = require('path'),
 	express = require('express'),
 	expressServer = express(),
-	webRoot = path.resolve(path.dirname(module.filename), '../../client/static'),
+	webRoot = path.resolve(path.dirname(module.filename), '../build/dev'),
 	httpServer = require('http').createServer()
 								.listen(80, "localhost")
 								.on('request', expressServer);

@@ -1,1 +1,1 @@
-module.exports = require('./server/lib/queen.js');
+module.exports = require('./lib/server/queen.js');
