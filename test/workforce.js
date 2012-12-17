@@ -2,7 +2,7 @@ var sinon = require('sinon'),
 	mocks = require('mocks'),
 	path = require('path'),
 	EventEmitter = require('events').EventEmitter,
-	workforceModule = mocks.loadFile(path.resolve(path.dirname(module.filename), '../lib/workforce.js'));
+	workforceModule = mocks.loadFile(path.resolve(path.dirname(module.filename), '../lib/server/workforce.js'));
 
 var create = workforceModule.create;
 var Workforce = workforceModule.Workforce;

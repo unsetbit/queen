@@ -2,10 +2,11 @@ var sinon = require('sinon'),
 	mocks = require('mocks'),
 	path = require('path'),
 	EventEmitter = require('events').EventEmitter,
-	workerProviderModule = mocks.loadFile(path.resolve(path.dirname(module.filename), '../lib/browserWorkerProvider.js'));
+	testedModule = mocks.loadFile(path.resolve(path.dirname(module.filename), '../lib/server/browserWorkerProvider.js'));
 
-var WorkerProvider = workerProviderModule.BrowserWorkerProvider;
-var create = workerProviderModule.create;
+var WorkerProvider = testedModule.BrowserWorkerProvider;
+var create = testedModule.create;
+var MESSAGE_TYPE = testedModule.MESSAGE_TYPE;
 
 var createMockWorker = function(){
 	var worker = sinon.spy();
@@ -55,39 +56,39 @@ exports.browserWorkerProvider = {
 		test.throws(function(){workerProvider = new WorkerProvider()}, "Able to construct with missing required params");
 		
 		workerProvider = new WorkerProvider(this.socket);
-		test.ok(workerProvider instanceof workerProviderModule.BrowserWorkerProvider, "Unable to construct with valid params");
+		test.ok(workerProvider instanceof WorkerProvider, "Unable to construct with valid params");
 
 		test.done();
 	},
 	sendToSocket: function(test){
-		this.workerProvider.sendToSocket({ message: this.TEST_STRING });
+		this.workerProvider.sendToSocket(this.TEST_STRING);
 		test.ok(this.socket.send.calledWithMatch(JSON.stringify(this.TEST_STRING)), "Message not sent to socket");
 
 		test.done();
 	},
 	messageHandler: function(test){
 		var stub = sinon.stub(this.workerProvider, "workerMessageHandler");
-		this.socket.eventEmitter.emit("message", JSON.stringify({type: "workerMessage"}));
+		this.socket.eventEmitter.emit("message", JSON.stringify([MESSAGE_TYPE["worker message"]]));
 		test.equal(stub.callCount, 1, "Worker message handler not called");
 
 		stub = sinon.stub(this.workerProvider, "spawnedWorkerHandler");
-		this.socket.eventEmitter.emit("message", JSON.stringify({type: "spawnedWorker"}));
+		this.socket.eventEmitter.emit("message", JSON.stringify([MESSAGE_TYPE["worker spawned"]]));
 		test.equal(stub.callCount, 1, "Worker spawned handler not called");
 
 		stub = sinon.stub(this.workerProvider, "workerDeadHandler");
-		this.socket.eventEmitter.emit("message", JSON.stringify({type: "workerDead"}));
+		this.socket.eventEmitter.emit("message", JSON.stringify([MESSAGE_TYPE["worker dead"]]));
 		test.equal(stub.callCount, 1, "Worker dead handler not called");
 
 		stub = sinon.stub(this.workerProvider, "registerHandler");
-		this.socket.eventEmitter.emit("message", JSON.stringify({type: "register"}));
+		this.socket.eventEmitter.emit("message", JSON.stringify([MESSAGE_TYPE["register"]]));
 		test.equal(stub.callCount, 1, "Register handler not called");
 
 		stub = sinon.stub(this.workerProvider, "availableHandler");
-		this.socket.eventEmitter.emit("message", JSON.stringify({type: "available"}));
+		this.socket.eventEmitter.emit("message", JSON.stringify([MESSAGE_TYPE["available"]]));
 		test.equal(stub.callCount, 1, "Available handler not called");
 
 		stub = sinon.stub(this.workerProvider, "unavailableHandler");
-		this.socket.eventEmitter.emit("message", JSON.stringify({type: "unavailable"}));
+		this.socket.eventEmitter.emit("message", JSON.stringify([MESSAGE_TYPE["unavailable"]]));
 		test.equal(stub.callCount, 1, "Unavailable handler not called");
 
 		test.done();
@@ -95,7 +96,7 @@ exports.browserWorkerProvider = {
 	availableHandler: function(test){
 		var availableSpy = sinon.spy();
 		this.workerProvider.api.on('available', availableSpy);
-		this.socket.eventEmitter.emit("message", JSON.stringify({type: "available"}));
+		this.socket.eventEmitter.emit("message", JSON.stringify([MESSAGE_TYPE["available"]]));
 
 		test.equal(this.workerProvider.available, true, 'Unavailable');
 		test.equal(availableSpy.callCount, 1, 'Available event not fired once');
@@ -104,7 +105,7 @@ exports.browserWorkerProvider = {
 	unavailableHandler: function(test){
 		var unavailableSpy = sinon.spy();
 		this.workerProvider.api.on('unavailable', unavailableSpy);
-		this.socket.eventEmitter.emit("message", JSON.stringify({type: "unavailable"}));
+		this.socket.eventEmitter.emit("message", JSON.stringify([MESSAGE_TYPE["unavailable"]]));
 
 		test.equal(this.workerProvider.available, false, 'Available');
 		test.equal(unavailableSpy.callCount, 1, 'Available event not fired once');
@@ -129,10 +130,7 @@ exports.browserWorkerProvider = {
 		var worker = this.workerProvider.createWorker(this.WORKER_ID);
 		worker.kill();
 
-		var expected = JSON.stringify({
-			type: "killWorker",
-			id: this.WORKER_ID,
-		});
+		var expected = JSON.stringify([MESSAGE_TYPE["kill worker"], this.WORKER_ID]);
 
 		test.ok(this.socket.send.calledWithMatch(expected), "Worker kill signal sent to socket");
 
@@ -143,30 +141,23 @@ exports.browserWorkerProvider = {
 		var worker = this.workerProvider.createWorker(this.WORKER_ID);
 		worker(this.TEST_OBJECT);
 		
-		var expected = JSON.stringify({
-			type: "workerMessage",
-			id: this.WORKER_ID,
-			message: this.TEST_OBJECT
-		});
+		var expected = JSON.stringify([MESSAGE_TYPE["worker message"], this.WORKER_ID, this.TEST_OBJECT]);
 
 		test.ok(this.socket.send.calledWithMatch(expected), "Message sent to socket");
 		test.done();
 	},
 	spawnedWorkerHandler: function(test){
 		// Unxpected worker
-		this.socket.eventEmitter.emit("message", JSON.stringify({type: "spawnedWorker", id: this.WORKER_ID}));
+		this.socket.eventEmitter.emit("message", JSON.stringify([MESSAGE_TYPE["worker spawned"], this.WORKER_ID]));
 
-		var expected = JSON.stringify({
-			type: "killWorker",
-			id: this.WORKER_ID
-		});
+		var expected = JSON.stringify([MESSAGE_TYPE["kill worker"], this.WORKER_ID]);
 
 		test.ok(this.socket.send.calledWithMatch(expected), "Worker kill signal not sent to socket");
 
 		// Expected worker
 		var callback = sinon.spy();
 		this.workerProvider.pendingWorkers[this.WORKER_ID] = callback;
-		this.socket.eventEmitter.emit("message", JSON.stringify({type: "spawnedWorker", id: this.WORKER_ID}));
+		this.socket.eventEmitter.emit("message", JSON.stringify([MESSAGE_TYPE["worker spawned"], this.WORKER_ID]));
 
 		test.ok(callback.calledOnce, "Callback not called");
 
@@ -178,7 +169,7 @@ exports.browserWorkerProvider = {
 		var workerDeadListener = sinon.spy();
 		this.workerProvider.api.on('workerDead', workerDeadListener);
 
-		this.socket.eventEmitter.emit("message", JSON.stringify({type: "workerDead", id: this.WORKER_ID}));
+		this.socket.eventEmitter.emit("message", JSON.stringify([MESSAGE_TYPE["worker dead"], this.WORKER_ID]));
 		
 		test.ok(workerDeadListener.calledOnce, "Worker death not emitted");
 
@@ -187,7 +178,7 @@ exports.browserWorkerProvider = {
 	registerHandler: function(test){
 		var spy = sinon.spy();
 		this.workerProvider.api.on('register', spy);
-		this.socket.eventEmitter.emit("message", JSON.stringify({type: "register", attributes: this.TEST_OBJECT}));
+		this.socket.eventEmitter.emit("message", JSON.stringify([MESSAGE_TYPE["register"], this.TEST_OBJECT]));
 
 		test.deepEqual(this.workerProvider.attributes, this.TEST_OBJECT, "Attributes not set");
 		test.ok(spy.calledWithMatch(this.TEST_OBJECT), "Attributes not emitted");
@@ -202,7 +193,7 @@ exports.browserWorkerProvider = {
 		
 		this.workerProvider.kill();
 
-		var expected = JSON.stringify({type: "killWorker",id: this.WORKER_ID});
+		var expected = JSON.stringify([MESSAGE_TYPE["kill worker"], this.WORKER_ID]);
 		test.ok(this.socket.send.calledWithMatch(expected), "Worker kill signal not sent to socket");
 		test.equal(workerDeadSpy.callCount, 1, "Worker not killed");
 		test.equal(providerDeadSpy.callCount, 1, "Worker provider not killed");
@@ -214,7 +205,7 @@ exports.browserWorkerProvider = {
 		var spy = sinon.spy();
 		worker.on('message', spy);
 
-		this.socket.eventEmitter.emit("message", JSON.stringify({type: "workerMessage", id: this.WORKER_ID, message: this.TEST_OBJECT}));
+		this.socket.eventEmitter.emit("message", JSON.stringify([MESSAGE_TYPE["worker message"], this.WORKER_ID, this.TEST_OBJECT]));
 		
 		test.ok(spy.calledWithMatch(this.TEST_OBJECT), "Worker message not emitted");
 
@@ -232,8 +223,8 @@ exports.browserWorkerProvider = {
 		callback = sinon.spy();
 		this.workerProvider.getWorker({}, callback);
 		
-		var WORKER_ID = sendToSocketSpy.lastCall.args[0].id;
-		this.socket.eventEmitter.emit("message", JSON.stringify({type: "spawnedWorker", id: WORKER_ID}));
+		var WORKER_ID = sendToSocketSpy.lastCall.args[0][1];
+		this.socket.eventEmitter.emit("message", JSON.stringify([MESSAGE_TYPE["worker spawned"], WORKER_ID, {}]));
 
 		test.strictEqual(callback.lastCall.args[0].id, WORKER_ID, "Callback not called with spawned worker");
 		test.done();

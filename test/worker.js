@@ -1,7 +1,7 @@
 var sinon = require('sinon'),
 	mocks = require('mocks'),
 	path = require('path'),
-	workerModule = mocks.loadFile(path.resolve(path.dirname(module.filename), '../lib/worker.js'));
+	workerModule = mocks.loadFile(path.resolve(path.dirname(module.filename), '../lib/server/worker.js'));
 
 exports.worker = {
 	api: function(test){

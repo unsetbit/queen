@@ -2,6 +2,7 @@ var sinon = require('sinon'),
 	mocks = require('mocks'),
 	path = require('path'),
 	EventEmitter = require('events').EventEmitter,
+	protocol = require('../lib/server/protocol.js'),
 	queenModule;
 
 var createMockWorkerProvider = function(){
@@ -26,12 +27,15 @@ var mockWorkforce = {
 		mock.api.on = sinon.spy(eventEmitter.on.bind(eventEmitter));
 		mock.api.removeListener = sinon.spy(eventEmitter.removeListener.bind(eventEmitter));
 		mock.api.kill = sinon.spy(function(){eventEmitter.emit('dead')});
+		mock.start = sinon.spy(function(){eventEmitter.emit('start')});
+		mock.api.start = sinon.spy(function(){eventEmitter.emit('start')});
+		mock.api.stop = sinon.spy();
 		return mock;
 	}
 };
 
 queenModule = mocks.loadFile(
-	path.resolve(path.dirname(module.filename), '../lib/queen.js'),
+	path.resolve(path.dirname(module.filename), '../lib/server/queen.js'),
 	{
 		'./workforce.js': mockWorkforce
 	}
@@ -120,7 +124,7 @@ exports.queen = {
 		this.socket.eventEmitter.emit('connection', connection);
 		
 		test.ok(!stub.called, "Worker provider added without registering");
-		connection.eventEmitter.emit("message", JSON.stringify({type: "register"}));
+		connection.eventEmitter.emit("message", JSON.stringify([protocol.WORKER_PROVIDER_MESSAGE_TYPE['register'], {}]));
 		test.ok(stub.called, "Worker provider not added after registering");
 		
 		test.done();
@@ -182,18 +186,6 @@ exports.queen = {
 		this.queen.addWorkerProvider(provider);
 
 		test.ok(workforce.self.populate.lastCall.args[0] === provider, "Populate not called");
-
-		test.done();
-	},
-	dontPopulate: function(test){
-		var provider = createMockWorkerProvider();
-		this.queen.addWorkerProvider(provider);
-		
-		var workforce = this.queen.getWorkforce({
-			populate:false
-		});
-
-		test.strictEqual(workforce.self.populate.called, false, "Populate called");
 
 		test.done();
 	},
