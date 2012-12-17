@@ -34,14 +34,14 @@ module.exports = function(grunt) {
     concat: {
       styles: {
         src: ['<banner:meta.banner>', '<config:files.styles>'],
-        dest: 'build/<%= pkg.name %>.css'
+        dest: 'static/<%= pkg.name %>.css'
       }
     },
     hug: {
       dist: {
         header: '<config:files.client.lib>',
         src: '<config:files.client.src>',
-        dest: 'build/<%= pkg.name %>.js'
+        dest: 'static/<%= pkg.name %>.js'
       }
     },
     min: {
@@ -51,26 +51,9 @@ module.exports = function(grunt) {
       }
     },
     copy: {
-      devStatic: {
-        files:{
-          "build/dev/": "static/**"
-        }
-      },
-      devScripts:{
-        files: {
-          "build/dev/queen.js": "build/queen.js"
-        }
-      },
-      devStyles:{
-        files: {
-          "build/dev/queen.css": "build/queen.css"
-        }
-      },
       release: {
         files: {
-          "build/release/": "static/**",
-          "build/release/queen.js": "build/queen.min.js",
-          "build/release/queen.css": "build/queen.css",
+          "build/release/": "static/**"
         }
       }
     },
@@ -81,11 +64,11 @@ module.exports = function(grunt) {
     watch: {
         client: {
           files: '<config:files.client.srcFiles>',
-          tasks: 'hug copy:devScripts'
+          tasks: 'hug'
         },
         styles: {
           files: '<config:files.styles>',
-          tasks: 'concat:styles copy:devStyles'
+          tasks: 'concat:styles'
         }
     },
     clean: {
@@ -132,7 +115,7 @@ module.exports = function(grunt) {
   grunt.registerTask('build-css', 'concat:styles');
   grunt.registerTask('build', 'build-js build-css');
 
-  grunt.registerTask('build-dev', 'build copy:devStatic copy:devScripts copy:devStyles');
+  grunt.registerTask('build-dev', 'build');
   grunt.registerTask('build-release', 'build min copy:release');
 
   grunt.registerTask('default', 'clean:build build-release');

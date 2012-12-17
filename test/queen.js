@@ -69,8 +69,6 @@ exports.queen = {
 	create: function(test){
 		var queen;
 		
-		test.throws(function(){queen = create()}, "Able to construct with missing required params");
-		
 		queen = create(this.socket);
 		test.ok(queen !== void 0, "Unable to construct with valid params");
 
@@ -78,7 +76,6 @@ exports.queen = {
 	},
 	construct: function(test){
 		var queen;
-		test.throws(function(){queen = new Queen()}, "Able to construct with missing required params");
 		
 		queen = new Queen(this.socket);
 		test.ok(queen instanceof Queen, "Unable to construct with valid params");
