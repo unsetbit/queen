@@ -1,29 +1,24 @@
-var winston = require("winston"),
-	logger = new (winston.Logger)({transports: [new (winston.transports.Console)({level: 'info'}) ]}),
-	createQueen = require("../");
+var startTime = (new Date()).getTime();
+var numberToFind = 42;
+var maxNumber = 100;
 
-// the example
-var	queen = createQueen({logger:logger.info.bind(logger)});
+var workforce = queen({
+	scripts: ['http://localhost/example/chance.js'],
+	populate: "continuous",
+	killOnStop: false,
+	handler: function(worker){
+		worker(maxNumber);
+	}
+});
 
-queen.on('workerProvider', function(){
-	var startTime = (new Date()).getTime();
-	var numberToFind = 42;
-	var maxNumber = 10000;
+workforce.on('message', function(number, worker){
+	console.log(number + " (" + worker.provider.attributes.name + ")");
 
-	var workforce = queen({
-		scripts: ['http://localhost/example/chance.js'],
-		handler: function(worker){
-			worker(maxNumber);
-		}
-	});
-
-	workforce.on('message', function(number, worker){
-		console.log(number);
-		if(number === 42){
-			workforce.kill();	
-			var endTime = (new Date()).getTime();
-			var secondsToComplete = (endTime - startTime) / 1000;
-			console.log('Done! That took ' + secondsToComplete + " seconds. The winner was " + worker.provider.attributes.name);
-		}
-	});
+	if(number === 42){
+		workforce.kill();	
+		var endTime = (new Date()).getTime();
+		var secondsToComplete = (endTime - startTime) / 1000;
+		console.log('Done! That took ' + secondsToComplete + " seconds. The winner was " + worker.provider.attributes.name);
+		process.exit(0);
+	}
 });
