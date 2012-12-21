@@ -15,7 +15,7 @@
   },   
   "devDependencies": {
     "grunt": "~0.3.15",
-    "grunt-contrib-hug": "~0.2.2",
+    "grunt-hug": "~0.2.2",
     "grunt-contrib-clean": "~0.3.1",
     "grunt-contrib-copy": "~0.3.1",
     "winston": "~0.6.2",
