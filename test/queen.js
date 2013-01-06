@@ -68,6 +68,7 @@ exports.queen = {
 		callback();
 	},
 	create: function(test){
+		test.expect(1);
 		var queen;
 		
 		queen = create({
