@@ -67,17 +67,6 @@ exports.queen = {
 		this.queen = new Queen(this.socket);
 		callback();
 	},
-	create: function(test){
-		test.expect(1);
-		var queen;
-		
-		queen = create({
-			callback: function(queen){
-				test.ok(queen !== void 0, "Unable to construct with valid params");
-				test.done();
-			}
-		});
-	},
 	construct: function(test){
 		var queen;
 		
