@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+var tty = require('tty');
+
 var app = require('commander'),
 	path = require('path'),
 	vm = require('vm'),
@@ -29,7 +31,8 @@ var startQueen = function(config){
 		log,
 		debug,
 		captureHost = config.captureHost,
-		capturePort = config.capturePort;
+		capturePort = config.capturePort,
+		autoSpawn = config.autoSpawn || [{browserName: "safari"},{browserName: "internet explorer"}];
 
 	if(config.quiet !== false){
 		log = console.log.bind(console);
@@ -39,40 +42,54 @@ var startQueen = function(config){
 		debug = console.log.bind(console);
 	}
 
-	var queen = createQueen({
-		port: config.capturePort,
-		host: config.captureHost,
+	createQueen({
+		callback: onQueenReady,
+		port: capturePort,
+		host: captureHost,
+		autoSpawn: autoSpawn,
 		log: log,
 		debug: debug
 	});
 
-	if(config.script){
-		global.queen = queen;
-
-		try {
-			var context = vm.createContext(global);
-			vm.runInContext(fs.readFileSync(config.script), context);
-		} catch(e) {
-			if (e.name === 'SyntaxError') {
-			  console.error('Syntax error in config file!\n' + e.message);
-			} else if (e.code === 'ENOENT' || e.code === 'EISDIR') {
-			  console.error('Config file does not exist!');
-			} else {
-			  console.error('Invalid file!\n', e);
+	function onQueenReady(queen){
+		process.on('exit', queen.kill); // Won't work on windows
+		
+		var createSeleniumPopulator = require('../lib/server/seleniumPopulator.js');
+		var seleniumPopulator = createSeleniumPopulator(
+			{
+				host: 'localhost', 
+				port: 4445
 			}
+		);
 
-			process.exit(1);
+		queen.attachPopulator(seleniumPopulator);
+
+		if(config.script){
+			global.queen = queen;
+
+			try {
+				var context = vm.createContext(global);
+				vm.runInContext(fs.readFileSync(config.script), context);
+			} catch(e) {
+				if (e.name === 'SyntaxError') {
+				  console.error('Syntax error in config file!\n' + e.message);
+				} else if (e.code === 'ENOENT' || e.code === 'EISDIR') {
+				  console.error('Config file does not exist!');
+				} else {
+				  console.error('Invalid file!\n', e);
+				}
+
+				process.exit(1);
+			}
+		} else if(config.noRemote !== false) {
+			var remoteServer = createQueenRemoteServer(queen, {
+				port: config.port,
+				host: config.host || getExternalIpAddress(),
+				log: log,
+				debug: debug
+			});
 		}
-	} else if(config.noRemote !== false) {
-		var remoteServer = createQueenRemoteServer(queen, {
-			port: config.port,
-			host: config.host || getExternalIpAddress(),
-			log: log,
-			debug: debug
-		});
 	}
-
-	return queen;
 };
 
 app.version('0.1.0');
@@ -80,7 +97,7 @@ app.version('0.1.0');
 app.option('-p, --port <n>', 'The port to bind the remote server to', parseInt)
 	.option('-h, --host [hostname]', 'The host to bind the remote server to')
 	.option('--noRemote', 'Disable remote requests to this server')
-	.option('--capturePort <b>', 'The port to use when capturing browsers', parseInt)
+	.option('--capturePort <n>', 'The port to use when capturing browsers', parseInt)
 	.option('--captureHost [hostname]', 'The hostname to use when capturing browsers')
 	.option('-v, --verbose', 'Whether to log verbosely')
 	.option('-q, --quiet', 'Don\'t output anything to output stream')

@@ -6,6 +6,7 @@ var workforce = queen({
 	scripts: ['http://localhost/example/chance.js'],
 	populate: "continuous",
 	killOnStop: false,
+	timeout: 1000,
 	handler: function(worker){
 		worker(maxNumber);
 	}
