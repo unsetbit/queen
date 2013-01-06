@@ -55,6 +55,7 @@ var createMockSocket = function(){
 	socket.on = eventEmitter.on.bind(eventEmitter);
 	socket.removeListener = eventEmitter.removeListener.bind(eventEmitter);
 	socket.disconnect = sinon.spy();
+	socket.send = sinon.spy();
 
 	return socket;
 };
@@ -69,15 +70,17 @@ exports.queen = {
 	create: function(test){
 		var queen;
 		
-		queen = create(this.socket);
-		test.ok(queen !== void 0, "Unable to construct with valid params");
-
-		test.done();
+		queen = create({
+			callback: function(queen){
+				test.ok(queen !== void 0, "Unable to construct with valid params");
+				test.done();
+			}
+		});
 	},
 	construct: function(test){
 		var queen;
 		
-		queen = new Queen(this.socket);
+		queen = new Queen(this.socket, "/", []);
 		test.ok(queen instanceof Queen, "Unable to construct with valid params");
 
 		test.done();
