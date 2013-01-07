@@ -6675,11 +6675,11 @@ IframeWorker.prototype.loadUrl = function(url){
 	iframe.setAttribute("src", url + "?iframeSocketId=" + this.id); 
 };
 
-IframeWorker.prototype.kill = function(){
+IframeWorker.prototype.kill = function(reason){
 	delete window.iframeSockets[this.id];
 	document.body.removeChild(this.iframe);	
 	this.iframe = void 0;
-	this.emitter.emit('dead');
+	this.emitter.emit('dead', reason);
 };
 
 return module.exports || exports;
@@ -6837,11 +6837,11 @@ WorkerProvider.prototype.spawnWorkerHandler = function(workerId, workerConfig){
 	this.workers[workerId] = worker;
 	if(workerConfig.timeout && workerConfig.timeout < this.workerTimeout){
 		workerTimeout = setTimeout(function(){
-			worker.kill();
+			worker.kill("timeout");
 		}, workerConfig.timeout);
 	} else if(this.workerTimeout !== Infinity && this.workerTimeout !== void 0){
 		workerTimeout = setTimeout(function(){
-			worker.kill();
+			worker.kill("timeout");
 		}, this.workerTimeout);
 	}
 
@@ -6853,7 +6853,7 @@ WorkerProvider.prototype.spawnWorkerHandler = function(workerId, workerConfig){
 		]);
 	});
 
-	worker.api.on('dead', function(){
+	worker.api.on('dead', function(reason){
 		if(workerTimeout !== void 0){
 			clearTimeout(workerTimeout);	
 		}
@@ -6869,7 +6869,8 @@ WorkerProvider.prototype.spawnWorkerHandler = function(workerId, workerConfig){
 		self.emitter.emit('workerDead', workerId);
 		self.sendToSocket([
 			MESSAGE_TYPE['worker dead'],
-			workerId
+			workerId,
+			reason
 		]);
 	});
 

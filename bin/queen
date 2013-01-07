@@ -1,23 +1,23 @@
 #!/usr/bin/env node
 
-var tty = require('tty');
-
-var app = require('commander'),
+var tty = require('tty'),
+	app = require('commander'),
 	path = require('path'),
 	vm = require('vm'),
-	utils = require('../lib/server/utils.js'),
 	fs = require('fs');
 
-
+var createSeleniumPopulator = require('../lib/server/populator/selenium.js'),
+	utils = require('../lib/server/utils.js');
+		
 var getExternalIpAddress = function(){
 	var interfaces = require('os').networkInterfaces();
 	var addresses = [];
 	utils.each(interfaces, function(interface, name){
 		addresses = addresses.concat(
-						utils.filter(interface, function(node){ 
-							return node.family === "IPv4" && node.internal === false;
-						})
-					);
+			utils.filter(interface, function(node){ 
+				return node.family === "IPv4" && node.internal === false;
+			})
+		);
 	});
 
 	if(addresses.length > 0){
@@ -25,66 +25,103 @@ var getExternalIpAddress = function(){
 	}
 };
 
-var startQueen = function(config){
+var startQueen = function(app){
+	var config = {};
+
+	if(app.config){
+		try {
+			vm.runInNewContext(fs.readFileSync(app.config), config);
+		} catch(e) {
+			if (e.name === 'SyntaxError') {
+			  console.error('Syntax error in config file!\n' + e.message);
+			} else if (e.code === 'ENOENT' || e.code === 'EISDIR') {
+			  console.error('Config file does not exist!');
+			} else {
+			  console.error('Invalid config file!\n', e);
+			}
+
+			process.exit(1);
+		}
+	}
+
 	var createQueenRemoteServer = require('queen-remote').server,
 		createQueen = require('../'),
-		log,
-		debug,
-		captureHost = config.captureHost,
-		capturePort = config.capturePort,
-		autoSpawn = config.autoSpawn || [{browserName: "safari"},{browserName: "internet explorer"}];
-
-	if(config.quiet !== false){
-		log = console.log.bind(console);
-	}
-
-	if(config.verbose){
-		debug = console.log.bind(console);
-	}
-
+		captureHost = app.captureHost || config.captureHost,
+		capturePort = app.capturePort || config.capturePort,
+		port = app.port || config.port,
+		host = app.host || config.host,
+		heartbeatInterval = app.heartbeatInterval || config.heartbeatInterval,
+		populatorConfigs = config.populators || [],
+		populators = [],
+		quiet = app.quiet !== false || config.quiet !== false,
+		verbose = app.verbose === true || config.verbose === true,
+		script = app.script || config.script,
+		noRemote = app.noRemote !== false || config.noRemote !== false,
+		autoSpawn = app.autoSpawn || config.autoSpawn || [],
+		log = quiet ? console.log.bind(console) : void 0,
+		debug = verbose? console.log.bind(console) : void 0;
+	
 	createQueen({
 		callback: onQueenReady,
 		port: capturePort,
 		host: captureHost,
 		autoSpawn: autoSpawn,
+		heartbeatInterval: heartbeatInterval,
 		log: log,
 		debug: debug
 	});
 
+	populatorConfigs.forEach(function(populatorConfig){
+		var createPopulator, 
+			populator;
+		switch(populatorConfig.type){
+			case "selenium":
+				createPopulator = require('../lib/server/populator/selenium.js');
+				populator = createPopulator(populatorConfig.config);
+				break;
+			case "sauce":
+				createPopulator = require('../lib/server/populator/sauce.js');
+				populator = createPopulator(populatorConfig.config.username, populatorConfig.config.accessKey, populatorConfig.config);
+				break;
+			default:
+				console.log('Unknown populator type: ' + populatorConfig.type);
+				return;
+		}
+
+		populators.push(populator);
+	});
+
 	function onQueenReady(queen){
-		process.on('exit', queen.kill); // Won't work on windows
+		process.on('exit', queen.kill); // Won't work on Windows - booooo
 		
-		var createSeleniumPopulator = require('../lib/server/seleniumPopulator.js');
-		var seleniumPopulator = createSeleniumPopulator(
-			{
-				host: 'localhost', 
-				port: 4445
-			}
-		);
+		populators.forEach(function(populator){
+			queen.attachPopulator(populator);
+		});
 
-		queen.attachPopulator(seleniumPopulator);
-
-		if(config.script){
+		// If a script was defined, execute it with queen as a global variable
+		if(script){
 			global.queen = queen;
 
 			try {
 				var context = vm.createContext(global);
-				vm.runInContext(fs.readFileSync(config.script), context);
+				vm.runInContext(fs.readFileSync(script), context);
 			} catch(e) {
 				if (e.name === 'SyntaxError') {
-				  console.error('Syntax error in config file!\n' + e.message);
+				  console.error('Syntax error in script file!\n' + e.message);
 				} else if (e.code === 'ENOENT' || e.code === 'EISDIR') {
-				  console.error('Config file does not exist!');
+				  console.error('Script file does not exist!');
 				} else {
 				  console.error('Invalid file!\n', e);
 				}
 
 				process.exit(1);
 			}
-		} else if(config.noRemote !== false) {
+		} 
+
+		if(noRemote) {
 			var remoteServer = createQueenRemoteServer(queen, {
-				port: config.port,
-				host: config.host || getExternalIpAddress(),
+				port: port,
+				host: host || getExternalIpAddress(),
 				log: log,
 				debug: debug
 			});
@@ -94,9 +131,11 @@ var startQueen = function(config){
 
 app.version('0.1.0');
 	
-app.option('-p, --port <n>', 'The port to bind the remote server to', parseInt)
+app.option('-c, --config [path]', 'The queen configuration file to use')
+	.option('-p, --port <n>', 'The port to bind the remote server to', parseInt)
 	.option('-h, --host [hostname]', 'The host to bind the remote server to')
 	.option('--noRemote', 'Disable remote requests to this server')
+	.option('--heartbeatInterval <n>', 'Milliseconds clients have to send a heartbeat until deemed unresponsive', parseInt)
 	.option('--capturePort <n>', 'The port to use when capturing browsers', parseInt)
 	.option('--captureHost [hostname]', 'The hostname to use when capturing browsers')
 	.option('-v, --verbose', 'Whether to log verbosely')
