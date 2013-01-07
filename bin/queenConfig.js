@@ -29,7 +29,7 @@ populators = [
 		clients: [
 			{ browserName: "firefox" }
 		]
-	},*/
+	},
 	{
 		type: "browserstack",
 		config: {
@@ -40,5 +40,5 @@ populators = [
 		clients: [
 			{ browser: "firefox" }
 		]
-	}
+	}*/
 ];

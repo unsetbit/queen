@@ -19,10 +19,17 @@ module.exports = function(grunt) {
         server: ['test/**/*.js']
       },
       client: {
-        src: 'lib/client',
-        srcFiles: 'lib/client/**/*'
+        src: 'lib/client/**/*.js'
       },
-      styles: ['lib/client/styles/external/**/*.css', 'lib/client/styles/**/*.css']
+      monitor: {
+        header: 'lib/monitor/lib/soyutils.js',
+        src: 'lib/monitor/**/*.js'
+      },
+      styles: [ 
+        './lib/client/styles/external/**/*.css', 
+        './lib/client/styles/**/*.css', 
+        './lib/client/styles/less.css'
+      ]
     },
     meta: {
       banner: '/*! <%= pkg.title || pkg.name %> - v<%= pkg.version %> - ' +
@@ -31,30 +38,25 @@ module.exports = function(grunt) {
         '* Copyright (c) <%= grunt.template.today("yyyy") %> <%= pkg.author.name %>;' +
         ' Licensed <%= _.pluck(pkg.licenses, "type").join(", ") %> */'
     },
-    concat: {
-      styles: {
-        src: ['<banner:meta.banner>', '<config:files.styles>'],
-        dest: 'static/<%= pkg.name %>.css'
-      }
-    },
     hug: {
-      dist: {
-        header: '<config:files.client.lib>',
+      client: {
         src: '<config:files.client.src>',
-        dest: 'static/<%= pkg.name %>.js'
+        dest: 'static/<%= pkg.name %>.js',
+        exportedVariable: 'Queen',
+        exports: './lib/client/WorkerProvider.js'
+      },
+      monitor: {
+        src: '<config:files.monitor.src>',
+        header: '<config:files.monitor.header>',
+        dest: 'static/<%= pkg.name %>-monitor.js',
+        exportedVariable: 'QueenMonitor',
+        exports: './lib/monitor/Monitor.js'
       }
     },
     min: {
       dist: {
-        src: ['<banner:meta.banner>', '<config:hug.dist.dest>'],
+        src: ['<banner:meta.banner>', '<config:hug.client.dest>'],
         dest: 'build/<%= pkg.name %>.min.js'
-      }
-    },
-    copy: {
-      release: {
-        files: {
-          "build/release/": "static/**"
-        }
       }
     },
     lint: {
@@ -63,13 +65,34 @@ module.exports = function(grunt) {
     },
     watch: {
         client: {
-          files: '<config:files.client.srcFiles>',
-          tasks: 'hug'
+          files: '<config:files.client.src>',
+          tasks: 'hug:client'
+        },
+        monitor: {
+          files: '<config:files.monitor.src>',
+          tasks: 'hug:monitor'
         },
         styles: {
-          files: '<config:files.styles>',
-          tasks: 'concat:styles'
+          files: './lib/client/styles/**/*',
+          tasks: 'less concat:styles'
+        },
+        soyMonitor: {
+          files: './lib/monitor/soy/**/*.soy',
+          tasks: 'soy:monitor hug:monitor'
         }
+    },
+    less: {
+      styles:{
+        files: {
+          './lib/client/styles/less.css': './lib/client/styles/*.less'
+        }
+      }
+    },
+    concat: {
+      styles: {
+        src: ['<config:files.styles>'],
+        dest: 'static/<%= pkg.name %>.css'
+      }
     },
     clean: {
       build: ['./build/']
@@ -77,6 +100,35 @@ module.exports = function(grunt) {
     test: {
       lib: '<config:files.test.server>'
     },
+
+    soy : {
+        monitor: {
+            src: [ './lib/monitor/soy/**/*.soy' ],
+            inputPrefix : '',
+            outputPathFormat : './{INPUT_DIRECTORY}/{INPUT_FILE_NAME}.js',
+            codeStyle : 'stringbuilder',
+            locales : [],
+            messageFilePathFormat : undefined,
+            shouldGenerateJsdoc : false,
+            shouldProvideRequireSoyNamespaces : false,
+            compileTimeGlobalsFile : undefined,
+            shouldGenerateGoogMsgDefs : false,
+            bidiGlobalDir : 0, //accepts 1 (ltr) or -1 (rtl)
+
+            // Options missing from documentation
+            cssHandlingScheme : undefined, // 'literal', 'reference', 'goog'
+            googMsgsAreExternal : false,
+            isUsingIjData : undefined,
+            messagePluginModule : undefined, //full class reference
+            pluginModules: [], // array of full class reference strings.
+            shouldDeclareTopLevelNamespaces : undefined,
+            useGoogIsRtlForBidiGlobalDir : false,
+
+            // classpath with which to run the compiler. Used in conjunction with messagePluginModule and pluginModules
+            classpath : ''
+        }
+    },
+
     jshint: {
       server: {
         options: JSHINT_NODE
@@ -110,13 +162,15 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-hug');
   grunt.loadNpmTasks('grunt-contrib-copy');
   grunt.loadNpmTasks('grunt-contrib-clean');
+  grunt.loadNpmTasks('grunt-contrib-less');
+  grunt.loadNpmTasks('grunt-soy');
   
-  grunt.registerTask('build-js', 'hug');
-  grunt.registerTask('build-css', 'concat:styles');
+  grunt.registerTask('build-js', 'soy hug');
+  grunt.registerTask('build-css', 'less concat:styles');
   grunt.registerTask('build', 'build-js build-css');
 
   grunt.registerTask('build-dev', 'build');
-  grunt.registerTask('build-release', 'build min copy:release');
+  grunt.registerTask('build-release', 'build min');
 
   grunt.registerTask('default', 'clean:build build-release');
 };

@@ -2,7 +2,7 @@ var sinon = require('sinon'),
 	mocks = require('mocks'),
 	path = require('path'),
 	EventEmitter = require('events').EventEmitter,
-	protocol = require('../lib/server/protocol.js'),
+	protocol = require('../lib/protocol.js'),
 	queenModule;
 
 var createMockWorkerProvider = function(){

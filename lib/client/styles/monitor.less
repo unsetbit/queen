@@ -1,0 +1,78 @@
+.host-wrapper{
+	position:relative;
+	width:190px;
+	display:inline-block;
+	overflow:hidden;
+	height:150px;
+}
+.host{
+	position:absolute;
+	top:0px;
+	left:0px;
+	margin:20px 0px 0px 20px;
+	font-family:PT Sans;
+	padding:10px 0px 20px 0px;
+
+	width:170px;
+	overflow:hidden;
+	white-space:nowrap;
+	display:inline-block;
+	box-shadow:0px 0px 5px -2px black;
+	
+	background-color:#00A0B0;
+	
+	&.host-unresponsive{
+		background-color:red;
+	}
+
+	&.host-unavailable{
+		background-color:#AAA;
+	}
+
+	.name{
+		white-space:nowrap;
+		font-size:18px;
+		color:white;
+		text-shadow:0px 1px 0px #757575;
+		text-align:center;
+	}
+
+	.platform{
+		font-size:12px;
+		color:#eee;
+		text-shadow:0px 1px 0px #757575;
+	}
+
+	text-align:center;
+		
+	.details{
+		margin-top:10px;
+		position:relative;
+		display:inline-block;
+
+		.icon{
+			width:48px;
+			height:48px;
+			float:left;
+			img{
+				max-height:48px;
+			}
+		}
+
+		.workerCount{
+			text-align:center;
+			float:left;
+			margin-left:5px;
+			opacity:.75;
+			width:45px;
+			height:45px;
+			line-height:45px;
+			vertical-align: middle;
+ 			color:white;
+ 			font-size:26px;
+ 			font-weight:bold;
+			text-shadow:0px 1px 0px #666;
+		}		
+	
+	}
+}

@@ -1,8 +1,29 @@
-(function(){
+;Queen=(function(){
+var __m8=function(module,exports){module.exports=exports;
+exports.WORKER_PROVIDER_MESSAGE_TYPE = {
+	"register": 1,
+	"worker message": 2,
+	"worker spawned": 3,
+	"worker dead": 4,
+	"available": 5,
+	"unavailable": 6,
+	"kill worker": 7,
+	"spawn worker": 8,
+	"start heartbeats": 9,
+	"heartbeat": 10,
+	"unresponsive": 11,
+	"responsive": 12,
+	"dead": 13
+};
 
-var __module8 = (function(){
-var module = {};
-var exports = module.exports = {};
+exports.MONITOR_MESSAGE_TYPE = {
+	"new worker provider": 0,
+	"worker provider message": 1
+};
+
+
+;return module.exports;}({},{});
+var __m6=function(module,exports){module.exports=exports;
 exports.noop = function(){};
 
 // by Artem Barger from http://stackoverflow.com/questions/901115/how-can-i-get-query-string-values
@@ -14,29 +35,8 @@ exports.getParameterByName = function(name){
 	if(results == null)	return "";
 	else return decodeURIComponent(results[1].replace(/\+/g, " "));
 }
-return module.exports || exports;
-}());
-var __module9 = (function(){
-var module = {};
-var exports = module.exports = {};
-exports.WORKER_PROVIDER_MESSAGE_TYPE = {
-	"register": 1,
-	"worker message": 2,
-	"worker spawned": 3,
-	"worker dead": 4,
-	"available": 5,
-	"unavailable": 6,
-	"kill worker": 7,
-	"spawn worker": 8,
-	"start heartbeats": 9,
-	"heartbeat": 10
-};
-
-return module.exports || exports;
-}());
-var __module6 = (function(){
-var module = {};
-var exports = module.exports = {};
+;return module.exports;}({},{});
+var __m5=function(module,exports){module.exports=exports;
 //     Underscore.js 1.4.2
 //     http://underscorejs.org
 //     (c) 2009-2012 Jeremy Ashkenas, DocumentCloud Inc.
@@ -1237,11 +1237,8 @@ var exports = module.exports = {};
   });
 
 }).call(this);
-return module.exports || exports;
-}());
-var __module5 = (function(){
-var module = {};
-var exports = module.exports = {};
+;return module.exports;}({},{});
+var __m4=function(module,exports){module.exports=exports;
 /*! Socket.IO.js build:0.9.11, development. Copyright(c) 2011 LearnBoost <dev@learnboost.com> MIT Licensed */
 
 var io = ('undefined' === typeof module ? {} : module.exports);
@@ -5113,11 +5110,8 @@ if (typeof define === "function" && define.amd) {
   define([], function () { return io; });
 }
 })();
-return module.exports || exports;
-}());
-var __module4 = (function(){
-var module = {};
-var exports = module.exports = {};
+;return module.exports;}({},{});
+var __m3=function(module,exports){module.exports=exports;
 /* Modernizr 2.6.2 (Custom Build) | MIT & BSD
  * Build: http://modernizr.com/download/#-fontface-backgroundsize-borderimage-borderradius-boxshadow-flexbox-hsla-multiplebgs-opacity-rgba-textshadow-cssanimations-csscolumns-generatedcontent-cssgradients-cssreflections-csstransforms-csstransforms3d-csstransitions-applicationcache-canvas-canvastext-draganddrop-hashchange-history-audio-video-indexeddb-input-inputtypes-localstorage-postmessage-sessionstorage-websockets-websqldatabase-webworkers-geolocation-inlinesvg-smil-svg-svgclippaths-touch-webgl-teststyles-testprop-testallprops-hasevent-prefixes-domprefixes
  */
@@ -5749,11 +5743,8 @@ window.Modernizr = (function( window, document, undefined ) {
     return Modernizr;
 
 })(this, this.document);
-return module.exports || exports;
-}());
-var __module3 = (function(){
-var module = {};
-var exports = module.exports = {};
+;return module.exports;}({},{});
+var __m2=function(module,exports){module.exports=exports;
 /*
     json2.js
     2012-10-08
@@ -6240,11 +6231,8 @@ if (typeof JSON !== 'object') {
         };
     }
 }());
-return module.exports || exports;
-}());
-var __module2 = (function(){
-var module = {};
-var exports = module.exports = {};
+;return module.exports;}({},{});
+var __m1=function(module,exports){module.exports=exports;
 /**
  * EventEmitter v4.0.3 - git.io/ee
  * Oliver Caldwell
@@ -6539,14 +6527,11 @@ var exports = module.exports = {};
 exports.EventEmitter.prototype.emit = function(event, data){
  	exports.EventEmitter.prototype.trigger.call(this, event, [data]);
 };
-return module.exports || exports;
-}());
-var __module7 = (function(){
-var module = {};
-var exports = module.exports = {};
-var _ = __module6,
-	EventEmitter = __module2.EventEmitter,
-	utils = __module8;
+;return module.exports;}({},{});
+var __m0=function(module,exports){module.exports=exports;
+var _ = __m5,
+	EventEmitter = __m1.EventEmitter,
+	utils = __m6;
 
 window.iframeSockets = {};
 
@@ -6682,17 +6667,15 @@ IframeWorker.prototype.kill = function(reason){
 	this.emitter.emit('dead', reason);
 };
 
-return module.exports || exports;
-}());
-var __module1 = (function(){
-var module = {};
-var exports = module.exports = {};
-var createWorker = __module7.create,
-	_ = __module6,
-	io = __module5,
-	EventEmitter = __module2.EventEmitter,
-	utils = __module8,
-	MESSAGE_TYPE = __module9.WORKER_PROVIDER_MESSAGE_TYPE;
+;return module.exports;}({},{});
+var __m7=function(module,exports){module.exports=exports;
+var _ = __m5,
+	io = __m4,
+	__m2,
+	EventEmitter = __m1.EventEmitter,
+	createWorker = __m0.create,
+	utils = __m6,
+	MESSAGE_TYPE = __m8.WORKER_PROVIDER_MESSAGE_TYPE;
 
 module.exports = function(captureUrl, options){
 	var options = options || {},
@@ -6750,16 +6733,13 @@ var WorkerProvider = function(socket){
 	this.api = getApi.call(this);
 };
 
-WorkerProvider.prototype.maxWorkerCount = 1000;
+WorkerProvider.prototype.maxWorkerCount = 100;
 WorkerProvider.prototype.workerTimeout = Infinity;
 WorkerProvider.prototype.log = utils.noop;
 
 WorkerProvider.prototype.kill = function(){
 	this.destroyWorkers();
 
-	this.socket.removeListener("connect", this.connectionHandler);
-	this.socket.removeListener("message", this.messageHandler);
-	this.socket.removeListener("disconnect", this.disconnectionHandler);
 	this.emitter.emit('dead');
 	this.socket = void 0;
 
@@ -6808,6 +6788,7 @@ WorkerProvider.prototype.messageHandler = function(message){
 			break;
 		case MESSAGE_TYPE['kill worker']:
 			this.killWorkerHandler(message[1]);
+			break;
 	}
 };
 
@@ -6861,7 +6842,7 @@ WorkerProvider.prototype.spawnWorkerHandler = function(workerId, workerConfig){
 		delete self.workers[workerId];
 
 		self.workerCount--;
-		if(self.workerCount === (self.maxWorkerCount - 2)){
+		if(self.workerCount === (self.maxWorkerCount - 1)){
 			self.sendToSocket([MESSAGE_TYPE['available']]);
 			self.emitter.emit('available');
 		}
@@ -6875,7 +6856,7 @@ WorkerProvider.prototype.spawnWorkerHandler = function(workerId, workerConfig){
 	});
 
 	this.workerCount++;
-	if(this.workerCount === (this.maxWorkerCount - 1)){
+	if(this.workerCount === (this.maxWorkerCount)){
 		self.sendToSocket([MESSAGE_TYPE['unavailable']]);
 		this.emitter.emit('unavailable');
 	}
@@ -6922,13 +6903,5 @@ WorkerProvider.prototype.register = function(){
 		this.attributes
 	]);
 };
-return module.exports || exports;
-}());
-var __module0 = (function(){
-var module = {};
-var exports = module.exports = {};
-window.Queen = __module1;
-return module.exports || exports;
-}());
-
-}());
+;return module.exports;}({},{});
+return __m7;}());
