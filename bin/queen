@@ -6,8 +6,7 @@ var tty = require('tty'),
 	vm = require('vm'),
 	fs = require('fs');
 
-var createSeleniumPopulator = require('../lib/server/populator/selenium.js'),
-	utils = require('../lib/server/utils.js');
+var utils = require('../lib/server/utils.js');
 		
 var getExternalIpAddress = function(){
 	var interfaces = require('os').networkInterfaces();
@@ -57,7 +56,6 @@ var startQueen = function(app){
 		verbose = app.verbose === true || config.verbose === true,
 		script = app.script || config.script,
 		noRemote = app.noRemote !== false || config.noRemote !== false,
-		autoSpawn = app.autoSpawn || config.autoSpawn || [],
 		log = quiet ? console.log.bind(console) : void 0,
 		debug = verbose? console.log.bind(console) : void 0;
 	
@@ -65,7 +63,6 @@ var startQueen = function(app){
 		callback: onQueenReady,
 		port: capturePort,
 		host: captureHost,
-		autoSpawn: autoSpawn,
 		heartbeatInterval: heartbeatInterval,
 		log: log,
 		debug: debug
@@ -83,11 +80,17 @@ var startQueen = function(app){
 				createPopulator = require('../lib/server/populator/sauce.js');
 				populator = createPopulator(populatorConfig.config.username, populatorConfig.config.accessKey, populatorConfig.config);
 				break;
+			case "browserstack":
+				createPopulator = require('../lib/server/populator/browserstack.js');
+				populator = createPopulator(populatorConfig.config);
+				break;
 			default:
 				console.log('Unknown populator type: ' + populatorConfig.type);
 				return;
 		}
 
+		populator.clients = populatorConfig.clients || [];
+		
 		populators.push(populator);
 	});
 

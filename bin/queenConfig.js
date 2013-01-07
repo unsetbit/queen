@@ -1,5 +1,4 @@
 var populators, // array of populators to use
-	autoSpawn, // array of browsers to automatically spawn with populators
 	capturePort, // capture server port
 	captureHost, // capture server host
 	heartbeatInterval, // seconds a client has to send a heartbeat until deemed unresponsive
@@ -16,19 +15,30 @@ populators = [
 		config: {
 			host: 'localhost', 
 			port: 4445	
-		}
+		},
+		clients: [
+			{ browserName: "firefox" }
+		]
 	},
 	{
 		type: "sauce",
 		config: {
 			username: "ozanturgut",
-			accessKey: "71dd81a2-1ff4-474a-be88-26fcb9be8bb3"
-		}
-	}*/
-];
-
-autoSpawn = [
+			accessKey: "123"
+		},
+		clients: [
+			{ browserName: "firefox" }
+		]
+	},*/
 	{
-		browserName: "firefox"
+		type: "browserstack",
+		config: {
+			username: "ozanturgut@gmail.com",
+			password: "123",
+			version: 2
+		},
+		clients: [
+			{ browser: "firefox" }
+		]
 	}
 ];
