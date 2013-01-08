@@ -16,7 +16,7 @@ module.exports = function(grunt) {
     files: {
       server: ['server/lib/*.js'],
       test: {
-        server: ['test/**/*.js']
+        server: ['test/server/**/*.js']
       },
       client: {
         src: 'lib/client/**/*.js'
@@ -100,7 +100,6 @@ module.exports = function(grunt) {
     test: {
       lib: '<config:files.test.server>'
     },
-
     soy : {
         monitor: {
             src: [ './lib/monitor/soy/**/*.soy' ],

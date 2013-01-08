@@ -2,7 +2,7 @@ var sinon = require('sinon'),
 	mocks = require('mocks'),
 	path = require('path'),
 	EventEmitter = require('events').EventEmitter,
-	testedModule = mocks.loadFile(path.resolve(path.dirname(module.filename), '../lib/server/browserWorkerProvider.js'));
+	testedModule = mocks.loadFile(path.resolve(path.dirname(module.filename), '../../lib/server/browserWorkerProvider.js'));
 
 var WorkerProvider = testedModule.BrowserWorkerProvider;
 var create = testedModule.create;

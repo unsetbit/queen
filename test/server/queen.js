@@ -2,7 +2,7 @@ var sinon = require('sinon'),
 	mocks = require('mocks'),
 	path = require('path'),
 	EventEmitter = require('events').EventEmitter,
-	protocol = require('../lib/protocol.js'),
+	protocol = require('../../lib/protocol.js'),
 	queenModule;
 
 var createMockWorkerProvider = function(){
@@ -35,7 +35,7 @@ var mockWorkforce = {
 };
 
 queenModule = mocks.loadFile(
-	path.resolve(path.dirname(module.filename), '../lib/server/queen.js'),
+	path.resolve(path.dirname(module.filename), '../../lib/server/queen.js'),
 	{
 		'./workforce.js': mockWorkforce
 	}
@@ -58,6 +58,13 @@ var createMockSocket = function(){
 	socket.send = sinon.spy();
 
 	return socket;
+};
+
+var createMockPopulator = function(){
+	var populator = sinon.spy();
+	populator.clientConfig = {browser:"chrome"};
+	populator.clients = [populator.clientConfig];
+	return populator;
 };
 
 
@@ -177,6 +184,29 @@ exports.queen = {
 
 		test.ok(workforce.self.populate.lastCall.args[0] === provider, "Populate not called");
 
+		test.done();
+	},
+	attachPopulator: function(test){
+		var p = createMockPopulator();
+		this.queen.autoSpawnClients = sinon.spy();
+		this.queen.attachPopulator(p);
+		test.equal(this.queen.populators.length, 1, "populator count incorrect");
+		test.ok(this.queen.autoSpawnClients.calledOnce, "auto spawn not called");
+		test.done();
+	},
+	detachPopulator: function(test){
+		var p = createMockPopulator();
+		this.queen.autoSpawnClients = sinon.spy();
+		this.queen.attachPopulator(p);
+		test.equal(this.queen.populators.length, 1, "populator count incorrect");
+		this.queen.detachPopulator(p);
+		test.equal(this.queen.populators.length, 0, "populator count incorrect");
+		test.done();
+	},
+	autoSpawnClients: function(test){
+		var p = createMockPopulator();
+		this.queen.attachPopulator(p);
+		test.ok(p.calledWith(p.clientConfig), "populator not called with client config");
 		test.done();
 	},
 	kill: function(test){
