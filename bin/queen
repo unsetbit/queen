@@ -55,7 +55,7 @@ var startQueen = function(app){
 		quiet = app.quiet !== false || config.quiet !== false,
 		verbose = app.verbose === true || config.verbose === true,
 		script = app.script || config.script,
-		noRemote = app.noRemote !== false || config.noRemote !== false,
+		noRemote = app.noRemote === true || config.noRemote === true,
 		log = quiet ? console.log.bind(console) : void 0,
 		debug = verbose? console.log.bind(console) : void 0;
 	
@@ -103,9 +103,9 @@ var startQueen = function(app){
 
 		// If a script was defined, execute it with queen as a global variable
 		if(script){
-			global.queen = queen;
-
 			try {
+				global.queen = queen;
+				global.require = require;
 				var context = vm.createContext(global);
 				vm.runInContext(fs.readFileSync(script), context);
 			} catch(e) {
@@ -121,7 +121,7 @@ var startQueen = function(app){
 			}
 		} 
 
-		if(noRemote) {
+		if(!noRemote) {
 			var remoteServer = createQueenRemoteServer(queen, {
 				port: port,
 				host: host || getExternalIpAddress(),
