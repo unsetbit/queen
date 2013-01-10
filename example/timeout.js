@@ -14,7 +14,7 @@ after one second.
 
 function onServerReady(){
 	queen({
-		scripts: ['http://localhost:9236'],
+		run: ['http://localhost:9236'],
 		populate: "continuous",
 		killOnStop: false,
 		timeout: 1000,

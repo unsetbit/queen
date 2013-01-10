@@ -16,7 +16,7 @@ similar one and close the unresponsive one.
 
 function onServerReady(){
 	queen({
-		scripts: ['http://localhost:9236'],
+		run: ['http://localhost:9236'],
 		populate: "continuous",
 		killOnStop: false,
 		handler: function(worker){
@@ -32,7 +32,6 @@ function onServerReady(){
 // This is done just to keep everything in the example inside one file,
 // in real life, you should serve your scripts out of a more respectable server.
 var script = "for(var i = 0; i < 4000000000; i++) 1 + 1;";
-script += "socket.kill();";
 
 var server = require('http').createServer(function(request, response){
 	response.writeHead(200, {'Content-Type': 'application/javascript'});

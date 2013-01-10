@@ -27,7 +27,7 @@ var __m6=function(module,exports){module.exports=exports;
 exports.noop = function(){};
 
 // by Artem Barger from http://stackoverflow.com/questions/901115/how-can-i-get-query-string-values
-exports.getParameterByName = function(name){
+var getParameterByName = exports.getParameterByName = function(name){
 	name = name.replace(/[\[]/, "\\\[").replace(/[\]]/, "\\\]");
 	var regexS = "[\\?&]" + name + "=([^&#]*)";
 	var regex = new RegExp(regexS);
@@ -35,6 +35,105 @@ exports.getParameterByName = function(name){
 	if(results == null)	return "";
 	else return decodeURIComponent(results[1].replace(/\+/g, " "));
 }
+
+/* These don't follow good security practices, but it's OK for Queen, just don't use this
+	in other projects without added security in */
+// Modified from Ben Alman's code for jQuery postMessage, license: http://benalman.com/about/license/
+
+if(window.postMessage){
+	(function(){
+		var lastSentMessage;
+
+		exports.postMessage = function(message, target, targetUrl){
+			if(!target){
+				target = parent
+				lastSentMessage = message;
+			};
+			target.postMessage(message, "*");
+		};
+
+		exports.onMessage = function(callback){
+			function messageHandler(e){
+				if(e.data === lastSentMessage) return;
+				callback(e.data);
+			}
+
+			if(window.addEventListener){
+				window.addEventListener("message", messageHandler, false);
+			} else {
+				window.attachEvent("onmessage", messageHandler);
+			}
+		};
+	}());
+} else {
+	(function(){
+		var onMessageInterval,
+			ON_MESSAGE_POLLING_INTERVAL = 100,
+			previousHash = "",
+			onMessageCleanRe = /^#?\d+&/,
+			postMessageCleanRe = /#.*$/;
+
+		exports.postMessage = function(message, target, targetUrl){
+			var hash = "#" + (+new Date) + "&" + message;
+			if(!target){
+				target = parent;
+				previousHash = hash;
+			}
+			if(!targetUrl){
+				targetUrl = getParameterByName('parentUrl');
+			}
+
+			target.location = targetUrl.replace(postMessageCleanRe,"") + hash;
+		};
+
+		exports.onMessage = function(callback){
+			onMessageInterval && clearInterval(onMessageInterval);
+			onMessageInterval = setInterval(function(){
+				var hash = window.document.location.hash;
+				if (hash !== previousHash && onMessageCleanRe.test(hash) ) {
+					previousHash = hash;
+					callback(hash.replace(onMessageCleanRe, ""));
+				}
+			}, ON_MESSAGE_POLLING_INTERVAL);
+		};
+	}());
+}
+
+(function(){
+	if (window.XMLHttpRequest) {              
+	    exports.getHtml = function(url, callback){
+			var xhr =new XMLHttpRequest();              
+			xhr.open("GET", url, true);
+			xhr.onload = function(e) {
+			  callback(xhr.responseText);
+			};
+			xhr.send();
+		};
+	} else {
+	    exports.getHtml = function(url, callback){
+	    	var xhr;
+	    	try {
+				xhr = new ActiveXObject("Msxml2.XMLHTTP");
+			} 
+			catch (e) {
+				try {
+			  		xhr = new ActiveXObject("Microsoft.XMLHTTP");
+				}
+				catch (e) {
+					callback("");
+					return;
+				}
+			}
+	    	xhr.onreadystatechange = function(){
+	      		if(ajax.readyState === 4){
+		      		callback(ajax.responseText);
+		      	}
+	    	}
+	    	xhr.open('GET', url);
+    		xhr.send();
+	    }; 
+	};
+}());
 ;return module.exports;}({},{});
 var __m5=function(module,exports){module.exports=exports;
 //     Underscore.js 1.4.2
@@ -6573,13 +6672,13 @@ var IframeWorker = function(id){
 
 	this.iframe = document.createElement("IFRAME");
 	this.iframe.className = "queen-worker";
-
+	
 	document.body.appendChild(this.iframe);
 
 	this.kill = _.once(_.bind(this.kill, this));
 	this.start = _.once(_.bind(this.start, this));
 	this.emitter = new EventEmitter();
-
+	this.pendingMessages = [];
 	this.socket = new Socket();
 	this.socket.onPostMessage = _.bind(this.postMessageFromWorker, this)
 	this.socket.api.kill = this.kill;
@@ -6598,20 +6697,42 @@ var getApi = function(){
 
 	return api;
 };
+/*
+IframeWorker.prototype.ready = function(){
+	this.isReady = true;
+	_.each(this.pendingMessages, _.bind(this.postMessage, this));
+};
 
+IframeWorker.prototype.postMessage = function(message){
+	if(this.isReady){
+		utils.postMessage(message, this.iframeWindow);
+	} else {
+		this.pendingMessages.push(message);
+	}
+};
+*/
 IframeWorker.prototype.postMessageFromWorker = function(message){
 	this.emitter.emit('message', message);
 };
 
 IframeWorker.prototype.start = function(config){
-	if(config.scripts !== void 0){
-		this.runScripts(config.scripts);
-	} else if(config.url !== void 0){
-		this.loadUrl(config.url);
-	} else { // config.script !== void 0
-		this.runScripts([config.scriptPath]);
+	var run = config.run;
+	if(typeof run === "string"){
+		this.loadUrl(run);
+	} else if(run.length) {
+		this.runScripts(run);
+	} else {
+		this.kill();
 	}
 };
+
+var IFRAME_SCRIPT = "<script>" +
+							"window.queenSocket = window.parent.iframeSockets[\"QUEEN_SOCKET_ID\"];" +
+							"window.alert = function(){};" + 
+							"window.confirm = function(){return false;};" +
+							"window.prompt = function(){return null;};" +
+						"</script>";
+	
 
 IframeWorker.prototype.runScripts = function(scripts){
 	var self = this,
@@ -6624,40 +6745,56 @@ IframeWorker.prototype.runScripts = function(scripts){
 	iframeDoc = (iframe.contentDocument) ? iframe.contentDocument : iframe.contentWindow.document;
 	
 	iframeContent = "<html><head><title></title></head><body>";
-	
-	iframeContent += "<script>";
-	iframeContent += "window.socket = window.parent.iframeSockets['" + this.id + "'];";
-	
-	// Prevent process-blocking calls that would require human interaction.
-	iframeContent += "window.alert = function(){};";
-	iframeContent += "window.confirm = function(){return false;};";
-	iframeContent += "window.prompt = function(){return null;};";
-	iframeContent += "</script>";
-	
+	iframeContent += IFRAME_SCRIPT.replace('QUEEN_SOCKET_ID', this.id);
+
 	_.each(scripts, function(script){
 		iframeContent += '<script type="text/javascript" src="' + script + '"></script>';
 	});
 	iframeContent += "<script></script>";
 	iframeContent += "</body></html>";
 
-    if (iframe.attachEvent) {
-      iframe.onreadystatechange = function () {
-        if (self.iframe.readyState == 'complete') {
-          self.socket.ready();
-        }
-      };
-    } else {
-      this.iframe.onload = this.socket.ready;
-    }
+	this.waitForIframeToLoad();
 
 	iframeDoc.open();
 	iframeDoc.write(iframeContent);
 	iframeDoc.close();
+
 };
 
 IframeWorker.prototype.loadUrl = function(url){
-	var iframe = this.iframe;
-	iframe.setAttribute("src", url + "?iframeSocketId=" + this.id); 
+	var iframe = this.iframe,
+		iframeDoc = (iframe.contentDocument) ? iframe.contentDocument : iframe.contentWindow.document;
+	
+	//iframeContent = iframeContent.replace(/(<head.*>)/,'$1' + IFRAME_SCRIPT.replace('QUEEN_SOCKET_ID', this.id));
+	iframe.src = url + "?queenSocketId=" + this.id;
+	this.waitForIframeToLoad();
+	/*
+	iframeDoc.open();
+	iframeDoc.write(iframeContent);
+	iframeDoc.close();*/
+	
+};
+
+IframeWorker.prototype.waitForIframeToLoad = function(){
+    var self = this,
+    	iframe = this.iframe;
+
+    this.iframeWindow = iframe.contentWindow;
+
+    function onReady(){
+    	utils.onMessage(_.bind(self.postMessageFromWorker, self), self.iframeWindow);
+    	self.socket.ready();
+    }
+
+    if (iframe.attachEvent) {
+      iframe.onreadystatechange = function () {
+        if (self.iframe.readyState == 'complete') {
+          onReady();
+        }
+      };
+    } else {
+      this.iframe.onload = onReady;
+    }
 };
 
 IframeWorker.prototype.kill = function(reason){
@@ -6686,7 +6823,7 @@ module.exports = function(captureUrl, options){
 		});
 
 	var workerProvider = new WorkerProvider(socket);
-
+	
 	if(options.workerTimeout) workerProvider.workerTimeout = options.workerTimeout;
 	if(options.maxWorkerCount) workerProvider.maxWorkerCount = options.maxWorkerCount;
 	if(options.logger) workerProvider.log = options.logger;

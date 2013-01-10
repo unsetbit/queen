@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title></title>
+</head>
+<body>
+  <script>
+    queenSocket.onMessage = function(message){
+      var interval = setInterval(function(){
+        var guess = Math.floor(Math.random() * message);
+        queenSocket(guess);
+        if(guess == 42) clearInterval(interval);
+      }, 100);
+    };
+	</script>
+</body>
+</html>

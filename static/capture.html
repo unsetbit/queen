@@ -15,13 +15,13 @@
 	<script src="queen.js"></script>
   <script>
     var config = {};
-
+    
     if(typeof console !== "undefined"){
       config.logger = function(message){
         console.log(message);
       };
     }
-		
+
     var workerProvider = Queen("//" + window.location.host + "/capture", config);
 
     // UI
