@@ -71,13 +71,13 @@ var createMockPopulator = function(){
 exports.queen = {
 	setUp: function(callback){
 		this.socket = createMockSocket();
-		this.queen = new Queen(this.socket);
+		this.queen = new Queen(this.socket, "", {all:sinon.spy()});
 		callback();
 	},
 	construct: function(test){
 		var queen;
 		
-		queen = new Queen(this.socket, "/", []);
+		queen = new Queen(this.socket, "", {all:sinon.spy()});
 		test.ok(queen instanceof Queen, "Unable to construct with valid params");
 
 		test.done();
