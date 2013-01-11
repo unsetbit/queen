@@ -10,26 +10,26 @@ The process will continue to run until one browser guesses the right number,
 if no browsers are connected, it'll idle and wait.
 
 */
-var express = require('express');
 var fs = require('fs');
+/*
+var express = require('express');
 var app = express();
 app.use(express.static('../static'));
 
-app.listen(81, onServerReady);
+app.listen(81, onServerReady);*/
 function onServerReady(){
 	var startTime = (new Date()).getTime();
 	var numberToFind = 42;
 	var maxNumber = 100;
 
 	var workforce = queen({
-		html: fs.readFileSync('../static/test.html').toString(),
+		run: 'http://192.168.0.100:9235',
 		populate: "continuous",
 		killOnStop: false,
 		handler: function(worker){
 			worker(maxNumber);
 		}
 	});
-
 	workforce.on('message', function(number, worker){
 		console.log(number + " (" + worker.provider.attributes.name + ")");
 
@@ -42,20 +42,13 @@ function onServerReady(){
 		}
 	});
 };
-/*
+
 // This spawns a basic http server which just serves the client-side script.
 // This is done just to keep everything in the example inside one file,
 // in real life, you should serve your scripts out of a more respectable server.
-var script ="	queenSocket.onMessage = function(message){";
-script += 	"		var interval = setInterval(function(){";
-script += 	"			var guess = Math.floor(Math.random() * message);";
-script += 	"			queenSocket(guess);";
-script += 	"			if(guess == 42) clearInterval(interval);";
-script += 	"		}, 100);";
-script +=	"	};"
+var html = fs.readFileSync('../static/test.html').toString()
 
 var server = require('http').createServer(function(request, response){
-	response.writeHead(200, {'Content-Type': 'application/javascript'});
-	response.end(script);
+	console.log('REQUEST');
+	response.end(html);
 }).listen('9235', onServerReady);
-*/

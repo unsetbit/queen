@@ -6733,7 +6733,6 @@ var IFRAME_SCRIPT = "<script>" +
 							"window.prompt = function(){return null;};" +
 						"</script>";
 	
-
 IframeWorker.prototype.runScripts = function(scripts){
 	var self = this,
 		iframe,
@@ -6765,14 +6764,9 @@ IframeWorker.prototype.loadUrl = function(url){
 	var iframe = this.iframe,
 		iframeDoc = (iframe.contentDocument) ? iframe.contentDocument : iframe.contentWindow.document;
 	
-	//iframeContent = iframeContent.replace(/(<head.*>)/,'$1' + IFRAME_SCRIPT.replace('QUEEN_SOCKET_ID', this.id));
+
 	iframe.src = url + "?queenSocketId=" + this.id;
 	this.waitForIframeToLoad();
-	/*
-	iframeDoc.open();
-	iframeDoc.write(iframeContent);
-	iframeDoc.close();*/
-	
 };
 
 IframeWorker.prototype.waitForIframeToLoad = function(){
