@@ -1,6 +1,6 @@
 # Queen [![Build Status](https://secure.travis-ci.org/ozanturgut/queen.png?branch=master)](http://travis-ci.org/ozanturgut/queen)
 
-**Queen is a server which can execute scripts on browsers.**
+**Execute scripts on many browsers.**
 
 It's a web server application and application framework which allows for running of scripts on browsers connected to it.
 It allows these scripts to have bi-directional communication with whatever requested them to be run.
