@@ -6750,7 +6750,6 @@ IframeWorker.prototype.runScripts = function(scripts){
 		iframeContent += '<script type="text/javascript" src="' + script + '"></script>';
 	});
 	iframeContent += "<script></script>";
-	iframeContent += "</body></html>";
 
 	this.waitForIframeToLoad();
 
@@ -6801,12 +6800,13 @@ IframeWorker.prototype.kill = function(reason){
 ;return module.exports;}({},{});
 var __m7=function(module,exports){module.exports=exports;
 var _ = __m5,
-	io = __m4,
 	__m2,
 	EventEmitter = __m1.EventEmitter,
 	createWorker = __m0.create,
 	utils = __m6,
 	MESSAGE_TYPE = __m8.WORKER_PROVIDER_MESSAGE_TYPE;
+
+window.io = io;
 
 module.exports = function(captureUrl, options){
 	var options = options || {},

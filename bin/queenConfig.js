@@ -24,21 +24,29 @@ populators = [
 		type: "sauce",
 		config: {
 			username: "ozanturgut",
-			accessKey: "123"
+			accessKey: ""
 		},
 		clients: [
-			{ browserName: "firefox" }
+			{ 
+				browserName: "ipad",
+				platform: "Mac 10.8",
+				version: "5.1"
+			}
 		]
-	},
+	},/*
 	{
 		type: "browserstack",
 		config: {
 			username: "ozanturgut@gmail.com",
-			password: "123",
+			password: "",
 			version: 2
 		},
 		clients: [
-			{ browser: "firefox" }
+			{ 
+				browser: "firefox",
+				version: "11.0",
+				os: "win"
+			}
 		]
 	}*/
 ];
