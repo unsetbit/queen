@@ -181,7 +181,7 @@ exports.workforce = {
 		var workerProvider = sinon.spy();
 
 		this.workforce.populate(workerProvider);
-		test.ok(filterSpy.calledWith(workerProvider), "Filter called with worker provider");
+		test.ok(filterSpy.calledWith(workerProvider.attributes), "Filter called with worker provider");
 
 		// Positive case
 		this.workforce = create({}, {
