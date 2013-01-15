@@ -1,25 +1,15 @@
-// JS Hint options
-var JSHINT_BROWSER = {
-  browser: true,
-  es5: true
-};
-
-var JSHINT_NODE = {
-  node: true,
-  es5: true
-};
-
 module.exports = function(grunt) {
   // Project configuration.
   grunt.initConfig({
     pkg: '<json:package.json>',
     files: {
-      server: ['server/lib/*.js'],
+      server: ['lib/server/**/*.js'],
       test: {
         server: ['test/server/**/*.js']
       },
       client: {
-        src: 'lib/client/**/*.js'
+        libs: '',
+        src: 'lib/client/*.js'
       },
       monitor: {
         header: 'lib/monitor/lib/soyutils.js',
@@ -41,27 +31,38 @@ module.exports = function(grunt) {
     hug: {
       client: {
         src: '<config:files.client.src>',
-        dest: 'static/<%= pkg.name %>.js',
+        dest: 'build/<%= pkg.name %>.js',
         exportedVariable: 'Queen',
         exports: './lib/client/WorkerProvider.js'
       },
       monitor: {
         src: '<config:files.monitor.src>',
         header: '<config:files.monitor.header>',
-        dest: 'static/<%= pkg.name %>-monitor.js',
+        dest: 'build/<%= pkg.name %>-monitor.js',
         exportedVariable: 'QueenMonitor',
         exports: './lib/monitor/Monitor.js'
       }
     },
     min: {
-      dist: {
+      client: {
         src: ['<banner:meta.banner>', '<config:hug.client.dest>'],
-        dest: 'build/<%= pkg.name %>.min.js'
+        dest: 'dist/<%= pkg.name %>.js'
+      },
+      monitor: {
+        src: ['<banner:meta.banner>', '<config:hug.monitor.dest>'],
+        dest: 'dist/<%= pkg.name %>-monitor.js'
+      }
+    },
+    copy: {
+      dist: {
+        files: {
+          "./static/" : "./dist/**/*"
+        }
       }
     },
     lint: {
       server: '<config:files.server>',
-      client: '<config:files.client.srcFiles>'
+      client: '<config:files.client.src>'
     },
     watch: {
         client: {
@@ -127,22 +128,23 @@ module.exports = function(grunt) {
             classpath : ''
         }
     },
-
     jshint: {
       server: {
-        options: JSHINT_NODE
-      },
-      grunt: {
-        options: JSHINT_NODE
+        options: {
+          node: true,
+          strict: false,
+          sub: true
+        }
       },
       client: {
-        options: JSHINT_BROWSER
+        options: {
+          browser: true,
+          sub: true
+        }
       },
-
       options: {
         quotmark: 'single',
         camelcase: true,
-        strict: true,
         trailing: true,
         curly: true,
         eqeqeq: true,
@@ -166,10 +168,10 @@ module.exports = function(grunt) {
   
   grunt.registerTask('build-js', 'soy hug');
   grunt.registerTask('build-css', 'less concat:styles');
-  grunt.registerTask('build', 'build-js build-css');
+  grunt.registerTask('build', 'lint build-js build-css');
 
   grunt.registerTask('build-dev', 'build');
-  grunt.registerTask('build-release', 'build min');
+  grunt.registerTask('build-release', 'build min copy');
 
   grunt.registerTask('default', 'clean:build build-release');
 };
