@@ -1,151 +1,46 @@
 #!/usr/bin/env node
 
-var tty = require('tty'),
-	app = require('commander'),
-	path = require('path'),
-	vm = require('vm'),
-	fs = require('fs');
+var app = require('commander'),
+	queenRunner = require('../lib/server/runner.js'),
+	startThrill = true,
+	config = {};
 
-var utils = require('../lib/server/utils.js');
-		
-var getExternalIpAddress = function(){
-	var interfaces = require('os').networkInterfaces();
-	var addresses = [];
-	utils.each(interfaces, function(interface, name){
-		addresses = addresses.concat(
-			utils.filter(interface, function(node){ 
-				return node.family === "IPv4" && node.internal === false;
-			})
-		);
-	});
-
-	if(addresses.length > 0){
-		return addresses[0].address;
-	}
-};
-
-var startQueen = function(app){
-	var config = {};
-
-	if(app.config){
-		try {
-			vm.runInNewContext(fs.readFileSync(app.config), config);
-		} catch(e) {
-			if (e.name === 'SyntaxError') {
-			  console.error('Syntax error in config file!\n' + e.message);
-			} else if (e.code === 'ENOENT' || e.code === 'EISDIR') {
-			  console.error('Config file does not exist!');
-			} else {
-			  console.error('Invalid config file!\n', e);
-			}
-
-			process.exit(1);
-		}
-	}
-
-	var createQueenRemoteServer = require('queen-remote').server,
-		createQueen = require('../'),
-		captureHost = app.captureHost || config.captureHost,
-		capturePort = app.capturePort || config.capturePort,
-		port = app.port || config.port,
-		host = app.host || config.host,
-		heartbeatInterval = app.heartbeatInterval || config.heartbeatInterval,
-		populatorConfigs = config.populators || [],
-		populators = [],
-		quiet = app.quiet !== false || config.quiet !== false,
-		verbose = app.verbose === true || config.verbose === true,
-		script = app.script || config.script,
-		noRemote = app.noRemote === true || config.noRemote === true,
-		log = quiet ? console.log.bind(console) : void 0,
-		debug = verbose? console.log.bind(console) : void 0;
+app.version('0.3.0');
 	
-	createQueen({
-		callback: onQueenReady,
-		port: capturePort,
-		host: captureHost,
-		heartbeatInterval: heartbeatInterval,
-		log: log,
-		debug: debug
-	});
-
-	populatorConfigs.forEach(function(populatorConfig){
-		var createPopulator, 
-			populator;
-		switch(populatorConfig.type){
-			case "selenium":
-				createPopulator = require('../lib/server/populator/selenium.js');
-				populator = createPopulator(populatorConfig.config);
-				break;
-			case "sauce":
-				createPopulator = require('../lib/server/populator/sauce.js');
-				populator = createPopulator(populatorConfig.config.username, populatorConfig.config.accessKey, populatorConfig.config);
-				break;
-			case "browserstack":
-				createPopulator = require('../lib/server/populator/browserstack.js');
-				populator = createPopulator(populatorConfig.config);
-				break;
-			default:
-				console.log('Unknown populator type: ' + populatorConfig.type);
-				return;
-		}
-
-		populator.clients = populatorConfig.clients || [];
-		
-		populators.push(populator);
-	});
-
-	function onQueenReady(queen){
-		process.on('exit', queen.kill); // Won't work on Windows - booooo
-		
-		populators.forEach(function(populator){
-			queen.attachPopulator(populator);
-		});
-
-		// If a script was defined, execute it with queen as a global variable
-		if(script){
-			try {
-				global.queen = queen;
-				global.require = require;
-				var context = vm.createContext(global);
-				vm.runInContext(fs.readFileSync(script), context);
-			} catch(e) {
-				if (e.name === 'SyntaxError') {
-				  console.error('Syntax error in script file!\n' + e.message);
-				} else if (e.code === 'ENOENT' || e.code === 'EISDIR') {
-				  console.error('Script file does not exist!');
-				} else {
-				  console.error('Invalid file!\n', e);
-				}
-
-				process.exit(1);
-			}
-		} 
-
-		if(!noRemote) {
-			var remoteServer = createQueenRemoteServer(queen, {
-				port: port,
-				host: host || getExternalIpAddress(),
-				log: log,
-				debug: debug
-			});
-		}
-	}
-};
-
-app.version('0.1.0');
-	
-app.option('-c, --config [path]', 'The queen configuration file to use')
-	.option('-p, --port <n>', 'The port to bind the remote server to', parseInt)
-	.option('-h, --host [hostname]', 'The host to bind the remote server to')
-	.option('--noRemote', 'Disable remote requests to this server')
+app.option('-h, --host [host]', 'The host to bind the remote server to')
+	.option('--httpHost [hostname]', 'The host ot bind the http server to for capturing browsers', parseInt)
 	.option('--heartbeatInterval <n>', 'Milliseconds clients have to send a heartbeat until deemed unresponsive', parseInt)
-	.option('--capturePort <n>', 'The port to use when capturing browsers', parseInt)
-	.option('--captureHost [hostname]', 'The hostname to use when capturing browsers')
 	.option('-v, --verbose', 'Whether to log verbosely')
-	.option('-q, --quiet', 'Don\'t output anything to output stream')
-	.option('-s, --script [script]', 'A queen script to run');
+	.option('-q, --quiet', 'Don\'t output anything to output stream');
+
+app.command("*","hi").action(function(filePath){
+	var args = Array.prototype.slice.call(arguments, 0);
+	// Discard the last arg, which is commander
+	args.pop();
+	
+	config.file = args[0];
+});
+
+app.on('--help', function(){
+  console.log('  Examples:');
+  console.log('');
+  console.log('  Start queen with default options:');
+  console.log('    $ queen');
+  console.log('');
+  console.log('  Run a JavaScript file, adding in a "queen" global variable:');
+  console.log('    $ queen my-queen-script.js');
+  console.log('');
+  console.log('  Start a queen server on the hostname "queen.turn.com", listening to port 9564 for runners:');
+  console.log('    $ queen -h queen.turn.com:9564');
+  console.log('');
+});
 
 app.parse(process.argv);
 
-startQueen(app);
+if(!startThrill) return;
 
+config.host = app.host;
+config.quiet = app.quiet;
+config.verbose = app.verbose;
+
+queenRunner(config);
