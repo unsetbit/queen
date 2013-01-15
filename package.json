@@ -1,6 +1,6 @@
 {
   "name": "queen",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Rule browsers remotely",
   "main": "index.js",
   "dependencies": {
@@ -22,7 +22,6 @@
     "grunt-contrib-copy": "~0.3.1",
     "grunt-contrib-less": "~0.3.2",
     "grunt-soy": "~0.3.0",
-    "winston": "~0.6.2",
     "mocks": "~0.0.10",
     "sinon": "~1.5.2"
   },
