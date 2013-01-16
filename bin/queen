@@ -15,11 +15,12 @@ app.option('-h, --host [host]', 'The host to bind the remote server to')
 	.option('-q, --quiet', 'Don\'t output anything to output stream');
 
 app.command("*").action(function(filePath){
-	var args = Array.prototype.slice.call(arguments, 0);
-	// Discard the last arg, which is commander
-	args.pop();
 	
-	config.file = path.resolve(args[0]);
+	if(~filePath.indexOf("://")){
+		config.script = filePath;
+	} else {
+		config.file = path.resolve(args[0]);
+	}
 });
 
 app.on('--help', function(){
