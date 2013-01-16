@@ -19,7 +19,7 @@ app.command("*").action(function(filePath){
 	if(~filePath.indexOf("://")){
 		config.script = filePath;
 	} else {
-		config.file = path.resolve(args[0]);
+		config.file = path.resolve(filePath);
 	}
 });
 
