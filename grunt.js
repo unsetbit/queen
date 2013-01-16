@@ -67,7 +67,7 @@ module.exports = function(grunt) {
     watch: {
         client: {
           files: '<config:files.client.src>',
-          tasks: 'hug:client'
+          tasks: 'hug:client min:client copy:dist'
         },
         monitor: {
           files: '<config:files.monitor.src>',

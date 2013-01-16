@@ -10,52 +10,44 @@ The process will continue to run until one browser guesses the right number,
 if no browsers are connected, it'll idle and wait.
 
 */
-var express = require('express');
-var fs = require('fs');
-var app = express();
-app.use(express.static('../static'));
-
-app.listen(81, onServerReady);
-function onServerReady(){
-	var startTime = (new Date()).getTime();
-	var numberToFind = 42;
-	var maxNumber = 100;
+function onHttpServerReady(){
+	var numberToFind = 42,
+		maxNumber = 300;
 
 	var workforce = queen({
-		html: fs.readFileSync('../static/test.html').toString(),
+		run: ['http://localhost:9300'],
 		populate: "continuous",
 		killOnStop: false,
-		handler: function(worker){
-			worker(maxNumber);
-		}
+		handler: workerHandler
 	});
 
-	workforce.on('message', function(number, worker){
-		console.log(number + " (" + worker.provider.attributes.name + ")");
-
-		if(number === 42){
-			workforce.kill();	
-			var endTime = (new Date()).getTime();
-			var secondsToComplete = (endTime - startTime) / 1000;
-			console.log('Done! That took ' + secondsToComplete + " seconds. The winner was " + worker.provider.attributes.name);
-			process.exit(0);
-		}
-	});
+	function workerHandler(worker){
+		worker(maxNumber);
+		
+		worker.on("message", function(guessedNumber){
+			console.log(guessedNumber + " \t guessed by" + worker.provider.attributes.name);
+			if(guessedNumber === numberToFind){
+				workforce.kill();	
+				console.log("Done! The winner was " + worker.provider.attributes.name);
+				process.exit(0);
+			}
+		});
+	}
 };
-/*
+
 // This spawns a basic http server which just serves the client-side script.
 // This is done just to keep everything in the example inside one file,
 // in real life, you should serve your scripts out of a more respectable server.
-var script ="	queenSocket.onMessage = function(message){";
-script += 	"		var interval = setInterval(function(){";
-script += 	"			var guess = Math.floor(Math.random() * message);";
-script += 	"			queenSocket(guess);";
-script += 	"			if(guess == 42) clearInterval(interval);";
-script += 	"		}, 100);";
-script +=	"	};"
+var theClientScript = "" +
+"	queenSocket.onMessage = function(maxNumber){				"+
+"		setInterval(function(){									"+
+"			var guess = Math.floor(Math.random() * maxNumber);	"+
+"			queenSocket(guess);									"+
+"		}, 100);												"+
+"	};															";
 
-var server = require('http').createServer(function(request, response){
-	response.writeHead(200, {'Content-Type': 'application/javascript'});
-	response.end(script);
-}).listen('9235', onServerReady);
-*/
+var http = require('http');
+
+var server = http.createServer(function(request, response){
+	response.end(theClientScript);
+}).listen(9300, onHttpServerReady);

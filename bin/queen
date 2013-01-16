@@ -1,24 +1,25 @@
 #!/usr/bin/env node
 
 var app = require('commander'),
+	path = require('path'),
 	queenRunner = require('../lib/server/runner.js'),
-	startThrill = true,
+	startQueen = true,
 	config = {};
 
 app.version('0.3.0');
 	
 app.option('-h, --host [host]', 'The host to bind the remote server to')
-	.option('--httpHost [hostname]', 'The host ot bind the http server to for capturing browsers', parseInt)
+	.option('--httpHost [hostname]', 'The host ot bind the http server to for capturing browsers')
 	.option('--heartbeatInterval <n>', 'Milliseconds clients have to send a heartbeat until deemed unresponsive', parseInt)
 	.option('-v, --verbose', 'Whether to log verbosely')
 	.option('-q, --quiet', 'Don\'t output anything to output stream');
 
-app.command("*","hi").action(function(filePath){
+app.command("*").action(function(filePath){
 	var args = Array.prototype.slice.call(arguments, 0);
 	// Discard the last arg, which is commander
 	args.pop();
 	
-	config.file = args[0];
+	config.file = path.resolve(args[0]);
 });
 
 app.on('--help', function(){
@@ -37,9 +38,10 @@ app.on('--help', function(){
 
 app.parse(process.argv);
 
-if(!startThrill) return;
+if(!startQueen) return;
 
 config.host = app.host;
+config.httpHost = app.httpHost;
 config.quiet = app.quiet;
 config.verbose = app.verbose;
 

@@ -1,6 +1,6 @@
 {
 	"populators":[],
 	"quiet": false,
-	"verbose": false,
+	"verbose": true,
 	"port": 9200
 }
