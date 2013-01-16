@@ -88,31 +88,31 @@
           <ol>
             <li>Install <a href="http://nodejs.org/">Node.js</a></li>
             <li>In your terminal, run: <pre>npm install -g queen</pre></li>
-            <li>Run: <pre>queen --capture localhost:9300 <a href="http://queenjs.com/server-example.js">http://queenjs.com/server-example.js</a></pre></li>
+            <li>Run: <pre>queen -c :9300 <a href="http://queenjs.com/server-example.js">http://queenjs.com/server-example.js</a></pre></li>
             <li><a href="http://localhost:9300/capture.html" target="_blank">Click here</a> and watch your terminal.</li>
           </ol>
         <p>
 
         <h3>It's not for guessing numbers</h3>
         <p>
-          Queen is a webserver which "captures" browsers, and then is able to push scripts for them to run in a clean context
+          Queen is a webserver which captures browsers and then is able to push scripts for them to run in a clean context
           (an iframe). Here are somethings it can do out of the box:
 
           <ul>
             <li>Bidirectional communication between your client-side and server-side script (using <a href="http://socket.io/">socket.io</a>).</li>
             <li>Run scripts via command line, configuration file, or import Queen in to your own project.</li>
             <li>Target connected browsers based on user-agent or <a href="http://modernizr.com/">Modernizr</a> capabilities.</li>
-            <li>Connect browsers manually or automatically from the cloud using <a href="http://www.browserstack.com">BrowserStack</a>, or <a href="https://saucelabs.com/">SauceLabs</a> (or with <a href="http://seleniumhq.org/">Selenium</a>).</li>
+            <li>Connect browsers automatically using <a href="http://seleniumhq.org/">Selenium</a>, <a href="http://www.browserstack.com">BrowserStack</a>, or <a href="https://saucelabs.com/">SauceLabs</a>.</li>
             <li>Run scripts on browsers connected to a central Queen server remotely using a thin-client (<a href="https://github.com/ozanturgut/queen-remote">queen-remote</a>).</li>
             <li>Automatically detects and recovers unresponsive browsers.</li>
-            <li>Run a list of scripts or an HTML file.</li>
+            <li>Can run lists of scripts or an HTML files.</li>
           </ul>
         </p>
         
         <p>Queen is the foundation of <a href="http://thrilljs.com">Thrill</a>, a test runner.
 
         <h3>Developing</h3>
-        <p>Hack on this at <a href="https://github.com/ozanturgut/queen">GitHub</a>.</p>
+        <p>Contributions welcome at <a href="https://github.com/ozanturgut/queen">GitHub</a>.</p>
         <div id="credit">
           Queen was created by <a href="https://github.com/ozanturgut">Ozan</a> at <a href="http://www.turn.com/platform">Turn</a>,
           it bears the <a href="https://github.com/ozanturgut/queen/blob/master/LICENSE-APACHE2">Apache 2.0 License</a>.
