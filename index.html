@@ -16,9 +16,14 @@
 <style>
   body{font-family: 'Lora'; padding:50px;}
   
-  #logo {float:left; height:400px; width:400px;}
+  #logo {height:400px; width:400px;}
   #title{
     min-height:400px;
+  }
+
+  #title div{
+    vertical-align: top;
+    display:inline-block;
   }
   h1{
     padding-left:20px;
@@ -31,61 +36,86 @@
     padding-left:20px;
     margin-top:10px;
     margin-left:7px;
+    text-align: center;
   }
 
   #body{
+    line-height:150%;
     padding:20px;
-    margin-top:30px;
     width:820px;
   }
 
   h3{
     font-size:26px;
+    margin-top:50px;
   }
   p{line-height:150%; margin:20px 0px;}
+  pre{display:inline;margin:0px 10px;}
 
   ol{list-style-type:decimal;padding-left:20px;}
+  ul{list-style-type:square; padding-left:20px;}
+
+  #credit{margin-top:40px;}
 </style>
 
   </head>
   <body>
     <div id="title">
         <img id="logo" src="resources/queen-bee.png"/>
-        <h1>Queen</h1>
-        <h2>A platform for running scripts on many browsers.</h2>
+        <div>
+          <h1>Queen</h1>
+          <h2>Runs scripts on many browsers</h2>
+        </div>
     </div>
 
     <div id="body">
-        <h3>"A platform for running scripts on many browsers?"</h3>
+        <h3>A platform for running scripts on many browsers</h3>
         <p>
-          It's best to explain with an example.
+          Let's say you want to play a game where you write down a number and others try to
+          guess it. To make it easier, you give the players a maximum number when starting.
+          You gather a bunch of friends, explain the rules, and give the maximum number.
+          Your friends then yell out random numbers between 0 and the maximum number until 
+          you hear the right number.
         </p>
         <p>
-          Let's say you write down a number, and then tell a group of workers that 
-          the number you wrote down is less than a maximum number. The job of the
-          workers is to yell out random numbers between 0 and the maximum number 
-          until you hear the right number.
+          Now imagine your friends are browsers, and the game is a script which tells 
+          browsers how to play, gives them a maximum number, and waits for one of them 
+          to guess the right number. This makes you the Queen Server.
         </p>
         <p>
-          Now lets say that the group of people are browsers. Browsers which are willing to 
-          do what you ask of them and have bidirectional communication with you while doing it.
-          In this case, you are the Queen Server.
-        </p>
-        <p>
-          Here is how to make the above example a reality:
+          Here is how to make this example a reality:
 
           <ol>
             <li>Install <a href="http://nodejs.org/">Node.js</a></li>
-            <li>In your terminal, run: npm install -g queen</li>
-            <li>Now, run: queen <a href="http://queenjs.com/server-example.js">http://queenjs.com/server-example.js</a></li>
+            <li>In your terminal, run: <pre>npm install -g queen</pre></li>
+            <li>Run: <pre>queen --capture localhost:9300 <a href="http://queenjs.com/server-example.js">http://queenjs.com/server-example.js</a></pre></li>
+            <li><a href="http://localhost:9300/capture.html" target="_blank">Click here</a> and watch your terminal.</li>
           </ol>
         <p>
 
-        <h3>Learning More</h3>
-        <h3>Developing</h3>
+        <h3>It's not for guessing numbers</h3>
+        <p>
+          Queen is a webserver which "captures" browsers, and then is able to push scripts for them to run in a clean context
+          (an iframe). Here are somethings it can do out of the box:
 
+          <ul>
+            <li>Bidirectional communication between your client-side and server-side script (using <a href="http://socket.io/">socket.io</a>).</li>
+            <li>Run scripts via command line, configuration file, or import Queen in to your own project.</li>
+            <li>Target connected browsers based on user-agent or <a href="http://modernizr.com/">Modernizr</a> capabilities.</li>
+            <li>Connect browsers manually or automatically from the cloud using <a href="http://www.browserstack.com">BrowserStack</a>, or <a href="https://saucelabs.com/">SauceLabs</a> (or with <a href="http://seleniumhq.org/">Selenium</a>).</li>
+            <li>Run scripts on browsers connected to a central Queen server remotely using a thin-client (<a href="https://github.com/ozanturgut/queen-remote">queen-remote</a>).</li>
+            <li>Automatically detects and recovers unresponsive browsers.</li>
+            <li>Run a list of scripts or an HTML file.</li>
+          </ul>
+        </p>
+        
+        <p>Queen is the foundation of <a href="http://thrilljs.com">Thrill</a>, a test runner.
+
+        <h3>Developing</h3>
+        <p>Hack on this at <a href="https://github.com/ozanturgut/queen">GitHub</a>.</p>
         <div id="credit">
-          This is <a href="https://github.com/ozanturgut/queen/blob/master/LICENSE-APACHE2">free</a> software created by <a href="https://github.com/ozanturgut">Ozan</a> at <a href="http://www.turn.com/platform">Turn</a>. 
+          Queen was created by <a href="https://github.com/ozanturgut">Ozan</a> at <a href="http://www.turn.com/platform">Turn</a>,
+          it bears the <a href="https://github.com/ozanturgut/queen/blob/master/LICENSE-APACHE2">Apache 2.0 License</a>.
         </div>
     </div>
     

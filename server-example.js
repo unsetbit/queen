@@ -40,7 +40,7 @@ workforceConfig.handler = function(worker){
 			console.log("Done! The winner was " + worker.provider.attributes.name);
 		
 			// Exit the entire process
-			queen.kill()
+			process.exit(0);
 		}
 	});
 };
