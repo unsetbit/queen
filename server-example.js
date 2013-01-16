@@ -13,7 +13,7 @@ if no browsers are connected, it'll idle and wait.
 
 var numberToFind = 42,
 	maxNumber = 300,
-	workforceConfig,
+	workforceConfig = {},
 	workforce;
 
 // Run this script on the client-side (i.e. browser).
