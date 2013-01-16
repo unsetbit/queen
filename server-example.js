@@ -33,7 +33,7 @@ workforceConfig.handler = function(worker){
 	
 	// Whenever a worker has a message, execute a handler function
 	worker.on("message", function(guessedNumber){
-		console.log(guessedNumber + " \t guessed by" + worker.provider.attributes.name);
+		console.log(guessedNumber + " \t guessed by " + worker.provider.attributes.name);
 
 		if(guessedNumber === numberToFind){
 			workforce.kill();	
