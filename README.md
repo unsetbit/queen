@@ -7,7 +7,16 @@ and server-side scripts. You can think of the Queen Server as a pool of browsers
 the abstraction further, you can think of Queen Server as distributed execution platform using browsers as computation
 nodes.
 
-## Explanation by Example
+In this README:
+* [Explanation by Example](#explanation-by-example)
+* [Features](#features)
+* [Queen Scripts](#queen-scripts)
+* [Intended Usage](#intended-usage)
+* [Command-line Options](#command-line-options)
+* [Config File Options](#command-line-options)
+* [Technical Documentation](#technical-documentation)
+
+# <a id="explanation-by-example"></a>Explanation by Example
 Let's say you want to play a game where you write down a number and others try to guess it. 
 To make it easier, you give the players a maximum number when starting. You gather a bunch of friends, 
 explain the rules, and give the maximum number. Your friends then yell out random numbers between 0 and the 
@@ -31,7 +40,7 @@ Here's what happened:
 3. You asked queen to start capturing browsers on port 9300 and then download and run a server-side queen script.
 4. You pointed your browser to the queen server, allowing queen to push code that the server-side script requested to run on browsers (the "client-side script"). This client-script then started reporting back to the server-side script random number guesses. Once the server-side script saw the correct number, it ended the process.
 
-## Features
+## <a id="features"></a>Features
 * Bidirectional communication between your client-side and server-side script (using socket.io).
 * Run scripts via command line, configuration file, or import Queen into your own project as a library.
 * Target connected browsers based on user-agent or Modernizr capabilities.
@@ -40,10 +49,9 @@ Here's what happened:
 * Automatically detects and recovers unresponsive browsers.
 * Can run lists of scripts or an HTML files.
 
-## Browser Support
 Queen uses (Socket.io) for server-client communication, Socket.io supports IE5.5+, which is the same goal for Queen.
 
-## Queen Scripts
+## <a id="queen-scripts"></a>Queen Scripts
 You need two scripts to run queen: a client-side script which will run on browsers, and a server-side script which all
 of the client-side scripts will communicate with. Here's an example of two such scripts:
 
@@ -110,7 +118,7 @@ This tells queen to run the server script, and listen for browsers on port 9300.
 [http://localhost:9300/capture.html](http://localhost:9300/capture.html), you'll add that browser as a worker,
 and queen will automatically push the client-side script to the browser to run the test.
 
-## Intended Usage
+## <a id="intended-usage"></a>Intended Usage
 
 The examples above are single-user scenarios, and don't do justice
 to the scale Queen affords. Queen is intended to act as a browser pool. In real use, you should have one Queen 
@@ -121,7 +129,7 @@ on browsers which are connected to a central queen server. Queen gives each clie
 many scripts can run on the same browser simultaneously. If you're using an automatic populator (such as Selenium)
 Queen will even recover browsers which crash.
 
-## Commandline Options
+## <a id="command-line-options"></a>Command-line Options
 
 ### ```-h``` or ```--host [host]```  _[Internal IP Address]:9200 by default_
 
@@ -153,7 +161,7 @@ If the file is a Queen config file, it will be used to configure this queen inst
 If the file is a Queen server-side script, queen will disable it's remote server and execute 
 the server-side script.
 
-## Config File
+## <a id="config-file-options"></a>Config File Options
 Queen can be started with a config file by naming the file "queenConfig.js" and executing queen in the
 same directory, or by telling Queen the file path to use (example: `queen myConfig.js`). The config file
 defines variables, which will be used as the configuration options for queen.
@@ -235,7 +243,7 @@ Supress logging.
 
 Milliseconds clients have to send a heartbeat until they're considered unresponsive.
 
-## Documentation
+## <a id="documentation"></a>Documentation
 * [Technical Overview](https://github.com/ozanturgut/queen/wiki)
 * [Client API](https://github.com/ozanturgut/queen/wiki/Client-API)
 * [Server API](https://github.com/ozanturgut/queen/wiki/Server-API)
