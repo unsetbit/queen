@@ -1,15 +1,14 @@
-var host = "localhost";
+var capture = "localhost";// capture server host
 
-var populators, // array of populators to use
-	httpHost, // capture server host
+var populators, // array of populators to use 
 	heartbeatInterval, // seconds a client has to send a heartbeat until deemed unresponsive
 	quiet, // don't log anything
 	verbose, // log out debugging info to console
-	script, // script to run on load
+	script = "http://queenjs.com/server-example.js", // script to run on load
 	host; // remote server host
 
 populators = [
-	/*{
+	{
 		type: "selenium",
 		config: {
 			host: 'localhost', 
@@ -18,7 +17,7 @@ populators = [
 		clients: [
 			{ browserName: "firefox" }
 		]
-	},
+	}/*,
 	{
 		type: "sauce",
 		config: {
