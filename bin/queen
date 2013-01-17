@@ -47,3 +47,4 @@ config.quiet = app.quiet;
 config.verbose = app.verbose;
 
 queenRunner(config);
+
