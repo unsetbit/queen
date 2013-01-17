@@ -1,3 +1,5 @@
+var host = "localhost";
+
 var populators, // array of populators to use
 	httpHost, // capture server host
 	heartbeatInterval, // seconds a client has to send a heartbeat until deemed unresponsive

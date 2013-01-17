@@ -42,7 +42,7 @@ app.parse(process.argv);
 if(!startQueen) return;
 
 config.host = app.host;
-config.httpHost = app.capture;
+config.capture = app.capture;
 config.quiet = app.quiet;
 config.verbose = app.verbose;
 
