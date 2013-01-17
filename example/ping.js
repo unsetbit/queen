@@ -17,13 +17,18 @@ function onServerReady(){
 		populate: "continuous",
 		killOnStop: false,
 		handler: function(worker){
-			worker.on('message', function(message){
-				if(message === 'pong'){
-					console.log('Ping-ponged with ' + worker.provider);
+			worker.on('message', function(num){
+				console.log(worker.provider + " is at " + num);
+				if(num === 10){
 					worker.kill();
+				} else {
+					// Echo the number back to the worker
+					worker(num);
 				}
 			});
-			worker('ping');
+
+			// Initialize the worker at 0
+			worker(0);
 		}
 	});
 };
@@ -31,10 +36,10 @@ function onServerReady(){
 // This spawns a basic http server which just serves the client-side script.
 // This is done just to keep everything in the example inside one file,
 // in real life, you should serve your scripts out of a more respectable server.
-var script = "	queenSocket.onMessage = function(message){";
-script += "			if(message === 'ping'){";
-script += "				queenSocket('pong');";
-script += "			}";
+var script = "	queenSocket.onMessage = function(num){";
+script += "			setTimeout(function(){";
+script += "				queenSocket(num + 1);";
+script += "			}, 1000);";
 script += "		};";
 
 var server = require('http').createServer(function(request, response){
