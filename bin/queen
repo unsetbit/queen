@@ -27,13 +27,13 @@ app.on('--help', function(){
   console.log('  Examples:');
   console.log('');
   console.log('  Start queen with default options:');
-  console.log('    $ queen');
+  console.log('     $ queen');
   console.log('');
   console.log('  Run a JavaScript file, adding in a "queen" global variable:');
-  console.log('    $ queen my-queen-script.js');
+  console.log('     $ queen my-queen-script.js');
   console.log('');
   console.log('  Start a queen server on the hostname "queen.turn.com", listening to port 9564 for runners:');
-  console.log('    $ queen -h queen.turn.com:9564');
+  console.log('     $ queen -h queen.turn.com:9564');
   console.log('');
 });
 
