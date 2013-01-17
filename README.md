@@ -243,7 +243,7 @@ Supress logging.
 
 Milliseconds clients have to send a heartbeat until they're considered unresponsive.
 
-## <a id="documentation"></a>Documentation
+## <a id="technical-documentation"></a>Technical Documentation
 * [Technical Overview](https://github.com/ozanturgut/queen/wiki)
 * [Client API](https://github.com/ozanturgut/queen/wiki/Client-API)
 * [Server API](https://github.com/ozanturgut/queen/wiki/Server-API)
