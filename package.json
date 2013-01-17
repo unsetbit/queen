@@ -1,7 +1,7 @@
 {
   "name": "queen",
-  "version": "0.3.3",
-  "description": "Rule browsers remotely",
+  "version": "0.3.4",
+  "description": "A platform for running scripts on many browsers",
   "main": "index.js",
   "dependencies": {
     "commander": "~1.0.4",
@@ -28,6 +28,9 @@
   "scripts": {
     "test": "grunt test"
   },
+  "engines": {
+    "node": "~0.8.0"
+  },
   "preferGlobal": true,
   "repository": {
     "type": "git",
@@ -48,13 +51,15 @@
     "remote",
     "parallel",
     "browser"
-  ],  
+  ],
+  "homepage": "http://queenjs.com",
   "bin": {
     "queen": "./bin/queen"
   },
   "author": {
     "name": "Ozan Turgut",
-    "email": "ozanturgut@gmail.com"
+    "email": "ozanturgut@gmail.com",
+    "url": "http://oztu.org"
   },
   "licenses": [
     {

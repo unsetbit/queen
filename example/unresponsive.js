@@ -1,6 +1,8 @@
 /* 	
 Unresponsive Example
 
+From this directory, run: ../bin/queen --heartbeatInterval 2000 unresponsive.js
+
 This example shows how queen can detect and kill the workers of unresponsive 
 hosts (browsers) proactively.
 

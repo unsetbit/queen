@@ -1,6 +1,8 @@
 /*
 Ping Example
 
+From this directory, run: ../bin/queen ping.js
+
 This example illustrates basic message passing in queen.
 
 Browsers which connect to the server (or are already connected) will spawn
