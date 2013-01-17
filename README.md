@@ -13,7 +13,6 @@ In this README:
 * [Queen Scripts](#queen-scripts)
 * [Intended Usage](#intended-usage)
 * [Command-line Options](#command-line-options)
-* [Config File Options](#command-line-options)
 * [Technical Documentation](#technical-documentation)
 
 # <a id="explanation-by-example"></a>Explanation by Example
@@ -130,6 +129,10 @@ many scripts can run on the same browser simultaneously. If you're using an auto
 Queen will even recover browsers which crash.
 
 ## <a id="command-line-options"></a>Command-line Options
+Queen can be executed through the command line as `queen [options] [filepath]`.
+The only thing you cannot configure through the command line is populators, you'll need a 
+[Queen config file](https://github.com/ozanturgut/queen/wiki/Queen-Config-File) to define those.
+
 
 ### ```-h``` or ```--host [host]```  _[Internal IP Address]:9200 by default_
 
@@ -156,92 +159,10 @@ Supress logging.
 This can either be a local file path, or a URL. The file can either be a Queen config file, or
 a server-side Queen script.
 
-If the file is a Queen config file, it will be used to configure this queen instance.
+If the file is a [Queen config file](https://github.com/ozanturgut/queen/wiki/Queen-Config-File), it will be used to configure this queen instance.
 
 If the file is a Queen server-side script, queen will disable it's remote server and execute 
 the server-side script.
-
-## <a id="config-file-options"></a>Config File Options
-Queen can be started with a config file by naming the file "queenConfig.js" and executing queen in the
-same directory, or by telling Queen the file path to use (example: `queen myConfig.js`). The config file
-defines variables, which will be used as the configuration options for queen.
-
-### ```host```
-
-The host to bind the remote server to. This is the address queen-remote clients will connect to.
-
-### ```capture```
-
-The address to bind the capture server to. Browsers will navigate to the url + "/capture.html" to connect to Queen.
-
-### ```script```
-
-A server-side Queen script to run when Queen initializes.
-
-### ```populators```
-
-An array of automatic populators to use.
-Queen support auto population from [Selenium Grid](http://seleniumhq.org/), [SauceLabs](https://saucelabs.com/), 
-and [BrowserStack](http://www.browserstack.com/). If you're using a cloud service, you need to enable tunneling in order for the browsers 
-to connect to Queen.
-
-Here is an example:
-```javascript
-populators = [
-	{
-		type: "selenium",
-		config: {
-			host: '[SELENIUM GRID HOST', 
-			port: [SELENIUM GRID PORT]
-		},
-		clients: [
-			{ browserName: "firefox" }
-		]
-	},
-	{
-		type: "sauce",
-		config: {
-			username: "[SAUCE USERNAME]",
-			accessKey: "[SAUSE ACCESS KEY]"
-		},
-		clients: [ // Array of clients to auto populate
-			{ 
-				browserName: "ipad",
-				platform: "Mac 10.8",
-				version: "5.1"
-			}
-		]
-	},
-	{
-		type: "browserstack",
-		config: {
-			username: "[BROWSER STACK USERNAME]",
-			password: "[BROWSER STACK PASSWORD]",
-			version: 2 // The api version to use
-		},
-		clients: [ // Array of clients to auto populate
-			{ 
-				browser: "firefox",
-				version: "11.0",
-				os: "win"
-			}
-		]
-	}
-];
-
-```
-
-### ```verbose```
-
-Enable debug logging.
-
-### ```quiet```
-
-Supress logging.
-
-### ```heartbeatInterval```
-
-Milliseconds clients have to send a heartbeat until they're considered unresponsive.
 
 ## <a id="technical-documentation"></a>Technical Documentation
 * [Technical Overview](https://github.com/ozanturgut/queen/wiki)
