@@ -7,7 +7,7 @@ and server-side scripts. You can think of the Queen Server as a pool of browsers
 the abstraction further, you can think of Queen Server as distributed execution platform using browsers as computation
 nodes.
 
-In this README:
+In this file:
 * [Explanation by Example](#explanation-by-example)
 * [Features](#features)
 * [Queen Scripts](#queen-scripts)
