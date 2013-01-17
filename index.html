@@ -62,6 +62,7 @@ font-weight:bold;
 
   </head>
   <body>
+    <a href="https://github.com/ozanturgut/queen"><img style="position: fixed; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_gray_6d6d6d.png" alt="Fork me on GitHub"></a>
     <div id="title">
         <img id="logo" src="resources/queen-bee.png"/>
         <div>
@@ -90,8 +91,17 @@ font-weight:bold;
           <ol>
             <li>Install <a href="http://nodejs.org/">Node.js</a></li>
             <li>In your terminal, run: <pre><span id="sudo">sudo </span>npm install -g queen</pre></li>
-            <li>Run: <pre>queen -c :9300 <a href="http://queenjs.com/server-example.js">http://queenjs.com/server-example.js</a></pre></li>
+            <li>Run: <pre>queen -c *:9300 <a href="http://queenjs.com/server-example.js">http://queenjs.com/server-example.js</a></pre></li>
             <li><a href="http://localhost:9300/capture.html" target="_blank">Click here</a> and watch your terminal.</li>
+          </ol>
+        </p>
+        <p>
+          Here's what happened:
+          <ol>
+            <li>You installed software that allows you to run code on a JavaScript engine through the command line.</li>
+            <li>You installed queen.</li>
+            <li>You asked queen to start capturing browsers on port 9300 and then download and run a server-side queen script.</li>
+            <li>You pointed your browser to the queen server, allowing queen to push code that the server-side script requested to run on browsers (the "client-side script"). This client-script then started reporting back to the server-side script random number guesses. Once the server-side script saw the correct number, it ended the process.</li>
           </ol>
         <p>
 
@@ -111,7 +121,7 @@ font-weight:bold;
           </ul>
         </p>
         
-        <p>Queen is the foundation of <a href="http://thrilljs.com">Thrill</a>, a test runner.
+        <p>Queen is the foundation of <a href="http://thrilljs.com">Thrill</a>, a test runner for web applications.
 
         <h3>Developing</h3>
         <p>Contributions welcome at <a href="https://github.com/ozanturgut/queen">GitHub</a>.</p>
