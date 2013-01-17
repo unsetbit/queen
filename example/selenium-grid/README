@@ -1,0 +1,20 @@
+/*
+Selenium Grid Example
+
+To run this example:
+1) Download http://selenium.googlecode.com/files/selenium-server-standalone-2.28.0.jar in to this directory
+2) Run this command to start the Grid hub: java -jar selenium-server-standalone-2.28.0.jar -role hub -hubConfig hub.json
+3) Run this command to start a Grid node: java -jar selenium-server-standalone-2.28.0.jar -role node -hubConfig node.json
+4) Run this command to start Queen: node ../../bin/queen
+
+Selenium is a web browser driver. Queen can connect to a Selenium Grid in order to automatically
+populate itself with browsers. To do that we'll start a Selenium Grid hub and node on this machine,
+then run queen with the configuration defined in queenConfig.js.
+
+Once Queen starts, it will connect to the Selenium hub and request that it spawns a Firefox browser
+and points it at it's capture url. Once the browser is connected, Queen will automatically run the
+server-side script defined at http://queenjs.com/server-example.js. 
+
+The configuration options are defined in queenConfig.js.
+
+*/
