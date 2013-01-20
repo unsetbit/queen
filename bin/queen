@@ -46,9 +46,13 @@ config.plugin = {};
 config.plugin.monitor = require("../../queen-monitor-plugin/");
 config.plugin.populator = require("../../queen-populator-plugin/");
 
-queenRunner(queenFactory, config, function(error){
-	if(error instanceof Error){
-		throw error;
+queenRunner(queenFactory, config, function(queen){
+	if(queen instanceof Error){
+		throw queen; // this is an error object
+	} else {
+		queen.on('dead', function(){
+			process.exit(0);
+		});
 	}
 });
 

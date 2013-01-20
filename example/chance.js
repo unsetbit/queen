@@ -16,7 +16,7 @@ if no browsers are connected, it'll idle and wait.
 module.exports = function(queen){
 	function onHttpServerReady(){
 		var numberToFind = 42,
-			maxNumber = 500;
+			maxNumber = 100;
 
 		var workforce = queen({
 			run: ['http://localhost:9300'],
@@ -36,7 +36,7 @@ module.exports = function(queen){
 				if(guessedNumber === numberToFind){
 					workforce.kill();	
 					console.log("Done! The winner was " + worker.provider.attributes.name);
-					process.exit(0);
+					queen.kill();
 				}
 			});
 		}
