@@ -46,5 +46,9 @@ config.plugin = {};
 config.plugin.monitor = require("../../queen-monitor-plugin/");
 config.plugin.populator = require("../../queen-populator-plugin/");
 
-queenRunner(queenFactory, config);
+queenRunner(queenFactory, config, function(error){
+	if(error instanceof Error){
+		throw error;
+	}
+});
 
