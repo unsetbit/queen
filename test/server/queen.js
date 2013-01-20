@@ -80,6 +80,7 @@ exports.queen = {
 		this.socketServer = createMockSocketServer();
 		this.socket = this.socketServer.socket;
 		this.queen = new Queen(this.socketServer, {all:sinon.spy(), use: sinon.spy()}, "");
+		this.api = queenModule.getApi(this.queen);
 		callback();
 	},
 	construct: function(test){
@@ -92,7 +93,7 @@ exports.queen = {
 	},
 	addWorkerProvider: function(test){
 		var spy = sinon.spy();
-		this.queen.api.on("workerProvider", spy);
+		this.api.on("workerProvider", spy);
 		var provider = createMockWorkerProvider();
 		this.queen.addWorkerProvider(provider);
 		test.ok(spy.calledWith(provider), "Worker provider not emitted");
@@ -100,7 +101,7 @@ exports.queen = {
 	},
 	workerProviderDead: function(test){
 		var spy = sinon.spy();
-		this.queen.api.on("workerProviderDead", spy);
+		this.api.on("workerProviderDead", spy);
 		var provider = createMockWorkerProvider();
 		this.queen.addWorkerProvider(provider);
 		provider.kill();
@@ -149,7 +150,7 @@ exports.queen = {
 	},
 	getWorkforce: function(test){
 		var spy = sinon.spy();
-		this.queen.api.on('workforce', spy);
+		this.api.on('workforce', spy);
 
 		var workforce = this.queen.getWorkforce({});
 
@@ -160,7 +161,7 @@ exports.queen = {
 	},
 	workforceDead: function(test){
 		var spy = sinon.spy();
-		this.queen.api.on('workforceDead', spy);
+		this.api.on('workforceDead', spy);
 
 		var workforce = this.queen.getWorkforce({});
 		workforce.kill();
@@ -196,7 +197,7 @@ exports.queen = {
 	},
 	kill: function(test){
 		var spy = sinon.spy();
-		this.queen.api.on('dead', spy);
+		this.api.on('dead', spy);
 
 		var provider = createMockWorkerProvider();
 		this.queen.addWorkerProvider(provider);
