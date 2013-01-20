@@ -1,10 +1,10 @@
-var script = "http://queenjs.com/server-example.js"; // script to run on load
-var populators = [
-	{
+module.exports = {
+	script: "http://queenjs.com/server-example.js"; // script to run on load
+	populator: {
 		type: "sauce",
 		config: {
 			username: "ozanturgut",
-			accessKey: "71dd81a2-1ff4-474a-be88-26fcb9be8bb3"
+			accessKey: ""
 		},
 		clients: [
 			{ 
@@ -14,4 +14,4 @@ var populators = [
 			}
 		]
 	}
-];
+};

@@ -2,7 +2,8 @@
 
 var app = require('commander'),
 	path = require('path'),
-	queenRunner = require('../lib/server/runner.js'),
+	queenRunner = require('../../queen-remote').runner,
+	queenFactory = require('../');
 	startQueen = true,
 	config = {};
 
@@ -15,12 +16,7 @@ app.option('-h, --host [host]', 'The host to bind the remote server to')
 	.option('-q, --quiet', 'Don\'t output anything to output stream');
 
 app.command("*").action(function(filePath){
-	
-	if(~filePath.indexOf("://")){
-		config.script = filePath;
-	} else {
-		config.file = path.resolve(process.cwd(), filePath);
-	}
+	config.module = path.resolve(process.cwd(), filePath);
 });
 
 app.on('--help', function(){
@@ -46,5 +42,9 @@ config.capture = app.capture;
 config.quiet = app.quiet;
 config.verbose = app.verbose;
 
-queenRunner(config);
+config.plugin = {};
+config.plugin.monitor = require("../../queen-monitor-plugin/");
+config.plugin.populator = require("../../queen-populator-plugin/");
+
+queenRunner(queenFactory, config);
 

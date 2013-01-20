@@ -1,7 +1,6 @@
-var script = "http://queenjs.com/server-example.js"; // script to run on load
-var capture = "localhost:9300";
-var populators = [
-	{
+module.exports = {
+	script: "http://queenjs.com/server-example.js"; // script to run on load
+	populator: {
 		type: "browserstack",
 		config: {
 			username: "ozanturgut@gmail.com",
@@ -16,4 +15,4 @@ var populators = [
 			}
 		]
 	}
-];
+};

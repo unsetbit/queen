@@ -1,6 +1,6 @@
-var script = "http://queenjs.com/server-example.js"; // script to run on load
-var populators = [
-	{
+module.exports = {
+	script: "http://queenjs.com/server-example.js"; // script to run on load
+	populator: {
 		type: "selenium",
 		config: {
 			host: 'localhost', 
@@ -10,4 +10,4 @@ var populators = [
 			{ browserName: "firefox" }
 		]
 	}
-];
+};
