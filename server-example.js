@@ -12,7 +12,7 @@ if no browsers are connected, it'll idle and wait.
 */
 module.exports = function(queen){
 	var numberToFind = 42,
-		maxNumber = 300,
+		maxNumber = 1000,
 		workforceConfig = {},
 		workforce;
 
