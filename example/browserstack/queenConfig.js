@@ -5,7 +5,7 @@ var populators = [
 		type: "browserstack",
 		config: {
 			username: "ozanturgut@gmail.com",
-			password: "",
+			password: "[YOUR PASSWORD HERE]",
 			version: 2
 		},
 		clients: [
