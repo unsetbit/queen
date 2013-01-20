@@ -33,30 +33,25 @@ module.exports = function(grunt) {
         src: '<config:files.client.src>',
         dest: 'build/<%= pkg.name %>.js',
         exportedVariable: 'Queen',
-        exports: './lib/client/WorkerProvider.js'
-      },
-      monitor: {
-        src: '<config:files.monitor.src>',
-        header: '<config:files.monitor.header>',
-        dest: 'build/<%= pkg.name %>-monitor.js',
-        exportedVariable: 'QueenMonitor',
-        exports: './lib/monitor/Monitor.js'
+        exports: './lib/client/WorkerProvider.js',
+        path: ['./components']
       }
     },
     min: {
       client: {
         src: ['<banner:meta.banner>', '<config:hug.client.dest>'],
         dest: 'dist/<%= pkg.name %>.js'
-      },
-      monitor: {
-        src: ['<banner:meta.banner>', '<config:hug.monitor.dest>'],
-        dest: 'dist/<%= pkg.name %>-monitor.js'
       }
     },
     copy: {
       dist: {
         files: {
           "./static/" : "./dist/**/*"
+        }
+      },
+      dev: {
+        files: {
+          "./static/" : "./build/**/*"
         }
       }
     },
@@ -67,19 +62,11 @@ module.exports = function(grunt) {
     watch: {
         client: {
           files: '<config:files.client.src>',
-          tasks: 'hug:client min:client copy:dist'
-        },
-        monitor: {
-          files: '<config:files.monitor.src>',
-          tasks: 'hug:monitor'
+          tasks: 'hug:client copy:dev'
         },
         styles: {
           files: './lib/client/styles/**/*',
           tasks: 'less concat:styles'
-        },
-        soyMonitor: {
-          files: './lib/monitor/soy/**/*.soy',
-          tasks: 'soy:monitor hug:monitor'
         }
     },
     less: {
@@ -98,42 +85,17 @@ module.exports = function(grunt) {
     clean: {
       build: ['./build/']
     },
-    test: {
+    nodeunit: {
       lib: '<config:files.test.server>'
     },
-    soy : {
-        monitor: {
-            src: [ './lib/monitor/soy/**/*.soy' ],
-            inputPrefix : '',
-            outputPathFormat : './{INPUT_DIRECTORY}/{INPUT_FILE_NAME}.js',
-            codeStyle : 'stringbuilder',
-            locales : [],
-            messageFilePathFormat : undefined,
-            shouldGenerateJsdoc : false,
-            shouldProvideRequireSoyNamespaces : false,
-            compileTimeGlobalsFile : undefined,
-            shouldGenerateGoogMsgDefs : false,
-            bidiGlobalDir : 0, //accepts 1 (ltr) or -1 (rtl)
-
-            // Options missing from documentation
-            cssHandlingScheme : undefined, // 'literal', 'reference', 'goog'
-            googMsgsAreExternal : false,
-            isUsingIjData : undefined,
-            messagePluginModule : undefined, //full class reference
-            pluginModules: [], // array of full class reference strings.
-            shouldDeclareTopLevelNamespaces : undefined,
-            useGoogIsRtlForBidiGlobalDir : false,
-
-            // classpath with which to run the compiler. Used in conjunction with messagePluginModule and pluginModules
-            classpath : ''
-        }
-    },
+    bower: {},
     jshint: {
       server: {
         options: {
           node: true,
           strict: false,
-          sub: true
+          sub: true,
+          expr: true
         }
       },
       client: {
@@ -164,14 +126,31 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-copy');
   grunt.loadNpmTasks('grunt-contrib-clean');
   grunt.loadNpmTasks('grunt-contrib-less');
-  grunt.loadNpmTasks('grunt-soy');
   
-  grunt.registerTask('build-js', 'soy hug');
+  grunt.registerTask('build-js', 'hug');
   grunt.registerTask('build-css', 'less concat:styles');
   grunt.registerTask('build', 'lint build-js build-css');
 
-  grunt.registerTask('build-dev', 'build');
-  grunt.registerTask('build-release', 'build min copy');
+  grunt.registerTask('build-dev', 'build copy:dev');
+  grunt.registerTask('build-release', 'clean bower build min copy:dist');
 
-  grunt.registerTask('default', 'clean:build build-release');
+  grunt.renameTask('test','nodeunit');
+  grunt.registerTask('test', 'nodeunit');
+
+  grunt.registerTask('default', 'clean bower build-dev');
+
+  grunt.registerTask('bower', function(){
+    var done = this.async();
+    var bower = require('bower');
+    bower.commands.
+        install().
+        on('end', function(data){
+          if(data) grunt.log.writeln(data); 
+          done(true);
+        }).
+        on('error', function(err){
+          if(err) grunt.log.writeln(err);
+          done(false);
+        });
+  });
 };

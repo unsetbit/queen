@@ -1,0 +1,23 @@
+/*
+BrowserStack Example
+
+THIS EXAMPLE CURRENTLY HAS PROBLEMS -- IT WILL PROBABLY NOT WORK [ot 1/19/2013]
+
+Sauce Labs is a cloud provider of browsers. Queen issue request to Sauce to automatically
+populate itself with browsers. To do that we'll start a download and start a local tunnel to the Sauce Labs cloud,
+then run queen with the configuration defined in queenConfig.js.
+
+Once Queen starts, it will connect to the Sauce Labs service and request that it spawns a Firefox browser
+and points it at it's capture url. Once the browser is connected, Queen will automatically run the
+server-side script defined at http://queenjs.com/server-example.js. 
+
+The configuration options are defined in queenConfig.js.
+
+To run this example:
+1) Download http://www.browserstack.com/BrowserStackTunnel.jar
+2) Edit queenConfig.js with your Browser Stack user name and access key
+3) Run this command to start Queen: node ../../bin/queen
+4) Run this command to start Browser Stack Tunnel: java -jar BrowserStackTunnel.jar [YOUR BROWSER STACK LOCAL TESTING KEY] localhost,9300,0
+
+*/
+

@@ -49,6 +49,13 @@ var TEST_OBJECT = {
 	message: TEST_STRING
 };
 
+var createMockSocketServer = function(){
+	var mock = {};
+	mock.socket = createMockSocket();
+	mock.of = sinon.stub().returns(mock.socket);
+	return mock;
+};
+
 var createMockSocket = function(){
 	var socket = {};
 	var eventEmitter = socket.eventEmitter = new EventEmitter();
@@ -70,14 +77,15 @@ var createMockPopulator = function(){
 
 exports.queen = {
 	setUp: function(callback){
-		this.socket = createMockSocket();
-		this.queen = new Queen(this.socket, "", {all:sinon.spy()});
+		this.socketServer = createMockSocketServer();
+		this.socket = this.socketServer.socket;
+		this.queen = new Queen(this.socketServer, "", {all:sinon.spy(), use: sinon.spy()});
 		callback();
 	},
 	construct: function(test){
 		var queen;
 		
-		queen = new Queen(this.socket, "", {all:sinon.spy()});
+		queen = new Queen(this.socketServer, "", {all:sinon.spy(), use:sinon.spy()});
 		test.ok(queen instanceof Queen, "Unable to construct with valid params");
 
 		test.done();
@@ -184,29 +192,6 @@ exports.queen = {
 
 		test.ok(workforce.self.populate.lastCall.args[0] === provider, "Populate not called");
 
-		test.done();
-	},
-	attachPopulator: function(test){
-		var p = createMockPopulator();
-		this.queen.autoSpawnClients = sinon.spy();
-		this.queen.attachPopulator(p);
-		test.equal(this.queen.populators.length, 1, "populator count incorrect");
-		test.ok(this.queen.autoSpawnClients.calledOnce, "auto spawn not called");
-		test.done();
-	},
-	detachPopulator: function(test){
-		var p = createMockPopulator();
-		this.queen.autoSpawnClients = sinon.spy();
-		this.queen.attachPopulator(p);
-		test.equal(this.queen.populators.length, 1, "populator count incorrect");
-		this.queen.detachPopulator(p);
-		test.equal(this.queen.populators.length, 0, "populator count incorrect");
-		test.done();
-	},
-	autoSpawnClients: function(test){
-		var p = createMockPopulator();
-		this.queen.attachPopulator(p);
-		test.ok(p.calledWith(p.clientConfig), "populator not called with client config");
 		test.done();
 	},
 	kill: function(test){

@@ -33,7 +33,7 @@ function onServerReady(){
 // This spawns a basic http server which just serves the client-side script.
 // This is done just to keep everything in the example inside one file,
 // in real life, you should serve your scripts out of a more respectable server.
-var script = "for(var i = 0; i < 4000000000; i++) 1 + 1;";
+var script = "for(var i = 0; i < 5000000000; i++) 1 + 1;";
 
 var server = require('http').createServer(function(request, response){
 	response.writeHead(200, {'Content-Type': 'application/javascript'});

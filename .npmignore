@@ -1,0 +1,9 @@
+build
+example
+node_modules
+test
+
+# Client-side build files
+components
+lib/client
+lib/monitor

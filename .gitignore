@@ -1,2 +1,7 @@
 node_modules
 build
+components
+
+# Used in examples
+*.jar
+*.log

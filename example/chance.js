@@ -14,7 +14,7 @@ if no browsers are connected, it'll idle and wait.
 */
 function onHttpServerReady(){
 	var numberToFind = 42,
-		maxNumber = 300;
+		maxNumber = 500;
 
 	var workforce = queen({
 		run: ['http://localhost:9300'],

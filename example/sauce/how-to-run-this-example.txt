@@ -1,0 +1,22 @@
+/*
+Sauce Labs Example
+
+Sauce Labs is a cloud provider of browsers. Queen issue request to Sauce to automatically
+populate itself with browsers. To do that we'll start a download and start a local tunnel to the Sauce Labs cloud,
+then run queen with the configuration defined in queenConfig.js.
+
+Once Queen starts, it will connect to the Sauce Labs service and request that it spawns a Firefox browser
+and points it at it's capture url. Once the browser is connected, Queen will automatically run the
+server-side script defined at http://queenjs.com/server-example.js. 
+
+The configuration options are defined in queenConfig.js.
+
+To run this example:
+1) Download http://saucelabs.com/downloads/Sauce-Connect-latest.zip
+2) Extract "Sauce-Connect.jar"
+3) Run this command to start Sauce Connect: java -jar Sauce-Connect.jar [YOUR SAUCE LABS USER NAME] [YOUR SAUCE LABS ACCESS KEY]
+4) Edit queenConfig.js with your Sauce labs user name and access key
+5) Run this command to start Queen: node ../../bin/queen
+
+*/
+
