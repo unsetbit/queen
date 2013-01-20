@@ -1,5 +1,5 @@
 module.exports = {
-	script: "http://queenjs.com/server-example.js"; // script to run on load
+	script: require('../chance.js'),
 	populator: {
 		type: "selenium",
 		config: {

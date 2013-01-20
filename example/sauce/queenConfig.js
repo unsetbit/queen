@@ -1,16 +1,16 @@
 module.exports = {
-	script: "http://queenjs.com/server-example.js", // script to run on load
+	script: require('../chance.js'), // script to run on load
 	populator: {
 		type: "sauce",
 		config: {
-			username: "ozanturgut",
-			accessKey: ""
+			username: "[YOUR USER NAME]",
+			accessKey: "[YOUR API ACCESS KEY]"
 		},
 		clients: [
 			{ 
 				browserName: "firefox",
 				platform: "Windows 2003",
-				version: "18"
+				version: "15"
 			},
 			{ 
 				browserName: "firefox",
@@ -26,7 +26,7 @@ module.exports = {
 				browserName: "firefox",
 				platform: "Windows 2003",
 				version: "15"
-			},
+			}/*,
 			{ 
 				browserName: "firefox",
 				platform: "Windows 2003",
@@ -51,7 +51,7 @@ module.exports = {
 				browserName: "firefox",
 				platform: "Windows 2003",
 				version: "10"
-			}
+			}*/
 		]
 	}
 };

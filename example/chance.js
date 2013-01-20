@@ -16,7 +16,7 @@ if no browsers are connected, it'll idle and wait.
 module.exports = function(queen){
 	function onHttpServerReady(){
 		var numberToFind = 42,
-			maxNumber = 100;
+			maxNumber = 10000;
 
 		var workforce = queen({
 			run: ['http://localhost:9300'],
