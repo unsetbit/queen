@@ -20,6 +20,10 @@ function onHttpServerReady(){
 		run: ['http://localhost:9300'],
 		populate: "continuous",
 		killOnStop: false,
+		uniqueness: function(browser){
+			console.log("HIT!");
+			return browser.family;
+		},
 		handler: workerHandler
 	});
 
