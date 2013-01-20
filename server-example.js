@@ -32,11 +32,11 @@ module.exports = function(queen){
 		
 		// Whenever a worker has a message, execute a handler function
 		worker.on("message", function(guessedNumber){
-			console.log(guessedNumber + " \t guessed by " + worker.provider.attributes.name);
+			queen.log(guessedNumber + " \t guessed by " + worker.provider.attributes.name);
 
 			if(guessedNumber === numberToFind){
 				workforce.kill();	
-				console.log("Done! The winner was " + worker.provider.attributes.name);
+				queen.log("Done! The winner was " + worker.provider.attributes.name);
 			
 				// We're done
 				queen.kill();
