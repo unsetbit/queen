@@ -16,7 +16,7 @@ To run this example:
 2) Extract "Sauce-Connect.jar"
 3) Run this command to start Sauce Connect: java -jar Sauce-Connect.jar [YOUR SAUCE LABS USER NAME] [YOUR SAUCE LABS ACCESS KEY]
 4) Edit queenConfig.js with your Sauce labs user name and access key
-5) Run this command to start Queen: node ../../bin/queen
+5) Run this command to start Queen: ../../bin/queen
 
 */
 
