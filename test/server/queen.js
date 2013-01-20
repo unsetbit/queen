@@ -79,13 +79,13 @@ exports.queen = {
 	setUp: function(callback){
 		this.socketServer = createMockSocketServer();
 		this.socket = this.socketServer.socket;
-		this.queen = new Queen(this.socketServer, "", {all:sinon.spy(), use: sinon.spy()});
+		this.queen = new Queen(this.socketServer, {all:sinon.spy(), use: sinon.spy()}, "");
 		callback();
 	},
 	construct: function(test){
 		var queen;
 		
-		queen = new Queen(this.socketServer, "", {all:sinon.spy(), use:sinon.spy()});
+		queen = new Queen(this.socketServer, {all:sinon.spy(), use:sinon.spy()}, "");
 		test.ok(queen instanceof Queen, "Unable to construct with valid params");
 
 		test.done();
