@@ -13,6 +13,7 @@ In this file:
 * [Queen Scripts](#queen-scripts)
 * [Intended Usage](#intended-usage)
 * [Command-line Options](#command-line-options)
+* [Interaction Diagram](#diagram)
 * [Technical Documentation](#technical-documentation)
 
 # <a id="explanation-by-example"></a>Explanation by Example
@@ -168,6 +169,9 @@ If the file is a [Queen config file](https://github.com/ozanturgut/queen/wiki/Qu
 
 If the file is a Queen server-side script, queen will disable it's remote server and execute 
 the server-side script.
+
+## <a id="diagram"></a>Interaction Diagram
+![Queen Diagram](http://queenjs.com/r/Queen%20Diagram.png)
 
 ## <a id="technical-documentation"></a>Technical Documentation
 * [Technical Overview](https://github.com/ozanturgut/queen/wiki)
