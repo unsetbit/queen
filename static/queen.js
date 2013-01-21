@@ -3751,7 +3751,6 @@ Socket.prototype.postMessage = function(message){
 
 Socket.prototype.ready = function(){
 	this.isReady = true;
-	console.log("READY");
 	_.each(this.pendingMessages, this.message);
 };
 
@@ -3954,7 +3953,7 @@ var WorkerProvider = function(socket){
 	this.api = getApi.call(this);
 };
 
-WorkerProvider.prototype.maxWorkerCount = 100;
+WorkerProvider.prototype.maxWorkerCount = 200;
 WorkerProvider.prototype.workerTimeout = Infinity;
 WorkerProvider.prototype.log = utils.noop;
 

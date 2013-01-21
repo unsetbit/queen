@@ -10,7 +10,8 @@
 </head>
 <body>
   <h1>
-    <span id="Title">Queen Worker Provider</span><span id="StatusIndicator" class="disconnected">&nbsp;</span><span id="Status">Disconnected</span>
+    <img id="logo" src="favicon.png" />
+    <span id="Status"></span>
   </h1>
 	<script src="socketio.js"></script>
   <script src="queen.js"></script>
@@ -27,34 +28,60 @@
 
     // UI
     var workerCount = 0;
+    var available = true;
+    var connected = false;
     var statusElement = document.getElementById('Status');
-    var statusIndicatorElement = document.getElementById('StatusIndicator');
+
+    function updateStatus(){
+      var status;
+      if(connected){
+        status = "Connected to " + window.location.host;
+
+        if(available && workerCount){
+          status += ", hosting " + workerCount + " workers";
+        } else if(!available){
+          status += ", at maximum capacity (" + workerCount + " workers)";
+        }
+      } else {
+        status = "Trying to connect to " + window.location.host;
+      }
+
+      statusElement.innerText = status;
+    }
+
+    updateStatus();
+
     workerProvider.on('connect', function(){
-      statusElement.innerText = "Connected";
-      statusIndicatorElement.className = "connected";
+      connected = true;
+      updateStatus();
     });
     workerProvider.on('disconnect', function(){
-      statusElement.innerText = "Disconnected";
-      statusIndicatorElement.className = "disconnected";
+      connected = false;
+      updateStatus();
     });
 
     workerProvider.on('available', function(){
-      statusElement.innerText = "Connected";
+      available = true;
+      statusElement.innerText = "Connected to " + window.location.host;
+      updateStatus();
     });
 
     workerProvider.on('unavailable', function(){
-      statusElement.innerText = "Connected, at maximum capacity";
+      available = false;
+      updateStatus();
     });
 
     workerProvider.on('worker', function(worker){
       workerCount++;
       document.title = "(" + workerCount + ") Queen";
+      updateStatus();
     });
 
 
     workerProvider.on('workerDead', function(workerId){
       workerCount--;
       document.title = "(" + workerCount + ") Queen";
+      updateStatus();
     });
 	</script>
 </body>

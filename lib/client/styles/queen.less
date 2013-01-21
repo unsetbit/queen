@@ -1,59 +1,32 @@
 @font-face {
-  font-family: 'Sanchez';
+  font-family: 'Lora';
   font-style: normal;
   font-weight: 400;
-  src: local('Sanchez'), local('Sanchez-Regular'), url(http://themes.googleusercontent.com/static/fonts/sanchez/v1/mx466fsxfR1AA3OwUm3waQ.woff) format('woff');
+  src: local('Lora'), url(lora.woff) format('woff');
 }
 
-.queen-worker{
-	width:1px;
-	height:1px;
-	border:25px solid #EDC951;
-	border-radius:26px;
-	margin:1px;
-}
-
-body, html{
-	background-color:#6A4A3C;
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 700;
+  src: local('Lora Bold'), local('Lora-Bold'), url(lora-bold.woff) format('woff');
 }
 
 h1{
-	background-color:#CC333F;
-	font-family:'Sanchez', sans-serif;
-	font-size:24px;
-	white-space:nowrap;
-}
-
-#Title{
-	margin-left:20px;
-	padding:10px 30px;
+	padding:10px 20px;
+	font-size:30px;
+	font-family:'Lora', sans-serif;
 	font-weight:bold;
-	display:inline-block;
-	text-shadow: 0px 1px 0px #757575;
-	color:white;
-	background-color:#EB6841;
+	img{
+		height:45px;
+		margin-right:8px;
+		vertical-align: text-bottom;
+	}
 }
 
-#Status{
-	padding:10px 0px;
-	margin-left:5px;
-	display:inline-block;
-	color:white;
-}
-
-#StatusIndicator{
-	margin:10px 0px;
-	margin-left:15px;
-	display:inline-block;
-	height:29px;
-	width:29px;
-	border-radius:30px;
-}
-
-#StatusIndicator.connected{
-	background-color:lime;
-}
-
-#StatusIndicator.disconnected{
-	background-color:#CCC;
+iframe{
+	width:0px;
+	height:0px;
+	border:10px solid #555555;
+	margin: 20px;
 }
