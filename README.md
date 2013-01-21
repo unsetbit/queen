@@ -16,13 +16,13 @@ In this file:
 * [Technical Documentation](#technical-documentation)
 
 # <a id="explanation-by-example"></a>Explanation by Example
-Let's say you want to play a game where you write down a number and others try to guess it. 
-To make it easier, you give the players a maximum number when starting. You gather a bunch of friends, 
-explain the rules, and give the maximum number. Your friends then yell out random numbers between 0 and the 
-maximum number until you hear the right number.
+Let's say you want to play a game where you write down a number and others try to guess it.
+To make it easier, you give the players a maximum number when starting. You gather a
+bunch of friends, explain the rules, and give the maximum number. Your friends then yell
+out random numbers between 0 and the maximum number until you hear the right number.
 
-Now imagine your friends are browsers, and the game is a script which tells browsers how to play, 
-gives them a maximum number, and waits for one of them to guess the right number. 
+Now imagine your friends are browsers, and the game is a script which tells browsers how
+to play, gives them a maximum number, and waits for one of them to guess the right number.
 This makes you the Queen Server.
 
 Here is how to make this example a reality:
@@ -30,14 +30,17 @@ Here is how to make this example a reality:
 1. Install [Node.js](http://nodejs.org/).
 2. In your terminal, run: `npm install -g queen` (use sudo on mac and linux).
 3. Run: `queen -c *:9300 http://queenjs.com/server-example.js`
-4. [Click here](http://localhost:9300/capture.html) and watch your terminal.
+4. [Click here](http://localhost:9300/) and watch your terminal.
 
 Here's what happened:
 
 1. You installed software that allows you to run code on a JavaScript engine through the command line.
 2. You installed queen.
 3. You asked queen to start capturing browsers on port 9300 and then download and run a server-side queen script.
-4. You pointed your browser to the queen server, allowing queen to push code that the server-side script requested to run on browsers (the "client-side script"). This client-script then started reporting back to the server-side script random number guesses. Once the server-side script saw the correct number, it ended the process.
+4. You pointed your browser to the queen server, allowing queen to push code that the server-side
+5. script requested to run on browsers (the "client-side script"). This client-script then started 
+6. reporting back to the server-side script random number guesses. Once the server-side script saw 
+7. the correct number, it ended the process.
 
 ## <a id="features"></a>Features
 * Bidirectional communication between your client-side and server-side script (using socket.io).
@@ -48,7 +51,7 @@ Here's what happened:
 * Automatically detects and recovers unresponsive browsers.
 * Can run lists of scripts or an HTML files.
 
-Queen uses (Socket.io) for server-client communication, Socket.io supports IE5.5+, which is the same goal for Queen.
+Queen uses (Socket.io) for server-client communication, it's designed to work with IE6 and up.
 
 ## <a id="queen-scripts"></a>Queen Scripts
 You need two scripts to run queen: a client-side script which will run on browsers, and a server-side script which all
@@ -75,44 +78,46 @@ queenSocket.onMessage = function(number){
 
 ```javascript
 // http://queenjs.com/ping-server.js
-var config = {
-	run: ['http://queenjs.com/ping-client.js'],
-	
-	// This tells queen to run this script on any
-	// browsers which are connected now and in the future
-	populate: "continuous", 
-	
-	// By default, queen will kill a workforce (i.e. this job)
-	// if there are no browsers connected, this tells queen
-	// that it's ok to idle and wait for browsers to connect.
-	killOnStop: false,
-	
-	// This function gets called right before a browser starts 
-	// running the client script.
-	handler: function(worker){ 
-		// Worker can be thought of as the browser.
-		worker.on('message', function(num){
-			console.log(worker.provider + " is at " + num);
-			
-			// If the browser has pinged us 10 times, kill it.
-			if(num === 10){
-				worker.kill();
-			} else {
-				// Echo the number back to the worker
-				worker(num);
-			}
-		});
-	
-		// Tell the worker to start at 0
-		worker(0);
+module.exports = function(queen){
+	var config = {
+		run: ['http://queenjs.com/ping-client.js'],
+		
+		// This tells queen to run this script on any
+		// browsers which are connected now and in the future
+		populate: "continuous", 
+		
+		// By default, queen will kill a workforce (i.e. this job)
+		// if there are no browsers connected, this tells queen
+		// that it's ok to idle and wait for browsers to connect.
+		killOnStop: false,
+		
+		// This function gets called right before a browser starts 
+		// running the client script.
+		handler: function(worker){ 
+			// Worker can be thought of as the browser.
+			worker.on('message', function(num){
+				queen.log(worker.provider + " is at " + num + "\n");
+				
+				// If the browser has pinged us 10 times, kill it.
+				if(num === 10){
+					worker.kill();
+				} else {
+					// Echo the number back to the worker
+					worker(num);
+				}
+			});
+		
+			// Tell the worker to start at 0
+			worker(0);
+		}
 	}
-}
 
-// queen is a global variable of the running queen instance
-queen(config);
+	// queen is a global variable of the running queen instance
+	queen(config);
+};
 ```
 
-To run this example, run this command in your terminal: `queen -c *:9300 http://queenjs.com/ping-server.js`. 
+To run this example, run this command in your terminal: `queen -c localhost:9300 http://queenjs.com/ping-server.js`. 
 This tells queen to run the server script, and listen for browsers on port 9300. Now if you navigate to
 [http://localhost:9300/capture.html](http://localhost:9300/capture.html), you'll add that browser as a worker,
 and queen will automatically push the client-side script to the browser to run the test.
@@ -120,8 +125,8 @@ and queen will automatically push the client-side script to the browser to run t
 ## <a id="intended-usage"></a>Intended Usage
 
 The examples above are single-user scenarios, and don't do justice
-to the scale Queen affords. Queen is intended to act as a browser pool. In real use, you should have one Queen 
-server with many browsers connected to it.
+to the scale Queen affords. Queen is intended to act as a browser pool. 
+In real use, you should have one Queen server with many browsers connected to it.
 
 You can use the thin-client, [queen-remote](https://github.com/ozanturgut/queen-remote), to execute scripts 
 on browsers which are connected to a central queen server. Queen gives each client-side script it's own iframe,
@@ -134,15 +139,15 @@ The only thing you cannot configure through the command line is populators, you'
 [Queen config file](https://github.com/ozanturgut/queen/wiki/Queen-Config-File) to define those.
 
 
-### ```-h``` or ```--host [host]```  _[Internal IP Address]:9200 by default_
+### ```-h``` or ```--host [host]```  _port 9200 on all hosts by default_
 
 The host to bind the remote server to. This is the address queen-remote clients will connect to.
 
-### ```-c``` or ```--capture [host]``` _Port 80 for all hostname by default_
+### ```-c``` or ```--capture [host]``` _[Internal IP Address]:80 by default_
 
 The address to bind the capture server to. Browsers will navigate to the url + "/capture.html" to connect to Queen.
 
-### ```--heartbeatInterval <n>``` _20 seconds by default_
+### ```--heartbeatInterval <n>``` _60 seconds by default_
 
 Milliseconds clients have to send a heartbeat until they're considered unresponsive.
 
