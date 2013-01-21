@@ -13,7 +13,7 @@ In this file:
 * [Queen Scripts](#queen-scripts)
 * [Intended Usage](#intended-usage)
 * [Command-line Options](#command-line-options)
-* [Interaction Diagram](#diagram)
+* [Interaction Diagram](#interaction-diagram)
 * [Technical Documentation](#technical-documentation)
 
 # <a id="explanation-by-example"></a>Explanation by Example
