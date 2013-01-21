@@ -2,7 +2,7 @@
 
 var app = require('commander'),
 	path = require('path'),
-	queenRunner = require('../../queen-remote').runner,
+	queenRunner = require('queen-remote').runner,
 	queenFactory = require('../');
 	startQueen = true,
 	config = {};
@@ -43,8 +43,8 @@ config.quiet = app.quiet;
 config.verbose = app.verbose;
 
 config.plugin = {};
-config.plugin.monitor = require("../../queen-monitor-plugin/");
-config.plugin.populator = require("../../queen-populator-plugin/");
+config.plugin.monitor = require("queen-monitor-plugin");
+config.plugin.populator = require("queen-populator-plugin");
 
 queenRunner(queenFactory, config, function(queen){
 	if(queen instanceof Error){
