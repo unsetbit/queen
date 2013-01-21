@@ -16,7 +16,7 @@ module.exports = function(queen){
 		handler: function(worker){ 
 			// Worker can be thought of as the browser.
 			worker.on('message', function(num){
-				queen.log(worker.provider + " is at " + num);
+				queen.log(worker.provider + " is at " + num + "\n");
 				
 				// If the browser has pinged us 10 times, kill it.
 				if(num === 10){
