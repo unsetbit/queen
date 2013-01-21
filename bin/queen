@@ -2,7 +2,7 @@
 
 var app = require('commander'),
 	path = require('path'),
-	queenRunner = require('queen-remote').runner,
+	queenRunner = require('../../queen-remote').runner,
 	queenFactory = require('../');
 	startQueen = true,
 	config = {};
@@ -16,7 +16,11 @@ app.option('-h, --host [host]', 'The host to bind the remote server to')
 	.option('-q, --quiet', 'Don\'t output anything to output stream');
 
 app.command("*").action(function(filePath){
-	config.module = path.resolve(process.cwd(), filePath);
+	if(~filePath.indexOf("://")){
+		config.script = filePath;
+	} else {
+		config.module = path.resolve(process.cwd(), filePath);		
+	}
 });
 
 app.on('--help', function(){
