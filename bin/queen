@@ -2,7 +2,7 @@
 
 var app = require('commander'),
 	path = require('path'),
-	queenRunner = require('../../queen-remote').runner,
+	queenRunner = require('queen-remote').runner,
 	queenFactory = require('../');
 	startQueen = true,
 	config = {};
