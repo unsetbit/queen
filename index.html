@@ -97,49 +97,49 @@
         <h3>A platform for running scripts on many browsers</h3>
         <p>
           Let's say you want to play a game where you write down a number and others try to
-          guess it. To make it easier, you give the players a maximum number when starting.
-          You gather a bunch of friends, explain the rules, and give the maximum number.
-          Your friends then yell out random numbers between 0 and the maximum number until 
-          you hear the right number.
+          guess it. You gather some friends and tell them to start giving numbers at you.
+          Your friends keep giving you random numbers until one of them gets it right.
         </p>
         <p>
-          Now imagine your friends are browsers, and the game is a script which tells 
-          browsers how to play, gives them a maximum number, and waits for one of them 
-          to guess the right number. This makes you the Queen Server.
+          Now imagine your friends are browsers, and the game is a script which tells browsers 
+          how to play, and waits for the right number to be guessed. This makes you the Queen Server.
+          The Queen Servers allows you to perform distributed tasks on many browsers -- a platform for
+          running scripts on many browsers.
         </p>
         <p>
-          Here is how to make this example a reality:
+          Let's run the example:
 
           <ol>
-            <li>Install <a href="http://nodejs.org/">Node.js</a></li>
+            <li>Install <a href="http://nodejs.org/">Node.js</a> version 0.8 or higher</li>
             <li>In your terminal, run: <pre><span id="sudo">sudo </span>npm install -g queen</pre></li>
-            <li>Run: <pre>queen -c *:9300 <a href="http://queenjs.com/server-example.js">http://queenjs.com/server-example.js</a></pre></li>
+            <li>Run: <pre>queen -c localhost:9300 <a href="http://queenjs.com/server-example.js">http://queenjs.com/server-example.js</a></pre></li>
             <li><a href="http://localhost:9300/" target="_blank">Click here</a> and watch your terminal.</li>
           </ol>
         </p>
         <p>
           Here's what happened:
           <ol>
-            <li>You installed software that allows you to run code on a JavaScript engine through the command line.</li>
-            <li>You installed queen.</li>
-            <li>You asked queen to start capturing browsers on port 9300 and then download and run a server-side queen script.</li>
-            <li>You pointed your browser to the queen server, allowing queen to push code that the server-side script requested to run on browsers (the "client-side script"). This client-script then started reporting back to the server-side script random number guesses. Once the server-side script saw the correct number, it ended the process.</li>
+            <li>You installed software that allows you to run JavaScript code through the command line.</li>
+            <li>You installed queen using a package manager that comes with Node.</li>
+            <li>You asked queen to start capturing browsers on localhost port 9300 and run <a href="http://queenjs.com/server-example.js">this server-side queen script</a>.</li>
+            <li>You pointed your browser to the queen server, allowing queen to push code that the server-side script requested to run on browsers (the "client-side script"). When <a href="http://queenjs.com/client-example.js">this client-side script</a> loaded, it started reporting back to the server-side script random number guesses. Once the server-side script saw the correct number, it ended the process.</li>
           </ol>
         <p>
 
         <h3>It's not for guessing numbers</h3>
         <p>
-          Queen is a webserver which captures browsers and then is able to push scripts for them to run in a clean context
+          Queen is a server which captures browsers and then is able to push scripts to them to run in a clean context
           (an iframe). Here are somethings it can do out of the box:
 
           <ul>
             <li>Bidirectional communication between your client-side and server-side script (using <a href="http://socket.io/">socket.io</a>).</li>
-            <li>Run scripts via command line, configuration file, or import Queen into your own project as a library.</li>
-            <li>Target connected browsers based on user-agent or <a href="http://modernizr.com/">Modernizr</a> capabilities.</li>
-            <li>Connect browsers automatically using <a href="http://seleniumhq.org/">Selenium</a>, <a href="http://www.browserstack.com">BrowserStack</a>, or <a href="https://saucelabs.com/">SauceLabs</a>.</li>
             <li>Run scripts on browsers connected to a central Queen server remotely using a thin-client (<a href="https://github.com/ozanturgut/queen-remote">queen-remote</a>).</li>
+            <li>Connect browsers automatically using <a href="http://seleniumhq.org/">Selenium</a>, <a href="http://www.browserstack.com">BrowserStack</a>, or <a href="https://saucelabs.com/">SauceLabs</a>.</li>
             <li>Automatically detects and recovers unresponsive browsers.</li>
+            <li>Target browsers based on browser type/version, operating system, or capabilities (anything <a href="http://modernizr.com/">Modernizr</a> can detect).</li>
+            <li>Run scripts via command line, configuration file, or import Queen into your own project as a library.</li>
             <li>Can run lists of scripts or an HTML files.</li>
+            <li><a href="monitor.png">Monitoring</a> of connected browsers and active jobs.</li>
           </ul>
         </p>
         
@@ -147,14 +147,14 @@
 
         <h3>Rule your Browser Kingdom</h3>
         <p>
-          Queen bears the <a href="https://github.com/ozanturgut/queen/blob/master/LICENSE-APACHE2">Apache License 2.0</a>. Your contributions are welcome at <a href="https://github.com/ozanturgut/queen">GitHub</a>.</p>
+          Queen bears the Apache License 2.0. <a href="https://github.com/ozanturgut/queen/wiki/Hacking-Queen">Read this to get starting on hacking queen</a>. Your contributions are welcome at <a href="https://github.com/ozanturgut/queen">GitHub</a>.</p>
         <div id="credit">
           Created by <a href="https://github.com/ozanturgut">Ozan</a> at <a href="http://www.turn.com/platform">Turn</a>.
         </div>
     </div>
     <script>
-    if(BrowserDetect && BrowserDetect.OS === "Windows"){
-      document.getElementById('sudo').innerHtml = "";
+    if(~navigator.userAgent.indexOf("Windows")){
+      document.getElementById('sudo').innerText = "";
     }
     </script>
     <!--[if !IE]><script>fixScale(document);</script><![endif]-->
