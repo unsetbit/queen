@@ -13,7 +13,7 @@ platform using browsers as computation nodes.
 * [Intended Usage](#intended-usage)
 * [Command-line Options](#command-line-options)
 * [Interaction Diagram](#interaction-diagram)
-* [Technical Documentation](#technical-documentation)
+* [Learning More](#learning-more)
 
 # <a id="explanation-by-example"></a>Explanation by Example
 Let's say you want to play a "game" where you write down a number and others try to guess it. 
@@ -172,7 +172,5 @@ Supress logging.
 ## <a id="diagram"></a>Interaction Diagram
 ![Queen Diagram](http://queenjs.com/r/Queen%20Diagram.png)
 
-## <a id="technical-documentation"></a>Technical Documentation
-* [Technical Overview](https://github.com/ozanturgut/queen/wiki)
-* [Client API](https://github.com/ozanturgut/queen/wiki/Client-API)
-* [Server API](https://github.com/ozanturgut/queen/wiki/Server-API)
+## <a id="learning-more"></a>Learning More
+Please see the [wiki](https://github.com/ozanturgut/queen/wiki) for more information about Queen.
