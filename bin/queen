@@ -7,10 +7,11 @@ var app = require('commander'),
 	startQueen = true,
 	config = {};
 
-app.version('0.3.0');
-	
+app.version('0.4.0');
+
 app.option('-h, --host [host]', 'The host to bind the remote server to')
-	.option('-c, --capture [hostname]', 'The host ot bind the http server to for capturing browsers')
+	.option('-c, --capture [host]', 'The host ot bind the http server to for capturing browsers')
+	.option('-r, --remote [host]', 'The remote Queen server to connect to')
 	.option('--heartbeatInterval <n>', 'Milliseconds clients have to send a heartbeat until deemed unresponsive', parseInt)
 	.option('-v, --verbose', 'Whether to log verbosely')
 	.option('-q, --quiet', 'Don\'t output anything to output stream');
@@ -42,13 +43,17 @@ app.parse(process.argv);
 if(!startQueen) return;
 
 config.host = app.host;
+config.remote = app.remote;
 config.capture = app.capture;
 config.quiet = app.quiet;
 config.verbose = app.verbose;
 
-config.plugin = {};
-config.plugin.monitor = require("queen-monitor-plugin");
-config.plugin.populator = require("queen-populator-plugin");
+// Only enable plugins if not in remote mode, since they only work on real servers
+if(!config.remote){
+	config.plugin = {};
+	config.plugin.monitor = require("queen-monitor-plugin");
+	config.plugin.populator = require("queen-populator-plugin");
+}
 
 queenRunner(queenFactory, config, function(queen){
 	if(queen instanceof Error){
