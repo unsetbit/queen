@@ -2,10 +2,10 @@
 
 **A platform for running scripts on many browsers.**
 
-Queen is a web server which is capable of brokering socketed communication between browsers which are connected to it
-and server-side scripts. You can think of the Queen Server as a pool of browsers which you can execute code on. Taking
-the abstraction further, you can think of Queen Server as distributed execution platform using browsers as computation
-nodes.
+Queen is a server which is capable of brokering socketed communication between browsers which are connected to it
+and other applications or scripts. You can think of the Queen Server as a pool of browsers which you can 
+execute code on. Taking the abstraction further, you can think of Queen Server as distributed execution 
+platform using browsers as computation nodes.
 
 In this file:
 * [Explanation by Example](#explanation-by-example)
@@ -17,46 +17,44 @@ In this file:
 * [Technical Documentation](#technical-documentation)
 
 # <a id="explanation-by-example"></a>Explanation by Example
-Let's say you want to play a game where you write down a number and others try to guess it.
-To make it easier, you give the players a maximum number when starting. You gather a
-bunch of friends, explain the rules, and give the maximum number. Your friends then yell
-out random numbers between 0 and the maximum number until you hear the right number.
+Let's say you want to play a "game" where you write down a number and others try to guess it. 
+You gather some friends and tell them to start giving numbers at you. Your friends keep 
+giving you random numbers until one of them gets it right.
 
-Now imagine your friends are browsers, and the game is a script which tells browsers how
-to play, gives them a maximum number, and waits for one of them to guess the right number.
-This makes you the Queen Server.
+Now imagine your friends are browsers, and the game is a script which tells browsers how to 
+play, and waits for the right number to be guessed. This makes you the Queen Server. The Queen 
+Servers allows you to perform distributed tasks on many browsers -- a platform for running 
+scripts on many browsers.
 
-Here is how to make this example a reality:
+Let's run the example:
 
-1. Install [Node.js](http://nodejs.org/).
+1. Install [Node.js](http://nodejs.org/) 0.8 or higher.
 2. In your terminal, run: `npm install -g queen` (use sudo on mac and linux).
-3. Run: `queen -c *:9300 http://queenjs.com/server-example.js`
+3. Run: `queen -c localhost:9300 http://queenjs.com/server-example.js`
 4. [Click here](http://localhost:9300/) and watch your terminal.
 
 Here's what happened:
 
-1. You installed software that allows you to run code on a JavaScript engine through the command line.
-2. You installed queen.
-3. You asked queen to start capturing browsers on port 9300 and then download and run a server-side queen script.
-4. You pointed your browser to the queen server, allowing queen to push code that the server-side
-5. script requested to run on browsers (the "client-side script"). This client-script then started 
-6. reporting back to the server-side script random number guesses. Once the server-side script saw 
-7. the correct number, it ended the process.
+1. You installed software that allows you to run JavaScript code through the command line (Node).
+2. You installed queen using a package manager that comes with Node.
+3. You asked queen to start capturing browsers on localhost port 9300 and run this server-side queen script.
+4. You pointed your browser to the queen server, allowing queen to push code that the server-side 
+5. script requested to run on browsers (the "client-side script"). When this client-side script
+6. loaded, it started reporting back to the server-side script random number guesses. Once the
+7. server-side script saw the correct number, it ended the process.
 
 ## <a id="features"></a>Features
-* Bidirectional communication between your client-side and server-side script (using socket.io).
+* Bidirectional communication between your client-side and server-side script (using [socket.io](http://socket.io/)).
 * Run scripts via command line, configuration file, or import Queen into your own project as a library.
-* Target connected browsers based on user-agent or Modernizr capabilities.
-* Connect browsers automatically using Selenium, BrowserStack, or SauceLabs.
-* Run scripts on browsers connected to a central Queen server remotely using a thin-client (queen-remote).
+* Target connected browsers based on user-agent or [Modernizr](http://modernizr.com/) capabilities.
+* Connect browsers automatically using [Selenium](http://seleniumhq.org/), [BrowserStack](http://www.browserstack.com/), or [SauceLabs](https://saucelabs.com/).
+* Run scripts on browsers connected to a central Queen server remotely using a thin-client ([queen-remote](https://github.com/ozanturgut/queen-remote)).
 * Automatically detects and recovers unresponsive browsers.
 * Can run lists of scripts or an HTML files.
 
-Queen uses (Socket.io) for server-client communication, it's designed to work with IE6 and up.
-
 ## <a id="queen-scripts"></a>Queen Scripts
-You need two scripts to run queen: a client-side script which will run on browsers, and a server-side script which all
-of the client-side scripts will communicate with. Here's an example of two such scripts:
+You need two scripts to run a job on Queen: a client-side script which will run on browsers, and a server-side script 
+which all of the client-side scripts will communicate with. Here's an example of two such scripts:
 
 ```javascript
 // http://queenjs.com/ping-client.js
@@ -125,20 +123,29 @@ and queen will automatically push the client-side script to the browser to run t
 
 ## <a id="intended-usage"></a>Intended Usage
 
-The examples above are single-user scenarios, and don't do justice
-to the scale Queen affords. Queen is intended to act as a browser pool. 
-In real use, you should have one Queen server with many browsers connected to it.
+The examples above are single-user scenarios, and don't do justice to the scale Queen affords. 
+Queen is intended to act as a browser pool. In real use, you should have one Queen server 
+with many browsers connected to it, allowing anyone in your network to execute scripts on it
+through  [queen-remote](https://github.com/ozanturgut/queen-remote).
 
-You can use the thin-client, [queen-remote](https://github.com/ozanturgut/queen-remote), to execute scripts 
-on browsers which are connected to a central queen server. Queen gives each client-side script it's own iframe,
-many scripts can run on the same browser simultaneously. If you're using an automatic populator (such as Selenium)
-Queen will even recover browsers which crash.
+Queen gives each client-side script it's own iframe, so, many scripts can run on the same browser 
+simultaneously. If you're using an automatic populator (such as Selenium) Queen will automatically restart 
+browsers which crash.
 
 ## <a id="command-line-options"></a>Command-line Options
 Queen can be executed through the command line as `queen [options] [filepath]`.
 The only thing you cannot configure through the command line is populators, you'll need a 
 [Queen config file](https://github.com/ozanturgut/queen/wiki/Queen-Config-File) to define those.
 
+### ```[path]``` _queenConfig.js by default_
+
+This can either be a local file path, or a URL. The file can either be a Queen config file, or
+a server-side Queen script.
+
+If the file is a [Queen config file](https://github.com/ozanturgut/queen/wiki/Queen-Config-File), it will be used to configure this queen instance.
+
+If the file is a Queen server-side script, queen will disable it's remote server and execute 
+the server-side script.
 
 ### ```-h``` or ```--host [host]```  _port 9200 on all hosts by default_
 
@@ -160,15 +167,6 @@ Enable debug logging.
 
 Supress logging.
 
-### ```[path]``` _queenConfig.js by default_
-
-This can either be a local file path, or a URL. The file can either be a Queen config file, or
-a server-side Queen script.
-
-If the file is a [Queen config file](https://github.com/ozanturgut/queen/wiki/Queen-Config-File), it will be used to configure this queen instance.
-
-If the file is a Queen server-side script, queen will disable it's remote server and execute 
-the server-side script.
 
 ## <a id="diagram"></a>Interaction Diagram
 ![Queen Diagram](http://queenjs.com/r/Queen%20Diagram.png)
