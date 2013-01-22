@@ -136,6 +136,8 @@ Queen can be executed through the command line as `queen [options] [filepath]`.
 The only thing you cannot configure through the command line is populators, you'll need a 
 [Queen config file](https://github.com/ozanturgut/queen/wiki/Queen-Config-File) to define those.
 
+Examples for these commands are available at the [command line options](https://github.com/ozanturgut/queen/wiki/Command-line-Options) wiki page.
+
 ### ```[path]``` _queenConfig.js by default_
 
 This can either be a local file path, or a URL. The file can either be a Queen config file, or
