@@ -27,7 +27,7 @@ scripts on many browsers.
 
 Let's run the example:
 
-1. Install [Node.js](http://nodejs.org/) 0.8 or higher.
+1. Install [Node.js](http://nodejs.org/) v0.8.18 or higher.
 2. In your terminal, run: `npm install -g queen` (use sudo on mac and linux).
 3. Run: `queen -c localhost:9300 http://queenjs.com/server-example.js`
 4. [Click here](http://localhost:9300/) and watch your terminal.
