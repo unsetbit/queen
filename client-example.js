@@ -14,6 +14,6 @@ queenSocket.onMessage = function(maxNumber){
 		queenSocket(number);	
 	}
 
-	// Every 100ms, make a guess
-	setInterval(guess, 100);
+	// Every second, make a guess
+	setInterval(guess, 1000);
 };
