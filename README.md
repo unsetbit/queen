@@ -1,4 +1,4 @@
-# Queen [![Build Status](https://secure.travis-ci.org/ozanturgut/queen.png?branch=master)](http://travis-ci.org/ozanturgut/queen)
+# Queen [![Build Status](https://secure.travis-ci.org/turn/queen.png?branch=stable)](http://travis-ci.org/turn/queen)
 
 **A platform for running scripts on many browsers.**
 
@@ -47,7 +47,7 @@ Here's what happened:
 * Run scripts via command line, configuration file, or import Queen into your own project as a library.
 * Target connected browsers based on user-agent or [Modernizr](http://modernizr.com/) capabilities.
 * Connect browsers automatically using [Selenium](http://seleniumhq.org/), [BrowserStack](http://www.browserstack.com/), or [SauceLabs](https://saucelabs.com/).
-* Run scripts on browsers connected to a central Queen server remotely using a thin-client ([queen-remote](https://github.com/ozanturgut/queen-remote)).
+* Run scripts on browsers connected to a central Queen server remotely using a thin-client ([queen-remote](https://github.com/turn/queen-remote)).
 * Automatically detects and recovers unresponsive browsers.
 * Can run lists of scripts or an HTML files.
 
@@ -125,7 +125,7 @@ and queen will automatically push the client-side script to the browser to run t
 The examples above are single-user scenarios, and don't do justice to the scale Queen affords. 
 Queen is intended to act as a browser pool. In real use, you should have one Queen server 
 with many browsers connected to it, allowing anyone in your network to execute scripts on it
-through  [queen-remote](https://github.com/ozanturgut/queen-remote).
+through  [queen-remote](https://github.com/turn/queen-remote).
 
 Queen gives each client-side script it's own iframe, so, many scripts can run on the same browser 
 simultaneously. If you're using an automatic populator (such as Selenium) Queen will automatically restart 
@@ -134,16 +134,16 @@ browsers which crash.
 ## <a id="command-line-options"></a>Command-line Options
 Queen can be executed through the command line as `queen [options] [filepath]`.
 The only thing you cannot configure through the command line is populators, you'll need a 
-[Queen config file](https://github.com/ozanturgut/queen/wiki/Queen-Config-File) to define those.
+[Queen config file](https://github.com/turn/queen/wiki/Queen-Config-File) to define those.
 
-Examples for these commands are available at the [command line options](https://github.com/ozanturgut/queen/wiki/Command-line-Options) wiki page.
+Examples for these commands are available at the [command line options](https://github.com/turn/queen/wiki/Command-line-Options) wiki page.
 
 ### ```[path]``` _queenConfig.js by default_
 
 This can either be a local file path, or a URL. The file can either be a Queen config file, or
 a server-side Queen script.
 
-If the file is a [Queen config file](https://github.com/ozanturgut/queen/wiki/Queen-Config-File), it will be used to configure this queen instance.
+If the file is a [Queen config file](https://github.com/turn/queen/wiki/Queen-Config-File), it will be used to configure this queen instance.
 
 If the file is a Queen server-side script, queen will disable it's remote server and execute 
 the server-side script.
@@ -173,4 +173,4 @@ Supress logging.
 ![Queen Diagram](http://queenjs.com/r/Queen%20Diagram.png)
 
 ## <a id="learning-more"></a>Learning More
-Please see the [wiki](https://github.com/ozanturgut/queen/wiki) for more information about Queen.
+Please see the [wiki](https://github.com/turn/queen/wiki) for more information about Queen.
