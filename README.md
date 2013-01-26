@@ -38,9 +38,9 @@ Here's what happened:
 2. You installed queen using a package manager that comes with Node.
 3. You asked queen to start capturing browsers on localhost port 9300 and run this server-side queen script.
 4. You pointed your browser to the queen server, allowing queen to push code that the server-side 
-5. script requested to run on browsers (the "client-side script"). When this client-side script
-6. loaded, it started reporting back to the server-side script random number guesses. Once the
-7. server-side script saw the correct number, it ended the process.
+   script requested to run on browsers (the "client-side script"). When this client-side script
+   loaded, it started reporting back to the server-side script random number guesses. Once the
+   server-side script saw the correct number, it ended the process.
 
 ## <a id="features"></a>Features
 * Bidirectional communication between your client-side and server-side script (using [socket.io](http://socket.io/)).
