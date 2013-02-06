@@ -17,7 +17,7 @@ The configuration options of this example are defined in queenConfig.js.
 To run this example:
 1) Download http://selenium.googlecode.com/files/selenium-server-standalone-2.28.0.jar in to this directory
 2) Start the Selenium Hub: java -jar selenium-server-standalone-2.28.0.jar -role hub -hubConfig hub.json
-3) Start the Selenium Node: java -jar selenium-server-standalone-2.28.0.jar -role node -hubConfig node.json
+3) Start the Selenium Node: java -jar selenium-server-standalone-2.28.0.jar -role node -nodeConfig node.json
 4) Start Queen: node ../../bin/queen
 
 */
