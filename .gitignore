@@ -5,3 +5,4 @@ components
 # Used in examples
 *.jar
 *.log
+.project
