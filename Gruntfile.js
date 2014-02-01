@@ -34,12 +34,12 @@ module.exports = function(grunt) {
         dest: 'build/<%= pkg.name %>.js',
         exportedVariable: 'Queen',
         exports: './lib/client/WorkerProvider.js',
-        path: ['./components']
+        path: ['./bower_components']
       }
     },
-    min: {
+    uglify: {
       client: {
-        src: ['<banner:meta.banner>', '<%= hug.client.dest %>'],
+        src: ['<%= hug.client.dest %>'],
         dest: 'dist/<%= pkg.name %>.js'
       }
     },
@@ -55,18 +55,14 @@ module.exports = function(grunt) {
         }
       }
     },
-    lint: {
-      server: '<%= files.server %>',
-      client: '<%= files.client.src %>'
-    },
     watch: {
         client: {
           files: '<%= files.client.src %>',
-          tasks: 'hug:client copy:dev'
+          tasks: ['hug:client', 'copy:dev']
         },
         styles: {
           files: './lib/client/styles/**/*',
-          tasks: 'less concat:styles'
+          tasks: ['less', 'concat:styles']
         }
     },
     less: {
@@ -91,6 +87,7 @@ module.exports = function(grunt) {
     bower: {},
     jshint: {
       server: {
+        files: { src: ['<%= files.server %>']}, 
         options: {
           node: true,
           strict: false,
@@ -99,26 +96,32 @@ module.exports = function(grunt) {
         }
       },
       client: {
+        files: {
+          src: ['<%= files.client.src %>']
+        }, 
         options: {
+          node: true,
           browser: true,
-          sub: true
+          sub: true,
+          globals: {
+            Modernizr: true,
+            io: true
+          }
         }
       },
       options: {
         quotmark: 'single',
         camelcase: true,
-        trailing: true,
-        curly: true,
         eqeqeq: true,
         immed: true,
-        latedef: true,
         newcap: true,
         noarg: true,
         sub: true,
         undef: true,
-        boss: true
-      },
-      globals: {}
+        boss: true,
+        globals: {
+        }
+      }
     }
   });
 
@@ -129,13 +132,14 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-concat');
   grunt.loadNpmTasks('grunt-contrib-jshint');
   grunt.loadNpmTasks('grunt-contrib-nodeunit');
+  grunt.loadNpmTasks('grunt-contrib-uglify');
   
   grunt.registerTask('build-js', ['hug']);
   grunt.registerTask('build-css', ['less', 'concat:styles']);
   grunt.registerTask('build', ['lint', 'build-js', 'build-css']);
 
   grunt.registerTask('build-dev', ['build', 'copy:dev']);
-  grunt.registerTask('build-release', ['clean', 'bower', 'build', 'min', 'copy:dist']);
+  grunt.registerTask('build-release', ['clean', 'bower', 'build', 'uglify', 'copy:dist']);
 
   grunt.registerTask('test', ['nodeunit']);
   grunt.registerTask('lint', ['jshint']);
