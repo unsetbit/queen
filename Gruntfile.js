@@ -1,7 +1,7 @@
 module.exports = function(grunt) {
   // Project configuration.
   grunt.initConfig({
-    pkg: '<json:package.json>',
+    pkg: require('./package.json'),
     files: {
       server: ['lib/server/**/*.js'],
       test: {
@@ -30,16 +30,16 @@ module.exports = function(grunt) {
     },
     hug: {
       client: {
-        src: '<config:files.client.src>',
+        src: '<%= files.client.src %>',
         dest: 'build/<%= pkg.name %>.js',
         exportedVariable: 'Queen',
         exports: './lib/client/WorkerProvider.js',
-        path: ['./components']
+        path: ['./bower_components']
       }
     },
-    min: {
+    uglify: {
       client: {
-        src: ['<banner:meta.banner>', '<config:hug.client.dest>'],
+        src: ['<%= hug.client.dest %>'],
         dest: 'dist/<%= pkg.name %>.js'
       }
     },
@@ -55,18 +55,14 @@ module.exports = function(grunt) {
         }
       }
     },
-    lint: {
-      server: '<config:files.server>',
-      client: '<config:files.client.src>'
-    },
     watch: {
         client: {
-          files: '<config:files.client.src>',
-          tasks: 'hug:client copy:dev'
+          files: '<%= files.client.src %>',
+          tasks: ['hug:client', 'copy:dev']
         },
         styles: {
           files: './lib/client/styles/**/*',
-          tasks: 'less concat:styles'
+          tasks: ['less', 'concat:styles']
         }
     },
     less: {
@@ -78,7 +74,7 @@ module.exports = function(grunt) {
     },
     concat: {
       styles: {
-        src: ['<config:files.styles>'],
+        src: ['<%= files.styles %>'],
         dest: 'static/<%= pkg.name %>.css'
       }
     },
@@ -86,11 +82,12 @@ module.exports = function(grunt) {
       build: ['./build/']
     },
     nodeunit: {
-      lib: '<config:files.test.server>'
+      lib: '<%= files.test.server %>'
     },
     bower: {},
     jshint: {
       server: {
+        files: { src: ['<%= files.server %>']}, 
         options: {
           node: true,
           strict: false,
@@ -99,26 +96,32 @@ module.exports = function(grunt) {
         }
       },
       client: {
+        files: {
+          src: ['<%= files.client.src %>']
+        }, 
         options: {
+          node: true,
           browser: true,
-          sub: true
+          sub: true,
+          globals: {
+            Modernizr: true,
+            io: true
+          }
         }
       },
       options: {
         quotmark: 'single',
         camelcase: true,
-        trailing: true,
-        curly: true,
         eqeqeq: true,
         immed: true,
-        latedef: true,
         newcap: true,
         noarg: true,
         sub: true,
         undef: true,
-        boss: true
-      },
-      globals: {}
+        boss: true,
+        globals: {
+        }
+      }
     }
   });
 
@@ -126,18 +129,22 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-copy');
   grunt.loadNpmTasks('grunt-contrib-clean');
   grunt.loadNpmTasks('grunt-contrib-less');
+  grunt.loadNpmTasks('grunt-contrib-concat');
+  grunt.loadNpmTasks('grunt-contrib-jshint');
+  grunt.loadNpmTasks('grunt-contrib-nodeunit');
+  grunt.loadNpmTasks('grunt-contrib-uglify');
   
-  grunt.registerTask('build-js', 'hug');
-  grunt.registerTask('build-css', 'less concat:styles');
-  grunt.registerTask('build', 'lint build-js build-css');
+  grunt.registerTask('build-js', ['hug']);
+  grunt.registerTask('build-css', ['less', 'concat:styles']);
+  grunt.registerTask('build', ['lint', 'build-js', 'build-css']);
 
-  grunt.registerTask('build-dev', 'build copy:dev');
-  grunt.registerTask('build-release', 'clean bower build min copy:dist');
+  grunt.registerTask('build-dev', ['build', 'copy:dev']);
+  grunt.registerTask('build-release', ['clean', 'bower', 'build', 'uglify', 'copy:dist']);
 
-  grunt.renameTask('test','nodeunit');
-  grunt.registerTask('test', 'nodeunit');
+  grunt.registerTask('test', ['nodeunit']);
+  grunt.registerTask('lint', ['jshint']);
 
-  grunt.registerTask('default', 'clean bower build-dev');
+  grunt.registerTask('default', ['clean', 'bower', 'build-dev']);
 
   grunt.registerTask('bower', function(){
     var done = this.async();

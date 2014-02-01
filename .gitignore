@@ -1,6 +1,7 @@
 node_modules
 build
 components
+bower_components
 
 # Used in examples
 *.jar

@@ -3,7 +3,7 @@
   "version": "0.3.4",
   "main": "./dist/queen.js",
   "dependencies": {
-    "its": "~1.0.0",
+    "its": "git://github.com/turn/its.git#~1.0.0",
   	"modernizr": "~2.6.2",
   	"json3": "~3.2.4",
   	"underscore": "~1.4.3",
