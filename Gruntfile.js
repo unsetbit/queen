@@ -1,7 +1,7 @@
 module.exports = function(grunt) {
   // Project configuration.
   grunt.initConfig({
-    pkg: '<json:package.json>',
+    pkg: require('./package.json'),
     files: {
       server: ['lib/server/**/*.js'],
       test: {
@@ -30,7 +30,7 @@ module.exports = function(grunt) {
     },
     hug: {
       client: {
-        src: '<config:files.client.src>',
+        src: '<%= files.client.src %>',
         dest: 'build/<%= pkg.name %>.js',
         exportedVariable: 'Queen',
         exports: './lib/client/WorkerProvider.js',
@@ -39,7 +39,7 @@ module.exports = function(grunt) {
     },
     min: {
       client: {
-        src: ['<banner:meta.banner>', '<config:hug.client.dest>'],
+        src: ['<banner:meta.banner>', '<%= hug.client.dest %>'],
         dest: 'dist/<%= pkg.name %>.js'
       }
     },
@@ -56,12 +56,12 @@ module.exports = function(grunt) {
       }
     },
     lint: {
-      server: '<config:files.server>',
-      client: '<config:files.client.src>'
+      server: '<%= files.server %>',
+      client: '<%= files.client.src %>'
     },
     watch: {
         client: {
-          files: '<config:files.client.src>',
+          files: '<%= files.client.src %>',
           tasks: 'hug:client copy:dev'
         },
         styles: {
@@ -78,7 +78,7 @@ module.exports = function(grunt) {
     },
     concat: {
       styles: {
-        src: ['<config:files.styles>'],
+        src: ['<%= files.styles %>'],
         dest: 'static/<%= pkg.name %>.css'
       }
     },
@@ -86,7 +86,7 @@ module.exports = function(grunt) {
       build: ['./build/']
     },
     nodeunit: {
-      lib: '<config:files.test.server>'
+      lib: '<%= files.test.server %>'
     },
     bower: {},
     jshint: {
@@ -126,18 +126,21 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-copy');
   grunt.loadNpmTasks('grunt-contrib-clean');
   grunt.loadNpmTasks('grunt-contrib-less');
+  grunt.loadNpmTasks('grunt-contrib-concat');
+  grunt.loadNpmTasks('grunt-contrib-jshint');
+  grunt.loadNpmTasks('grunt-contrib-nodeunit');
   
-  grunt.registerTask('build-js', 'hug');
-  grunt.registerTask('build-css', 'less concat:styles');
-  grunt.registerTask('build', 'lint build-js build-css');
+  grunt.registerTask('build-js', ['hug']);
+  grunt.registerTask('build-css', ['less', 'concat:styles']);
+  grunt.registerTask('build', ['lint', 'build-js', 'build-css']);
 
-  grunt.registerTask('build-dev', 'build copy:dev');
-  grunt.registerTask('build-release', 'clean bower build min copy:dist');
+  grunt.registerTask('build-dev', ['build', 'copy:dev']);
+  grunt.registerTask('build-release', ['clean', 'bower', 'build', 'min', 'copy:dist']);
 
-  grunt.renameTask('test','nodeunit');
-  grunt.registerTask('test', 'nodeunit');
+  grunt.registerTask('test', ['nodeunit']);
+  grunt.registerTask('lint', ['jshint']);
 
-  grunt.registerTask('default', 'clean bower build-dev');
+  grunt.registerTask('default', ['clean', 'bower', 'build-dev']);
 
   grunt.registerTask('bower', function(){
     var done = this.async();

@@ -1,6 +1,6 @@
 {
   "name": "queen",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "A platform for running scripts on many browsers",
   "main": "index.js",
   "dependencies": {
@@ -13,28 +13,30 @@
     "its": "~1.0.0",
     "queen-populator-plugin": "~0.2.0",
     "queen-monitor-plugin": "~0.1.0"
-  },   
+  },
   "devDependencies": {
-    "grunt": "~0.3.15",
-    "bower": "~0.6.8",
-    "grunt-hug": "~0.4.1",
-    "grunt-contrib-clean": "~0.3.1",
-    "grunt-contrib-copy": "~0.3.1",
-    "grunt-contrib-less": "~0.3.2",
-    "grunt-soy": "~0.3.0",
+    "grunt": "~0.4.0",
+    "bower": "~1.2.8",
+    "grunt-hug": "~0.5.0",
+    "grunt-contrib-clean": "~0.4.0",
+    "grunt-contrib-copy": "~0.4.0",
+    "grunt-contrib-less": "~0.9.0",
+    "grunt-soy-compile": "~0.4.0",
     "mocks": "~0.0.10",
-    "sinon": "~1.5.2"
+    "sinon": "~1.5.2",
+    "grunt-contrib-jshint": "~0.8.0",
+    "grunt-contrib-nodeunit": "~0.3.0"
   },
   "scripts": {
     "test": "grunt default test"
   },
   "engines": {
-    "node": "~0.8.0"
+    "node": "~0.10.0"
   },
   "preferGlobal": true,
   "repository": {
     "type": "git",
-    "url": "https://github.com/ozanturgut/queen.git"
+    "url": "https://github.com/turn/queen.git"
   },
   "keywords": [
     "browser",
@@ -59,12 +61,12 @@
   "author": {
     "name": "Ozan Turgut",
     "email": "ozanturgut@gmail.com",
-    "url": "http://oztu.org"
+    "url": "http://ozan.io"
   },
   "licenses": [
     {
       "type": "Apache License 2.0",
-      "url": "https://github.com/ozanturgut/queen/blob/master/LICENSE-APACHE2"
+      "url": "https://github.com/turn/queen/blob/master/LICENSE-APACHE2"
     }
   ]
 }
