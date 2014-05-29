@@ -1,4 +1,4 @@
-# Queen [![Build Status](https://secure.travis-ci.org/turn/queen.png?branch=stable)](http://travis-ci.org/turn/queen)
+# Queen [![Build Status](https://secure.travis-ci.org/oztu/queen.png?branch=stable)](http://travis-ci.org/oztu/queen)
 
 **A platform for running scripts on many browsers.**
 
@@ -134,16 +134,16 @@ browsers which crash.
 ## <a id="command-line-options"></a>Command-line Options
 Queen can be executed through the command line as `queen [options] [filepath]`.
 The only thing you cannot configure through the command line is populators, you'll need a 
-[Queen config file](https://github.com/turn/queen/wiki/Queen-Config-File) to define those.
+[Queen config file](https://github.com/oztu/queen/wiki/Queen-Config-File) to define those.
 
-Examples for these commands are available at the [command line options](https://github.com/turn/queen/wiki/Command-line-Options) wiki page.
+Examples for these commands are available at the [command line options](https://github.com/oztu/queen/wiki/Command-line-Options) wiki page.
 
 ### ```[path]``` _queenConfig.js by default_
 
 This can either be a local file path, or a URL. The file can either be a Queen config file, or
 a server-side Queen script.
 
-If the file is a [Queen config file](https://github.com/turn/queen/wiki/Queen-Config-File), it will be used to configure this queen instance.
+If the file is a [Queen config file](https://github.com/oztu/queen/wiki/Queen-Config-File), it will be used to configure this queen instance.
 
 If the file is a Queen server-side script, queen will disable it's remote server and execute 
 the server-side script.
@@ -173,4 +173,4 @@ Supress logging.
 ![Queen Diagram](http://queenjs.com/r/Queen%20Diagram.png)
 
 ## <a id="learning-more"></a>Learning More
-Please see the [wiki](https://github.com/turn/queen/wiki) for more information about Queen.
+Please see the [wiki](https://github.com/oztu/queen/wiki) for more information about Queen.
